@@ -30,7 +30,8 @@ jobs:
       - run: npm run test:engineering
       - run: npm run build
       - run: node scripts/verify-build.mjs
-      - run: npx playwright install --with-deps chromium
+      - name: Install Chromium headless shell and system dependencies
+        run: npx playwright install --with-deps --only-shell chromium
       - run: npm run test:e2e
       - name: Mark trusted main artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
