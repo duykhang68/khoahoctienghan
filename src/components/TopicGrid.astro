@@ -73,6 +73,11 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 <style>
  .topic-count-visual{position:relative;isolation:isolate}
  .topic-count-overlay[hidden]{display:none!important}
- .topic-count-overlay{position:absolute;inset:0;z-index:2;display:grid;place-items:center;overflow:hidden;pointer-events:none;container-type:size;background:rgba(15,23,42,.3);color:white}
- .topic-count-overlay>span{font-family:var(--display,system-ui);font-weight:800;font-size:min(87cqh,calc(145cqw / var(--topic-count-digits)));line-height:1;letter-spacing:-.035em;font-variant-numeric:tabular-nums;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+ .topic-count-overlay{position:absolute;inset:0;z-index:2;display:grid;place-items:center;overflow:hidden;pointer-events:none;container-type:size;background:transparent;color:#435b76}
+ .topic-count-visual :global(.editorial-cover[data-palette="sage"])+.topic-count-overlay{color:#39583c}
+ .topic-count-visual :global(.editorial-cover[data-palette="lavender"])+.topic-count-overlay{color:#61477e}
+ .topic-count-visual :global(.editorial-cover[data-palette="sand"])+.topic-count-overlay{color:#79532e}
+ .topic-count-visual :global(.editorial-cover[data-palette="blue"])+.topic-count-overlay{color:#355b75}
+ .topic-count-visual :global(.editorial-cover[data-palette="rose"])+.topic-count-overlay{color:#834d57}
+ .topic-count-overlay>span{font-family:var(--display,system-ui);font-weight:800;font-size:min(87cqh,calc(145cqw / var(--topic-count-digits)));line-height:1;letter-spacing:-.035em;font-variant-numeric:tabular-nums;text-shadow:none}
 </style>
