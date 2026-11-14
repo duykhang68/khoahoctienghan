@@ -2,7 +2,9 @@
 import {getCollection} from 'astro:content';
 import TechCover from './TechCover.astro';
 import AuthorByline from './AuthorByline.astro';
-import {topics} from '../lib/knowledge-topics';
+import {topics as catalogue} from '../lib/knowledge-topics';
+import {orderedTopics} from '../lib/knowledge-navigation.mjs';
+const topics=orderedTopics(catalogue);
 import {buildKnowledgeFeed} from '../lib/knowledge-feed.mjs';
 import metadata from '../data/studio-metadata.json';
 const {topic=''}=Astro.props as {topic?:string};

@@ -1,6 +1,8 @@
 ---
 import {categories} from '../lib/techblog';
-import {topics} from '../lib/knowledge-topics';
+import {topics as catalogue} from '../lib/knowledge-topics';
+import {orderedTopics} from '../lib/knowledge-navigation.mjs';
+const topics=orderedTopics(catalogue);
 const {title,article=false,indexPage=false,knowledgeHome=false}=Astro.props;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const brand=knowledgeHome?'Tri thức Hàn Quốc':'Engineering Blog';
