@@ -1,4 +1,5 @@
-import {newBlock,kinds,slugify,metadata,buildDocument} from './model.mjs';
+import {newBlock,kinds,slugify,metadata,buildDocument,richKinds,inlineRuns,richLines} from './model.mjs';
+import {mountRich,paintRuns} from './rich-browser.mjs';
 import {githubClient} from './github.mjs';
 import {seriesProgress} from './series-progress.mjs';
 import {mountDrawio,downloadDrawio,importDrawio} from './drawio-browser.mjs';
@@ -82,15 +83,12 @@ export function mountEditor(root){
    }else{
     if(b.kind==='note'){const select=make('select');select.setAttribute('aria-label','Loại ghi chú');for(const [v,t] of [['info','Thông tin'],['tip','Mẹo'],['warning','Cảnh báo']]){const o=make('option',t);o.value=v;select.append(o)}select.value=b.tone||'info';select.addEventListener('change',()=>{b.tone=select.value;store()});wrapper.append(select)}
     if(b.guide){const guide=make('div',undefined,'ev2-template-guide');guide.append(make('strong','Gợi ý viết · không xuất bản'),make('p',b.guide));wrapper.append(guide)}
-    const input=make('textarea');input.value=b.text||'';input.rows=['heading','subheading','detailheading'].includes(b.kind)?2:4;input.maxLength=50000;input.placeholder=b.kind==='bullet'||b.kind==='ordered'?'Mỗi dòng là một mục':'Nhập nội dung…';input.setAttribute('aria-label',names[b.kind]+' '+(i+1));
-    input.addEventListener('input',()=>{b.text=input.value;store()});wrapper.append(input);
-    if(['paragraph','quote','note','bullet','ordered'].includes(b.kind)){
-     const fmt=make('div',undefined,'ev2-block-tools');
-     for(const [mark,label] of [['bold','B'],['italic','I'],['underline','U'],['strike','S']]){
-      const control=button(label,()=>{b.marks=b.marks.includes(mark)?b.marks.filter(x=>x!==mark):[...b.marks,mark];apply();store()},'Định dạng '+mark+' khối '+(i+1));control.dataset.mark=mark;fmt.append(control)
-     }
-     const apply=()=>{input.style.fontWeight=b.marks.includes('bold')?'700':'';input.style.fontStyle=b.marks.includes('italic')?'italic':'';input.style.textDecoration=[b.marks.includes('underline')?'underline':'',b.marks.includes('strike')?'line-through':''].filter(Boolean).join(' ');for(const c of fmt.children)c.setAttribute('aria-pressed',String(b.marks.includes(c.dataset.mark)))};
-     wrapper.append(fmt);apply();
+    if(richKinds.includes(b.kind)){
+     const fmt=make('div',undefined,'ev2-block-tools ev2-rich-toolbar'),input=make('div',undefined,'ev2-rich');input.setAttribute('aria-label',names[b.kind]+' '+(i+1));input.dataset.placeholder='Bôi đen chữ để định dạng…';
+     wrapper.append(fmt,input);mountRich(input,fmt,b,()=>{store();if(mode==='preview')showPreview()},message=>{$('[data-result]').textContent=message});
+    }else{
+     const input=make('textarea');input.value=b.text||'';input.rows=['heading','subheading','detailheading'].includes(b.kind)?2:4;input.maxLength=50000;input.placeholder='Nhập nội dung…';input.setAttribute('aria-label',names[b.kind]+' '+(i+1));
+     input.addEventListener('input',()=>{b.text=input.value;store()});wrapper.append(input);
     }
    }
    area.append(wrapper);
@@ -105,10 +103,10 @@ export function mountEditor(root){
    const t=b.text||'';let node;
    if(b.kind==='image'||b.kind==='diagram'){if(!/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src||''))continue;const image=make('img');image.src=b.src;image.alt=b.alt||'';image.width=b.width;image.height=b.height;if(b.kind==='diagram'&&b.caption){node=make('figure');node.append(image,make('figcaption',b.caption))}else node=image}
    else if(b.kind==='table'){node=make('table');for(const [i,row] of b.rows.entries()){const tr=make('tr');row.forEach(v=>tr.append(make(i?'td':'th',v)));node.append(tr)}}
-   else if(b.kind==='bullet'||b.kind==='ordered'){if(!t.trim())continue;node=make(b.kind==='bullet'?'ul':'ol');t.split('\n').filter(s=>s.trim()).forEach(v=>node.append(make('li',v)))}
+   else if(b.kind==='bullet'||b.kind==='ordered'){if(!t.trim())continue;node=make(b.kind==='bullet'?'ul':'ol');richLines(inlineRuns(b)).filter(line=>line.map(p=>p.text).join('').trim()).forEach(line=>{const li=make('li');paintRuns(li,line);li.style.whiteSpace='pre-wrap';node.append(li)})}
    else if(b.kind==='divider')node=make('hr');
    else{if(!t.trim())continue;node=make(({heading:'h2',subheading:'h3',detailheading:'h4',quote:'blockquote',code:'pre',note:'aside'})[b.kind]||'p',t);node.style.whiteSpace='pre-wrap'}
-   if(b.marks?.includes('bold'))node.style.fontWeight='700';if(b.marks?.includes('italic'))node.style.fontStyle='italic';if(b.marks?.includes('underline')||b.marks?.includes('strike'))node.style.textDecoration=[b.marks.includes('underline')?'underline':'',b.marks.includes('strike')?'line-through':''].filter(Boolean).join(' ');target.append(node);
+   if(richKinds.includes(b.kind)&&!['bullet','ordered'].includes(b.kind))paintRuns(node,inlineRuns(b));target.append(node);
   }
  }
  function applyWorkspace(){
