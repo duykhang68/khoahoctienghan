@@ -1,6 +1,7 @@
 import {newBlock,kinds,slugify,metadata,buildDocument} from './model.mjs';
 import {githubClient} from './github.mjs';
 import {seriesProgress} from './series-progress.mjs';
+import {blueprintParts,instantiateBlueprint} from './blueprints.mjs';
 const legacyKey='khoahoctienghan.editor-v2.draft.v1',activeKey='khoahoctienghan.editor-v2.active.v2';
 const storageKey=kind=>'khoahoctienghan.editor-v2.draft.v2.'+kind;
 const workspace={
@@ -8,7 +9,7 @@ const workspace={
  knowledge:{title:'Knowledge Editorial',description:'Biên soạn bài học theo chuyên mục của Tri thức Hàn Quốc.',library:'Khối bài học',help:'Ưu tiên khái niệm, ví dụ, bảng đối chiếu, ghi chú và hình minh họa.',outline:'＋ Thêm dàn ý bài học',sections:['Khái niệm và bối cảnh','Nội dung chính','Ví dụ minh họa','Ghi nhớ và luyện tập'],compose:'02 · KNOWLEDGE LESSON',settings:'Thông tin bài học',destination:'Tri thức Hàn Quốc',path:'Chuyên mục đã chọn',preview:'XEM TRƯỚC · TRI THỨC HÀN QUỐC',group:'Tri thức Hàn Quốc',labels:'Hangul, TOPIK…',placeholder:'Tiêu đề bài học',summary:'Nội dung và mục tiêu bài học'}
 };
 const palettes=[['#e3ecdd','#b6c9b1'],['#eee5f5','#c9b7df'],['#f5e8d4','#e4bd94'],['#e2edf5','#b4ccdf'],['#f5e4e3','#e5b8b5']];
-const names={paragraph:'Đoạn văn',heading:'Tiêu đề H2',subheading:'Tiêu đề H3',quote:'Trích dẫn',bullet:'Danh sách',ordered:'Danh sách số',note:'Ghi chú',code:'Mã nguồn',table:'Bảng',image:'Ảnh WebP',divider:'Đường phân cách'};
+const names={paragraph:'Đoạn văn',heading:'Tiêu đề H2',subheading:'Tiêu đề H3',detailheading:'Tiêu đề H4',quote:'Trích dẫn',bullet:'Danh sách',ordered:'Danh sách số',note:'Ghi chú',code:'Mã nguồn',table:'Bảng',image:'Ảnh WebP',divider:'Đường phân cách'};
 const make=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el};
 const empty=(kind='tech')=>({title:'',summary:'',kind,category:'ngon-ngu',labels:'',series:{enabled:false,name:'',part:1,total_parts:1,target_date:''},blocks:[newBlock('paragraph')]});
 export function mountEditor(root){
@@ -42,7 +43,7 @@ export function mountEditor(root){
   set('[data-series-days]',p.days===null?'—':p.days<0?Math.abs(p.days)+' ngày trễ':p.days===0?'Hôm nay':p.days+' ngày');
   set('[data-series-deadline]',p.days===null?'Chọn ngày dự kiến kết thúc.':p.days<0?'Đã quá hạn theo lịch GMT+7.':p.days===0?'Hạn kết thúc là hôm nay (GMT+7).':'Hạn '+draft.series.target_date.split('-').reverse().join('/')+' · GMT+7');
  }
- function update(){readFields();renderSeriesProgress();$('[data-category-label]').hidden=draft.kind!=='knowledge';$('[data-auto-category]').hidden=draft.kind!=='tech';$('[data-series]').hidden=!draft.series.enabled;$('[data-route]').textContent=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+(slugify(draft.title)||'ten-bai-viet')+'/';$('[data-publish]').disabled=busy||uploads>0||!client||!$('[data-confirm]').checked||!draft.title.trim();all('[data-workspace]').forEach(b=>b.disabled=busy||uploads>0);$('[data-new]').disabled=busy||uploads>0;clearTimeout(timer);timer=setTimeout(store,350);}
+ function update(){readFields();renderSeriesProgress();$('[data-category-label]').hidden=draft.kind!=='knowledge';$('[data-auto-category]').hidden=draft.kind!=='tech';$('[data-series]').hidden=!draft.series.enabled;$('[data-route]').textContent=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+(slugify(draft.title)||'ten-bai-viet')+'/';$('[data-publish]').disabled=busy||uploads>0||!client||!$('[data-confirm]').checked||!draft.title.trim();all('[data-workspace]').forEach(b=>b.disabled=busy||uploads>0);$('[data-new]').disabled=busy||uploads>0;syncBlueprintButton();clearTimeout(timer);timer=setTimeout(store,350);}
  function button(label,fn,aria){const b=make('button',label);b.type='button';if(aria)b.setAttribute('aria-label',aria);b.addEventListener('click',fn);return b}
  function render(){const area=$('[data-blocks]');area.replaceChildren();
   draft.blocks.forEach((b,i)=>{
@@ -66,7 +67,8 @@ export function mountEditor(root){
     wrapper.append(table,button('+ Hàng',()=>{if(b.rows.length<20)b.rows.push(Array(b.rows[0].length).fill(''));render();store()}),button('+ Cột',()=>{if(b.rows[0].length<8)b.rows.forEach(r=>r.push(''));render();store()}),button('− Hàng',()=>{if(b.rows.length>2)b.rows.pop();render();store()}),button('− Cột',()=>{if(b.rows[0].length>2)b.rows.forEach(r=>r.pop());render();store()}));
    }else{
     if(b.kind==='note'){const select=make('select');select.setAttribute('aria-label','Loại ghi chú');for(const [v,t] of [['info','Thông tin'],['tip','Mẹo'],['warning','Cảnh báo']]){const o=make('option',t);o.value=v;select.append(o)}select.value=b.tone||'info';select.addEventListener('change',()=>{b.tone=select.value;store()});wrapper.append(select)}
-    const input=make('textarea');input.value=b.text||'';input.rows=b.kind==='heading'||b.kind==='subheading'?2:4;input.maxLength=50000;input.placeholder=b.kind==='bullet'||b.kind==='ordered'?'Mỗi dòng là một mục':'Nhập nội dung…';input.setAttribute('aria-label',names[b.kind]+' '+(i+1));
+    if(b.guide){const guide=make('div',undefined,'ev2-template-guide');guide.append(make('strong','Gợi ý viết · không xuất bản'),make('p',b.guide));wrapper.append(guide)}
+    const input=make('textarea');input.value=b.text||'';input.rows=['heading','subheading','detailheading'].includes(b.kind)?2:4;input.maxLength=50000;input.placeholder=b.kind==='bullet'||b.kind==='ordered'?'Mỗi dòng là một mục':'Nhập nội dung…';input.setAttribute('aria-label',names[b.kind]+' '+(i+1));
     input.addEventListener('input',()=>{b.text=input.value;store()});wrapper.append(input);
     if(['paragraph','quote','note','bullet','ordered'].includes(b.kind)){
      const fmt=make('div',undefined,'ev2-block-tools');
@@ -89,9 +91,9 @@ export function mountEditor(root){
    const t=b.text||'';let node;
    if(b.kind==='image'){if(!/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src||''))continue;node=make('img');node.src=b.src;node.alt=b.alt||'';node.width=b.width;node.height=b.height}
    else if(b.kind==='table'){node=make('table');for(const [i,row] of b.rows.entries()){const tr=make('tr');row.forEach(v=>tr.append(make(i?'td':'th',v)));node.append(tr)}}
-   else if(b.kind==='bullet'||b.kind==='ordered'){node=make(b.kind==='bullet'?'ul':'ol');t.split('\n').filter(s=>s.trim()).forEach(v=>node.append(make('li',v)))}
+   else if(b.kind==='bullet'||b.kind==='ordered'){if(!t.trim())continue;node=make(b.kind==='bullet'?'ul':'ol');t.split('\n').filter(s=>s.trim()).forEach(v=>node.append(make('li',v)))}
    else if(b.kind==='divider')node=make('hr');
-   else{node=make(({heading:'h2',subheading:'h3',quote:'blockquote',code:'pre',note:'aside'})[b.kind]||'p',t);node.style.whiteSpace='pre-wrap'}
+   else{if(!t.trim())continue;node=make(({heading:'h2',subheading:'h3',detailheading:'h4',quote:'blockquote',code:'pre',note:'aside'})[b.kind]||'p',t);node.style.whiteSpace='pre-wrap'}
    if(b.marks?.includes('bold'))node.style.fontWeight='700';if(b.marks?.includes('italic'))node.style.fontStyle='italic';if(b.marks?.includes('underline')||b.marks?.includes('strike'))node.style.textDecoration=[b.marks.includes('underline')?'underline':'',b.marks.includes('strike')?'line-through':''].filter(Boolean).join(' ');target.append(node);
   }
  }
@@ -103,13 +105,31 @@ export function mountEditor(root){
   const tools=$('.ev2-block-buttons');const order=active==='tech'?['paragraph','heading','subheading','code','table','note','image','quote','bullet','ordered','divider']:['paragraph','heading','subheading','note','bullet','ordered','table','image','quote','code','divider'];
   for(const kind of order){const b=$('.ev2-block-buttons [data-add="'+kind+'"]');if(b)tools.append(b)}
  }
+ function syncBlueprintButton(){const choice=$('[data-blueprint-select]');$('[data-blueprint-insert]').disabled=busy||uploads>0||!choice.value}
+ function describeBlueprint(){
+  const value=$('[data-blueprint-select]').value,parts=blueprintParts(value),preview=$('[data-blueprint-preview]'),list=$('[data-blueprint-headings]');
+  list.replaceChildren();preview.hidden=!parts.length;
+  const titles=parts.filter(p=>p.text);for(const title of titles){const li=make('li',title.text);li.dataset.level=title.kind;list.append(li)}
+  $('[data-blueprint-summary]').textContent=titles.length+' đề mục · '+parts.length+' khối chỉnh sửa';
+  syncBlueprintButton();
+ }
+ function resetBlueprint(){$('[data-blueprint-select]').value='';$('[data-blueprint-status]').textContent='Chỉ chèn thêm, không ghi đè nội dung.';describeBlueprint()}
+ $('[data-blueprint-select]').addEventListener('change',describeBlueprint);
+ $('[data-blueprint-insert]').addEventListener('click',()=>{
+  if(busy||uploads)return;
+  const id=$('[data-blueprint-select]').value,parts=instantiateBlueprint(id);if(!parts.length)return;
+  if(draft.blocks.length+parts.length>250){$('[data-blueprint-status]').textContent='Không đủ chỗ: tối đa 250 khối mỗi bài. Xóa bớt khối trước khi chèn.';return}
+  const start=draft.blocks.length;draft.blocks.push(...parts);setMode('write');render();store();resetBlueprint();
+  $('[data-blueprint-status]').textContent='Đã chèn '+parts.length+' khối. Nội dung cũ được giữ nguyên.';
+  $('[data-blocks]').children[start]?.scrollIntoView({block:'nearest'});
+ });
  function switchWorkspace(next){
   if(next===active||busy||uploads||!Object.hasOwn(workspace,next))return;
   readFields();if(!store()){$('[data-result]').textContent='Không thể lưu bản nháp đang mở. Lưu bản sao hoặc giải phóng bộ nhớ trước khi đổi workspace.';return}
   active=next;draft=load(active);try{localStorage.setItem(activeKey,JSON.stringify(active))}catch{}
   history.replaceState(null,'',location.pathname+location.search+'#workspace='+active);
   $('[data-confirm]').checked=false;$('[data-result]').textContent='Chưa gửi GitHub. Bản nháp tự lưu trên trình duyệt.';
-  applyWorkspace();writeFields();render();setMode('write');update();
+  resetBlueprint();applyWorkspace();writeFields();render();setMode('write');update();
  }
  all('[data-workspace]').forEach(b=>b.addEventListener('click',()=>switchWorkspace(b.dataset.workspace)));
  $('[data-outline]').addEventListener('click',()=>{if(busy||uploads||draft.blocks.length+workspace[active].sections.length*2>250)return;for(const title of workspace[active].sections){draft.blocks.push({...newBlock('heading'),text:title},newBlock('paragraph'))}setMode('write');render();store()});
@@ -119,7 +139,7 @@ export function mountEditor(root){
  all('[data-field]').forEach(el=>{const changed=()=>{update();if(mode==='preview')showPreview()};el.addEventListener('input',changed);if(el.tagName==='SELECT')el.addEventListener('change',changed)});
  $('[data-confirm]').addEventListener('change',update);
  $('[data-backup]').addEventListener('click',()=>{store();const url=URL.createObjectURL(new Blob([JSON.stringify(draft,null,2)],{type:'application/json'})),a=make('a');a.href=url;a.download=(slugify(draft.title)||'ban-nhap')+'.editor-v2.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
- $('[data-new]').addEventListener('click',()=>{if(busy||uploads||!confirm('Tạo bài mới? Hãy lưu bản sao nếu cần giữ bản nháp hiện tại.'))return;draft=empty(active);writeFields();render();setMode('write');$('[data-confirm]').checked=false;update();store()});
+ $('[data-new]').addEventListener('click',()=>{if(busy||uploads||!confirm('Tạo bài mới? Hãy lưu bản sao nếu cần giữ bản nháp hiện tại.'))return;draft=empty(active);resetBlueprint();writeFields();render();setMode('write');$('[data-confirm]').checked=false;update();store()});
  const dialog=$('[data-auth]'),tokenInput=$('[data-token]');
  function connection(login){$('[data-connection]').textContent=login?'Đã kết nối · '+login:'Chưa kết nối GitHub';$('[data-connect]').textContent=login?'Ngắt GitHub':'Kết nối GitHub';update()}
  $('[data-connect]').addEventListener('click',()=>{if(busy)return;if(client){client=null;connection('');return}tokenInput.value='';$('[data-auth-status]').textContent='';dialog.showModal()});
