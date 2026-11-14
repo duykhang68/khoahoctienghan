@@ -1,0 +1,17 @@
+---
+import Footer from '@astrojs/starlight/components/Footer.astro';
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const issue=new URL('https://github.com/duykhang68/khoahoctienghan/issues/new');
+issue.searchParams.set('title','Góp ý: '+Astro.locals.starlightRoute.entry.data.title);
+issue.searchParams.set('body','Trang: '+new URL(Astro.url.pathname,Astro.site).href+'\n\nNội dung góp ý:\n');
+---
+<section class="knowledge-feedback" aria-label="Góp ý tài liệu">
+ <strong>Bài viết này có hữu ích không?</strong>
+ <a href={issue.href}>Gửi góp ý trên GitHub</a>
+</section>
+<Footer />
+<nav class="knowledge-resource-footer" aria-label="Tài nguyên">
+ <a href={base+'/'}>Kho tri thức</a>
+ <a href={base+'/techblog/'}>Tech Blog</a>
+ <a href="https://github.com/duykhang68/khoahoctienghan">Mã nguồn</a>
+</nav>

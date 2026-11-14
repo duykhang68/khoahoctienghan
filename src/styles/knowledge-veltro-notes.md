@@ -1,0 +1,4 @@
+# Getastrothemes documentation UX — Veltro guide
+Reference: https://docs.getastrothemes.com/veltro/getting-started/introduction/
+The requested URL is the documentation for the paid Veltro agency theme, not the theme website. Its accessible page structure includes search, top-level navigation, grouped docs links, page contents, best-first-read links, feedback and next-page navigation. Implement a local Starlight adaptation, replacing the Advanced Astro Docs UX. Retain the existing black/white editorial branding, Light Mode, all knowledge URLs/content and Tech Blog pages.
+Fixed two-level header, grouped navigation, desktop native scroll-aware TOC, compact mobile disclosure, topic cards, Pagefind with keyboard support, native previous/next and actual GitHub feedback link. No AI Ask button (no service configured), fake feedback endpoint, marketing links, commercial theme assets or new dependencies. Exact visual matching has not been verified in a browser.
