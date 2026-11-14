@@ -2,12 +2,24 @@ import data from '../data/techblog/posts.json';
 import {inferCategory,categoryIndex} from './tech-categories.mjs';
 export {inferCategory};
 
+export type TechVisual = {
+  kind: 'swatches'|'buttons'|'type'|'spacing'|'wireframe'|'table'|'flow'|'bars'|'code';
+  caption: string;
+  items?: {label:string;value?:string;detail?:string;color?:string;foreground?:string;hover?:string;size?:number;weight?:number}[];
+  layout?: 'listing'|'article'|'responsive';
+  columns?: string[];
+  rows?: string[][];
+  unit?: string;
+  source?: string;
+  language?: string;
+  code?: string;
+};
 export type TechPost = {
   slug: string;
   title: string;
   summary: string;
   date: string;
-  sections: { heading: string; paragraphs: string[] }[];
+  sections: { heading: string; paragraphs: string[]; visuals?: TechVisual[] }[];
   issues: number[];
   author?: string;
   cover?: string;

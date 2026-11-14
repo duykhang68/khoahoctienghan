@@ -1,0 +1,32 @@
+---
+import type {TechVisual} from '../lib/techblog';
+import '../styles/techblog-visuals.css';
+const {visual:v}=Astro.props as {visual:TechVisual};
+const items=v.items??[];
+const safeHex=(s?:string)=>/^#[0-9a-f]{6}$/i.test(s??'')?s:'#333333';
+const sizes=(n:number|undefined,max:number)=>Math.max(0,Math.min(max,Number(n)||0));
+const samples=['#e3ecdd','#eee5f5','#f5e8d4','#e2edf5','#f5e4e3','#b6c9b1'];
+const maxBar=Math.max(1,...items.map(i=>Number(i.value)||0));
+---
+<figure class="tv" data-visual={v.kind}>
+{v.kind==='swatches'&&<><div class="tv-swatches">{items.map(i=><button type="button" class="tv-swatch" data-visual-copy={safeHex(i.color)} aria-label={'Sao chép '+i.label+' '+safeHex(i.color)}><span class="tv-color" style={`background:${safeHex(i.color)}`}></span><strong>{i.label}</strong><code>{safeHex(i.color)}</code><small>{i.detail}</small></button>)}</div><span class="tv-status" role="status" aria-live="polite"></span></>}
+{v.kind==='buttons'&&<><div class="tv-buttons">{items.map(i=><div><strong>{i.label}</strong><button type="button" class="tv-demo" data-demo style={`--demo-bg:${safeHex(i.color)};--demo-fg:${safeHex(i.foreground)};--demo-hover:${safeHex(i.hover)}`}>{i.value}</button><small>{i.color} · hover {i.hover}</small></div>)}<div><strong>Disabled</strong><button type="button" class="tv-demo" disabled>Không khả dụng</button></div></div><span class="tv-status" role="status" aria-live="polite"></span></>}
+{v.kind==='type'&&<div class="tv-type">{items.map(i=><div><small>{i.label} · {i.size}px · {i.weight} · {i.detail}</small><div class="tv-specimen" style={`--sample-size:${sizes(i.size,80)}px; font-weight:${sizes(i.weight,900)}`}>Công nghệ</div></div>)}</div>}
+{v.kind==='spacing'&&<div class="tv-spacing">{items.map(i=><div><code>{i.label}</code><span style={`width:${sizes(i.size,160)*2}px`}></span></div>)}</div>}
+{v.kind==='wireframe'&&<div class="tv-wire" role="img" aria-label={v.caption}>
+ {v.layout==='listing'&&<div aria-hidden="true"><div class="tv-nav">Duy Nguyen <span>Engineering Blog</span></div><div class="tv-screen"><div class="tv-title">Tech Blog</div><div class="tv-cardgrid">{samples.map((color,i)=><div><div class="tv-thumb" style={`background:${color}`}></div><small>Engineering · 2026</small><strong>{['Kiến trúc Islands','Thiết kế hệ thống','Tối ưu CI/CD','Kỹ thuật dữ liệu','Hiệu năng Web','Bảo mật ứng dụng'][i]}</strong><i></i><i></i></div>)}</div><div class="tv-pages">‹　1　2　3　›</div></div><div class="tv-nav">Duy Nguyen</div></div>}
+ {v.layout==='article'&&<div aria-hidden="true"><div class="tv-nav">Duy Nguyen <span>Engineering Blog</span></div><div class="tv-screen"><small>Tech Blog / Engineering · 14/11/2026</small><div class="tv-title">Engineering Editorial<br/>Design System 1.0</div><div class="tv-hero"></div><div class="tv-reading"><div><strong>Giới thiệu</strong>{Array.from({length:5},()=> <i></i>)}<strong>Typography</strong>{Array.from({length:4},()=> <i></i>)}<div class="tv-chartmini">{[30,55,40,70,52].map(h=><span style={`height:${h}px`}></span>)}</div></div><aside><strong>Mục lục</strong><small>Giới thiệu</small><small>Typography</small><small>Màu sắc</small></aside></div></div><div class="tv-nav">Bài viết liên quan</div></div>}
+ {v.layout==='responsive'&&<div class="tv-devices" aria-hidden="true">{[3,2,1].map((n,i)=><div><strong>{['Desktop','Tablet','Mobile'][i]}</strong><div class="tv-device"><div class="tv-nav"></div><div class="tv-devicegrid" style={`--cols:${n}`}>{Array.from({length:n*2},(_,j)=><div><div class="tv-thumb" style={`background:${samples[j]}`}></div><i></i><i></i></div>)}</div></div><small>{n} cột</small></div>)}</div>}
+</div>}
+{v.kind==='table'&&<div class="tv-tablewrap" tabindex="0" role="region" aria-label={v.caption}><table class="tv-table"><thead><tr>{v.columns?.map(c=><th scope="col">{c}</th>)}</tr></thead><tbody>{v.rows?.map(row=><tr>{row.map((cell,i)=>i===0?<th scope="row">{cell}</th>:<td>{cell}</td>)}</tr>)}</tbody></table></div>}
+{v.kind==='flow'&&<ol class="tv-flow">{items.map(i=><li>{i.label}{i.detail&&<small>{i.detail}</small>}</li>)}</ol>}
+{v.kind==='bars'&&<div class="tv-bars">{items.map(i=><div><span>{i.label}</span><div class="tv-bartrack" aria-hidden="true"><span style={`width:${sizes(Number(i.value)/maxBar*100,100)}%`}></span></div><strong>{i.value} {v.unit}</strong></div>)}{v.source&&<small>Nguồn: {v.source}</small>}</div>}
+{v.kind==='code'&&<><div class="tv-codehead"><span>{v.language??'code'}</span><button type="button" data-visual-copy={v.code??''}>Sao chép</button></div><pre><code>{v.code}</code></pre><span class="tv-status" role="status" aria-live="polite"></span></>}
+<figcaption>{v.caption}</figcaption>
+</figure>
+<script>
+for(const button of document.querySelectorAll<HTMLButtonElement>('[data-visual-copy]')){
+ button.addEventListener('click',async()=>{const status=button.closest('.tv')?.querySelector('.tv-status');try{await navigator.clipboard.writeText(button.dataset.visualCopy??'');if(status)status.textContent='Đã sao chép';}catch{if(status)status.textContent='Không thể sao chép tự động; hãy chọn nội dung thủ công.';}});
+}
+for(const button of document.querySelectorAll<HTMLButtonElement>('[data-demo]'))button.addEventListener('click',()=>{const status=button.closest('.tv')?.querySelector('.tv-status');if(status)status.textContent='Mẫu thử: '+button.textContent?.trim()+' — không có hành động thực tế.';});
+</script>

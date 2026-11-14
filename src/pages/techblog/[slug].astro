@@ -2,6 +2,7 @@
 import TechBlog from '../../layouts/TechBlog.astro';
 import TechCover from '../../components/TechCover.astro';
 import '../../styles/techblog-article.css';
+import TechVisual from '../../components/TechVisual.astro';
 import TechParagraph from '../../components/TechParagraph.astro';
 import TechReferences from '../../components/TechReferences.astro';
 import {isReferenceHeading} from '../../lib/tech-links.mjs';
@@ -44,7 +45,7 @@ const category=inferCategory(post);
               <summary><h2 id={'section-'+i}>{section.heading}</h2><span class="disclosure-count">{section.paragraphs.length}</span><svg class="disclosure-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary>
               <div class="disclosure-content"><TechReferences paragraphs={section.paragraphs}/></div>
             </details>:
-            <section aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{section.paragraphs.map(p=><TechParagraph value={p}/>)}</section>)}
+            <section aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{section.paragraphs.map(p=><TechParagraph value={p}/>)}{section.visuals?.map(visual=><TechVisual visual={visual}/>)}</section>)}
           {post.issues.length>0&&<details class="article-disclosure article-issues">
             <summary><h2>Issue tham khảo</h2><span class="disclosure-count">{post.issues.length}</span><svg class="disclosure-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary>
             <div class="disclosure-content"><ul>{post.issues.map(number=><li><a href={'https://github.com/duykhang68/khoahoctienghan/issues/'+number}>Issue #{number}</a></li>)}</ul></div>

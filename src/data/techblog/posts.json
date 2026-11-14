@@ -283,70 +283,351 @@
       {
         "heading": "2. Wireframe trang danh sách Engineering",
         "paragraphs": [
-          "Wireframe desktop: HEADER ĐEN → TECH BLOG → lưới 3 cột × 2 hàng → phân trang → FOOTER ĐEN. Mỗi card: [thumbnail 16:9] → [chuyên mục] → [tiêu đề] → [ngày].",
-          "Concept bố cục: hàng 1 [Bài 1] [Bài 2] [Bài 3]; hàng 2 [Bài 4] [Bài 5] [Bài 6].",
           "Trang tham chiếu tổ chức bài viết theo hình ảnh, chuyên mục, tiêu đề và ngày xuất bản. Với blog Duy Nguyen, đề xuất danh sách ba cột desktop, hai cột tablet và một cột mobile, phân trang 12 bài, thứ tự mới nhất trước, không ghim bài. Header đen chứa wordmark và navigation tối giản; hero chỉ gồm tiêu đề chuyên mục và mô tả ngắn nếu cần. Không để banner chiếm toàn bộ vùng nhìn đầu tiên.",
           "Card dùng thumbnail 16:9 với kích thước ổn định, tiêu đề 20–24px đậm, metadata 14px và mô tả ngắn. Không khóa chiều cao tiêu đề khiến chữ bị cắt; dùng lưới co giãn, không cho ảnh lấn át tên bài. Khoảng cách giữa các card 24–32px, không shadow nặng, không bo góc lớn. Click vào tiêu đề hoặc liên kết ảnh phải dẫn cùng bài viết, focus rõ ràng.",
           "Khi không có cover, sử dụng fallback hình học theo chuyên mục với palette xanh lam, tím nhạt, cam đất, xanh lá dịu; không tự ý thêm ảnh stock vào bài. Fallback có thể được tạo bằng CSS từ token chuyên mục, ổn định theo slug và không cần request ảnh riêng."
+        ],
+        "visuals": [
+          {
+            "kind": "wireframe",
+            "layout": "listing",
+            "caption": "Wireframe đề xuất — danh sách desktop 3 × 2, không phải ảnh chụp Uber."
+          }
         ]
       },
       {
         "heading": "3. Wireframe trang đọc bài viết",
         "paragraphs": [
-          "Wireframe trang đọc: [HEADER] → [Breadcrumb / ngày] → [H1] → [cover] → [chia sẻ] → [cột nội dung 760px | TOC bên phải nếu đủ chỗ] → [bài liên quan] → [FOOTER].",
           "Bài Velox at Uber (https://www.uber.com/us/en/blog/velox-at-uber/) là nguồn tham chiếu cho cấu trúc editorial: ngày xuất bản, tiêu đề lớn, thông tin tác giả, hình minh họa, nội dung phân cấp, sơ đồ và nội dung liên quan. Với Duy Nguyen, áp dụng breadcrumb, category, H1, ngày giờ GMT+7, cover khi có giá trị, nội dung chính và điều hướng liên quan. Không thêm khung tác giả lớn. Mục lục bên phải là lựa chọn riêng của blog, lấy cảm hứng từ Chirpy, không phải khẳng định Uber có TOC như vậy.",
           "Vùng đọc mục tiêu 760px, có thể mở rộng hợp lý khi cần bảng hoặc sơ đồ. TOC sticky chỉ hiện khi đủ chỗ, tự theo dõi heading bằng IntersectionObserver, không scrollbar riêng, không viền dọc dày. Mobile ẩn sidebar và không để cột trống. Văn bản tiếng Việt căn đều trên màn hình đủ rộng; tránh giãn chữ quá mức, cho phép căn trái ở màn hình hẹp nếu cần bảo toàn khả năng đọc. URL và thuật ngữ dài xuống dòng tự nhiên. Code block có thể cuộn độc lập; không để toàn trang tràn ngang."
+        ],
+        "visuals": [
+          {
+            "kind": "wireframe",
+            "layout": "article",
+            "caption": "Wireframe đề xuất — trang đọc, cover và TOC tùy không gian."
+          }
         ]
       },
       {
         "heading": "4. Typography: Uber Move và lựa chọn cho tiếng Việt",
         "paragraphs": [
-          "Mẫu phân cấp: Display 52px/700: Engineering. H1 44px/700: Công nghệ ở quy mô lớn. Body 17px/400: Một hệ thống tốt được cải thiện liên tục bằng dữ liệu. Code 14px: const production = \"verified\".",
           "Uber Move là hệ chữ nhận diện riêng, với Uber Move Text phục vụ văn bản và giao diện; không mặc định rằng mọi biến thể font đều được cấp phép sử dụng bên ngoài Uber. Không tải lại font độc quyền từ website. Với Duy Nguyen, ba lựa chọn đề xuất là Plus Jakarta Sans (https://fonts.google.com/specimen/Plus+Jakarta+Sans) cho heading, Be Vietnam Pro (https://fonts.google.com/specimen/Be+Vietnam+Pro) cho nội dung và UI, IBM Plex Mono (https://fonts.google.com/specimen/IBM+Plex+Mono) cho mã nguồn và số liệu. Inter (https://fonts.google.com/specimen/Inter) là phương án thay thế trung tính. Đây là lựa chọn font mở có hỗ trợ tiếng Việt ở các font sans nêu trên; cần kiểm tra glyph, giấy phép và tải font trước khi triển khai.",
-          "*Bản minh họa phân cấp sử dụng font sẵn có của trình duyệt, không tải font mới trong bài viết.*",
-          "Vai trò · Kích thước · Weight · Line height",
-          "Display · 52px · 700 · 64px",
-          "Article H1 · 44px · 700 · 52px",
-          "H2 · 32px · 700 · 40px",
-          "H3 · 24px · 600 · 32px",
-          "H4 · 20px · 600 · 28px",
-          "Body · 17px · 400 · 28px",
-          "Navigation · 14px · 500 · 20px",
-          "Button · 16px · 500 · 24px",
-          "Metadata · 14px · 400 · 20px",
-          "Caption · 12px · 400 · 18px",
           "Font weight 400 cho đoạn văn, 500 cho controls, 600–700 cho heading. Không dùng bold toàn bộ paragraph. H1 mobile giảm về 30–34px, body 16–17px. Tải WOFF2 tự host khi giấy phép cho phép, dùng font-display: swap, giới hạn số biến thể và kiểm tra CLS do đổi font. Font hiện hành của Tech Blog không bị thay đổi bởi việc đăng tài liệu này."
+        ],
+        "visuals": [
+          {
+            "kind": "type",
+            "caption": "Mẫu phân cấp bằng font đang hoạt động của blog, không phải xác minh font Uber Move.",
+            "items": [
+              {
+                "label": "Display",
+                "size": 52,
+                "weight": 700,
+                "detail": "64px line-height"
+              },
+              {
+                "label": "Article H1",
+                "size": 44,
+                "weight": 700,
+                "detail": "52px line-height"
+              },
+              {
+                "label": "H2",
+                "size": 32,
+                "weight": 700,
+                "detail": "40px line-height"
+              },
+              {
+                "label": "H3",
+                "size": 24,
+                "weight": 600,
+                "detail": "32px line-height"
+              },
+              {
+                "label": "H4",
+                "size": 20,
+                "weight": 600,
+                "detail": "28px line-height"
+              },
+              {
+                "label": "Body",
+                "size": 17,
+                "weight": 400,
+                "detail": "28px line-height"
+              },
+              {
+                "label": "Navigation",
+                "size": 14,
+                "weight": 500,
+                "detail": "20px line-height"
+              },
+              {
+                "label": "Button",
+                "size": 16,
+                "weight": 500,
+                "detail": "24px line-height"
+              },
+              {
+                "label": "Metadata",
+                "size": 14,
+                "weight": 400,
+                "detail": "20px line-height"
+              },
+              {
+                "label": "Caption",
+                "size": 12,
+                "weight": 400,
+                "detail": "18px line-height"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Typography scale đề xuất",
+            "columns": [
+              "Vai trò",
+              "Size",
+              "Weight",
+              "Line height"
+            ],
+            "rows": [
+              [
+                "Display",
+                "52px",
+                "700",
+                "64px"
+              ],
+              [
+                "Article H1",
+                "44px",
+                "700",
+                "52px"
+              ],
+              [
+                "H2",
+                "32px",
+                "700",
+                "40px"
+              ],
+              [
+                "H3",
+                "24px",
+                "600",
+                "32px"
+              ],
+              [
+                "H4",
+                "20px",
+                "600",
+                "28px"
+              ],
+              [
+                "Body",
+                "17px",
+                "400",
+                "28px"
+              ],
+              [
+                "Navigation",
+                "14px",
+                "500",
+                "20px"
+              ],
+              [
+                "Button",
+                "16px",
+                "500",
+                "24px"
+              ],
+              [
+                "Metadata",
+                "14px",
+                "400",
+                "20px"
+              ],
+              [
+                "Caption",
+                "12px",
+                "400",
+                "18px"
+              ]
+            ]
+          }
         ]
       },
       {
         "heading": "5. Bảng màu và độ đậm nhạt",
         "paragraphs": [
-          "⬛ Black #000000 · Primary text #141414 · Secondary #333333 · Muted #6B6B6B · Gray 400 #AFAFAF · Border #E2E2E2 · Secondary surface #EEEEEE · Surface #F6F6F6 · ⬜ White #FFFFFF.",
-          "🟦 Information #276EF1 · 🟩 Success #048848 · 🟨 Warning #FFC043 · 🟥 Error #E11900. Biểu tượng chỉ minh họa nhóm màu, không phải swatch HEX chính xác.",
-          "Palette dưới đây là bộ token đề xuất lấy cảm hứng từ hệ màu Base, không phải toàn bộ bảng màu gốc của Uber. Bảng liệt kê mã HEX; mẫu trực quan đầy đủ cần renderer hỗ trợ hình hoặc swatch.",
+          "Palette dưới đây là bộ token đề xuất lấy cảm hứng từ hệ màu Base, không phải toàn bộ bảng màu gốc của Uber. Bảng màu hiển thị trực tiếp bằng swatch có mã HEX.",
           "Đen tuyệt đối dành cho header, footer và nút chính; chữ bài viết dùng #141414, chữ phụ #333333, metadata #6B6B6B. Xám #AFAFAF chỉ cho trạng thái vô hiệu hóa hoặc trang trí không thiết yếu, không dùng cho nội dung cần đọc trên nền trắng. Nền #F6F6F6 cho callout nhẹ, #EEEEEE cho nút phụ, #E2E2E2 cho đường chia.",
           "Màu thông tin, thành công, cảnh báo và lỗi chỉ dành cho trạng thái có ý nghĩa. Màu vàng cảnh báo dùng chữ đen; màu xanh hoặc đỏ phải chọn foreground đạt tương phản theo ngữ cảnh. Link trong bài dùng underline và màu đủ tương phản, không chỉ thay đổi sắc độ. Kiểm tra WCAG AA 4,5:1 cho chữ thường, 3:1 cho chữ lớn và thành phần tương tác thuộc phạm vi tiêu chuẩn."
+        ],
+        "visuals": [
+          {
+            "kind": "swatches",
+            "caption": "Bảng màu đề xuất — mẫu HEX thực tế, chọn ô để sao chép.",
+            "items": [
+              {
+                "label": "Black",
+                "color": "#000000",
+                "detail": "Header, footer, primary"
+              },
+              {
+                "label": "Primary",
+                "color": "#141414",
+                "detail": "Chữ chính"
+              },
+              {
+                "label": "Secondary",
+                "color": "#333333",
+                "detail": "Chữ phụ"
+              },
+              {
+                "label": "Muted",
+                "color": "#6B6B6B",
+                "detail": "Metadata"
+              },
+              {
+                "label": "Disabled",
+                "color": "#AFAFAF",
+                "detail": "Trang trí / disabled"
+              },
+              {
+                "label": "Border",
+                "color": "#E2E2E2",
+                "detail": "Đường chia"
+              },
+              {
+                "label": "Secondary surface",
+                "color": "#EEEEEE",
+                "detail": "Nút phụ"
+              },
+              {
+                "label": "Surface",
+                "color": "#F6F6F6",
+                "detail": "Nền phụ"
+              },
+              {
+                "label": "White",
+                "color": "#FFFFFF",
+                "detail": "Nền đọc"
+              },
+              {
+                "label": "Information",
+                "color": "#276EF1",
+                "detail": "Thông tin"
+              },
+              {
+                "label": "Success",
+                "color": "#048848",
+                "detail": "Thành công"
+              },
+              {
+                "label": "Warning",
+                "color": "#FFC043",
+                "detail": "Cảnh báo"
+              },
+              {
+                "label": "Error",
+                "color": "#E11900",
+                "detail": "Lỗi"
+              }
+            ]
+          }
         ]
       },
       {
         "heading": "6. Button và interaction design",
         "paragraphs": [
-          "Mẫu button: [Tiếp tục — nền đen, chữ trắng] · [Đọc thêm — nền xám, chữ đen] · [Quay lại — nền trắng, chữ đen] · [Xóa bài viết — nền đỏ, chữ trắng].",
-          "Kiểu nút · Mặc định · Hover · Công dụng",
-          "Primary · #000000 · #333333 · Hành động chính",
-          "Secondary · #EEEEEE · #E2E2E2 · Hành động phụ",
-          "Tertiary · #FFFFFF · #F6F6F6 · Điều hướng nhẹ",
-          "Destructive · #E11900 · #B71C00 · Xóa hoặc thao tác nguy hiểm",
-          "Disabled · #F1F1F1 · Không · Không thể thao tác",
           "Chiều cao tối thiểu đề xuất 48px, padding ngang 24px, radius 8px, font 16px/500, transition 180ms. Không gradient hoặc shadow nặng. Focus-visible có outline tương phản và offset; active không làm đổi kích thước. Disabled phải dùng thuộc tính disabled thật. Loading có nhãn trạng thái, ngăn gửi trùng; lỗi có hướng dẫn xử lý. Hành động xóa và rollback yêu cầu xác nhận thích hợp, không chỉ đổi màu nút. Tôn trọng prefers-reduced-motion."
+        ],
+        "visuals": [
+          {
+            "kind": "buttons",
+            "caption": "Mẫu thử tương tác tại chỗ; nút không thực hiện hành động thật.",
+            "items": [
+              {
+                "label": "Primary",
+                "value": "Tiếp tục",
+                "color": "#000000",
+                "foreground": "#FFFFFF",
+                "hover": "#333333"
+              },
+              {
+                "label": "Secondary",
+                "value": "Đọc thêm",
+                "color": "#EEEEEE",
+                "foreground": "#000000",
+                "hover": "#E2E2E2"
+              },
+              {
+                "label": "Tertiary",
+                "value": "Quay lại",
+                "color": "#FFFFFF",
+                "foreground": "#000000",
+                "hover": "#F6F6F6"
+              },
+              {
+                "label": "Destructive",
+                "value": "Xóa bài viết",
+                "color": "#E11900",
+                "foreground": "#FFFFFF",
+                "hover": "#B71C00"
+              }
+            ]
+          }
         ]
       },
       {
         "heading": "7. Spacing system",
         "paragraphs": [
-          "Spacing: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96px.",
           "Lấy bước cơ sở 4px để tổ chức nhịp giao diện. Các giá trị dưới đây là thang khoảng cách đề xuất.",
           "4–8px cho icon và nhãn; 12–16px cho controls và paragraph liên quan; 24–32px cho card; 48–64px giữa section; 96px chỉ dùng cho vùng mở đầu rộng. Khoảng trắng không được khiến thumbnail và hero che hết danh sách bài."
+        ],
+        "visuals": [
+          {
+            "kind": "spacing",
+            "caption": "Thang khoảng cách theo bước cơ sở 4px.",
+            "items": [
+              {
+                "label": "4px",
+                "size": 4
+              },
+              {
+                "label": "8px",
+                "size": 8
+              },
+              {
+                "label": "12px",
+                "size": 12
+              },
+              {
+                "label": "16px",
+                "size": 16
+              },
+              {
+                "label": "24px",
+                "size": 24
+              },
+              {
+                "label": "32px",
+                "size": 32
+              },
+              {
+                "label": "48px",
+                "size": 48
+              },
+              {
+                "label": "64px",
+                "size": 64
+              },
+              {
+                "label": "96px",
+                "size": 96
+              }
+            ]
+          }
         ]
       },
       {
@@ -354,30 +635,96 @@
         "paragraphs": [
           "Header và footer dùng nền đen, wordmark Duy Nguyen màu trắng. Nội dung luôn Light Mode; không bổ sung dark mode. Không sao chép logo Uber. Trang chủ là editorial index, ưu tiên bài mới nhất. Category, Archive, Series và Tiện ích sử dụng cùng font, token màu, spacing và interaction. Archive có phân trang theo quy tắc của blog; series có thứ tự và liên kết bài trước/sau.",
           "Footer chia nhóm Khám phá và Hệ thống, chứa liên kết Tech Blog, Chuyên mục, Lưu trữ, Tiện ích, UI/UX Log và Production Status theo tính năng thực tế. Không tự thêm route hoặc module khi chưa được yêu cầu. Nếu có Live Update, ưu tiên đồng bộ thủ công, không tự polling GitHub. Các tiện ích tương lai có thể kế thừa cùng hệ token khi được phê duyệt sau này; tài liệu này không thay đổi chức năng, dữ liệu hay bảo mật."
+        ],
+        "visuals": [
+          {
+            "kind": "wireframe",
+            "layout": "listing",
+            "caption": "Concept editorial với fallback pastel nguyên bản và header/footer đen."
+          }
         ]
       },
       {
         "heading": "9. Responsive layout",
         "paragraphs": [
-          "Wireframe responsive: desktop [A][B][C] / [D][E][F]; tablet [A][B] / [C][D]; mobile [A] / [B] / [C]. Header và footer co giãn theo viewport.",
-          "Thuộc tính · Desktop · Mobile",
-          "Container tối đa · 1280px · 100%",
-          "Reading width · 760px · 100%",
-          "Padding ngang · 48–64px · 16–20px",
-          "Card grid · 3 cột · 1 cột",
-          "Thumbnail · 16:9 · 16:9",
-          "Gap · 32px · 24px",
-          "H1 · 44–52px · 30–34px",
-          "Body · 17px · 16–17px",
-          "TOC · Sticky khi đủ chỗ · Ẩn sidebar",
           "Tablet dùng hai cột khi đủ diện tích. Kiểm thử 320, 375, 390, 768, 1024, 1440px và zoom 200%. Dùng min-width: 0, grid với minmax(0, 1fr), clamp cho kích thước linh hoạt, và wrap cho chữ dài. Bảng phải có chiến lược responsive, không gây tràn toàn trang. Hình bài viết WebP, có alt và tỷ lệ nội tại; lazy-load dưới fold, ưu tiên ảnh LCP đúng cách."
+        ],
+        "visuals": [
+          {
+            "kind": "wireframe",
+            "layout": "responsive",
+            "caption": "Desktop 3 cột, tablet 2 cột, mobile 1 cột."
+          },
+          {
+            "kind": "table",
+            "caption": "Thông số responsive đề xuất",
+            "columns": [
+              "Thuộc tính",
+              "Desktop",
+              "Mobile"
+            ],
+            "rows": [
+              [
+                "Container tối đa",
+                "1280px",
+                "100%"
+              ],
+              [
+                "Reading width",
+                "760px",
+                "100%"
+              ],
+              [
+                "Padding ngang",
+                "48–64px",
+                "16–20px"
+              ],
+              [
+                "Card grid",
+                "3 cột",
+                "1 cột"
+              ],
+              [
+                "Thumbnail",
+                "16:9",
+                "16:9"
+              ],
+              [
+                "Gap",
+                "32px",
+                "24px"
+              ],
+              [
+                "H1",
+                "44–52px",
+                "30–34px"
+              ],
+              [
+                "Body",
+                "17px",
+                "16–17px"
+              ],
+              [
+                "TOC",
+                "Sticky khi đủ chỗ",
+                "Ẩn sidebar"
+              ]
+            ]
+          }
         ]
       },
       {
         "heading": "10. CSS design tokens dành cho Astro",
         "paragraphs": [
-          "css\n:root {\n  color-scheme: light;\n  --font-heading: \"Plus Jakarta Sans\", sans-serif;\n  --font-body: \"Be Vietnam Pro\", sans-serif;\n  --font-mono: \"IBM Plex Mono\", monospace;\n  --color-primary: #000000;\n  --color-background: #ffffff;\n  --color-text: #141414;\n  --color-secondary: #333333;\n  --color-muted: #6b6b6b;\n  --color-border: #e2e2e2;\n  --color-surface: #f6f6f6;\n  --color-info: #276ef1;\n  --color-success: #048848;\n  --color-warning: #ffc043;\n  --color-danger: #e11900;\n  --container-width: 1280px;\n  --article-width: 760px;\n  --thumbnail-ratio: 16 / 9;\n  --space-xs: 4px;\n  --space-sm: 8px;\n  --space-md: 16px;\n  --space-lg: 24px;\n  --space-xl: 32px;\n  --space-2xl: 48px;\n  --space-3xl: 64px;\n  --radius-button: 8px;\n  --radius-image: 0px;\n  --transition-fast: 180ms ease;\n}\n.editorial-grid {\n  display: grid;\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n  gap: var(--space-xl);\n}\n.editorial-thumbnail {\n  display: block;\n  width: 100%;\n  aspect-ratio: var(--thumbnail-ratio);\n  object-fit: cover;\n}\n@media (max-width: 1023px) {\n  .editorial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n}\n@media (max-width: 767px) {\n  .editorial-grid { grid-template-columns: 1fr; }\n  .article-toc--sidebar { display: none; }\n}",
           "Đây là code minh họa, không phải patch CSS đã tích hợp. Không cần cài toàn bộ Base Web hoặc React chỉ để có phong cách Uber. Astro có thể dùng CSS thuần, component hiện có và token tập trung. Trước triển khai cần đối chiếu selector, font đang dùng, responsive và các quy tắc nội dung."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "language": "css",
+            "caption": "CSS design tokens minh họa, không phải CSS đã xác minh production.",
+            "code": ":root {\n  color-scheme: light;\n  --font-heading: \"Plus Jakarta Sans\", sans-serif;\n  --font-body: \"Be Vietnam Pro\", sans-serif;\n  --font-mono: \"IBM Plex Mono\", monospace;\n  --color-primary: #000000;\n  --color-background: #ffffff;\n  --color-text: #141414;\n  --color-secondary: #333333;\n  --color-muted: #6b6b6b;\n  --color-border: #e2e2e2;\n  --color-surface: #f6f6f6;\n  --color-info: #276ef1;\n  --color-success: #048848;\n  --color-warning: #ffc043;\n  --color-danger: #e11900;\n  --container-width: 1280px;\n  --article-width: 760px;\n  --thumbnail-ratio: 16 / 9;\n  --space-xs: 4px;\n  --space-sm: 8px;\n  --space-md: 16px;\n  --space-lg: 24px;\n  --space-xl: 32px;\n  --space-2xl: 48px;\n  --space-3xl: 64px;\n  --radius-button: 8px;\n  --radius-image: 0px;\n  --transition-fast: 180ms ease;\n}\n.editorial-grid {\n  display: grid;\n  grid-template-columns: repeat(3, minmax(0, 1fr));\n  gap: var(--space-xl);\n}\n.editorial-thumbnail {\n  display: block;\n  width: 100%;\n  aspect-ratio: var(--thumbnail-ratio);\n  object-fit: cover;\n}\n@media (max-width: 1023px) {\n  .editorial-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }\n}\n@media (max-width: 767px) {\n  .editorial-grid { grid-template-columns: 1fr; }\n  .article-toc--sidebar { display: none; }\n}"
+          }
         ]
       },
       {
@@ -386,6 +733,32 @@
           "Khi được phê duyệt chuyển theme, thực hiện theo phạm vi riêng: audit hiện trạng, token và font, header/footer, listing, article, typography nội dung, category/archive/series, utilities và regression. Mỗi thay đổi giao diện cần trước/sau, route ảnh hưởng, desktop/mobile và ghi nhận UI/UX Log. Không đưa nội dung bài viết này vào lịch sử restore CSS chỉ vì chủ đề là thiết kế.",
           "Checklist nghiệm thu:",
           "- [ ] Tiêu đề và metadata đọc rõ ngay cả khi thiếu cover.\n- [ ] Font tiếng Việt không lỗi dấu hoặc gây CLS đáng kể.\n- [ ] Không tràn ngang ở 320px; TOC không lấn bài.\n- [ ] Button hover, focus, disabled, loading và error rõ ràng.\n- [ ] Palette đạt tương phản trong ngữ cảnh sử dụng.\n- [ ] Hình ảnh WebP, có kích thước và alt; fallback không tải ảnh stock.\n- [ ] Không thay đổi permalink, metadata, OAuth, rollback hoặc quy trình xuất bản ngoài scope.\n- [ ] Build Astro và các gate bắt buộc thành công trên đúng commit; xác minh production sau deploy."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Trình tự kiểm soát thay đổi giao diện (đề xuất).",
+            "items": [
+              {
+                "label": "Audit"
+              },
+              {
+                "label": "Design tokens"
+              },
+              {
+                "label": "Components"
+              },
+              {
+                "label": "Responsive QA"
+              },
+              {
+                "label": "CI exact SHA"
+              },
+              {
+                "label": "Deploy & verify"
+              }
+            ]
+          }
         ]
       },
       {
