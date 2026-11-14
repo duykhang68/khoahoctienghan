@@ -1,4 +1,5 @@
-import {test,expect} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './private-office-fixture';
 import {parseQueueIssue,progressFor,queueClient} from '../../src/lib/sheet-blog/progress.mjs';
 const repo='duykhang68/khoahoctienghan',source='a'.repeat(40),head='b'.repeat(40),base='c'.repeat(40),merge='d'.repeat(40);
 function issue(number,phase,extra={},closed=false,detail='QUEUED — Chờ đến lượt'){return {number,title:'[Editor V2] Bài '+number,state:closed?'closed':'open',user:{login:'github-actions[bot]'},body:'<!-- editor-v2-fifo:'+JSON.stringify({id:number.toString(16).padStart(64,'0'),source,phase,...extra})+' -->\n\n**Trạng thái:** '+detail}}
@@ -18,7 +19,7 @@ test('CI evidence rejects unrelated SHA',async()=>{
  const c=queueClient(async()=>new Response(JSON.stringify({workflow_runs:[{id:1,head_sha:'e'.repeat(40),head_repository:{full_name:repo},head_branch:'content/editor-fifo-1-'+base.slice(0,12),event:'pull_request',status:'completed',conclusion:'success'}]}),{status:200}));
  expect((await c.evidence(parseQueueIssue(issue(1,'WAITING_CI',{head,base,pr:15})))).ci).toBeUndefined();
 });
-test('progress dashboard orders FIFO, updates stages and preserves stale snapshot on errors',async({page})=>{
+test('progress dashboard orders FIFO, updates stages and preserves stale snapshot on errors',async({page,office})=>{
  let phase='WAITING_CI',fail=false;
  await page.route('https://accounts.google.com/gsi/client',route=>route.fulfill({contentType:'application/javascript',body:''}));
  await page.route('https://api.github.com/**',route=>{
@@ -30,7 +31,7 @@ test('progress dashboard orders FIFO, updates stages and preserves stale snapsho
   if(u.pathname.endsWith('/actions/runs/124/jobs'))return route.fulfill({json:{jobs:[{name:'deploy',status:'completed',conclusion:'success'}]}});
   throw Error('Unexpected '+u.pathname);
  });
- await page.goto('./viet-blog-by-google-sheet/');
+ await page.goto(office+'/admin/sheets/');
  const section=page.locator('[data-queue-progress]'),first=section.locator('[data-issue="11"]'),refresh=section.getByRole('button',{name:'Cập nhật tiến độ'});
  await expect(section.getByRole('heading',{name:'Thanh Tiến độ'})).toBeVisible();
  await expect(first.locator('.sb-progress-current')).toHaveText('CI / Build đang chạy');
