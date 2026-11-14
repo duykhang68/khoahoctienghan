@@ -10,7 +10,8 @@
     "check": "node scripts/check-content.mjs",
     "test:engineering": "node --test tests/engineering.test.mjs",
     "test:e2e": "playwright test",
-    "editor": "npm --prefix editor run dev"
+    "editor": "npm --prefix editor-original run dev:local",
+    "editor:setup": "git submodule update --init --recursive editor-original && npm ci --prefix editor-original"
   },
   "engines": {
     "node": ">=24"
