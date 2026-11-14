@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -117,4 +117,28 @@ test('private routes reject expired, wrong-origin, malformed and revoked-admin s
  const logout=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:origin,Cookie:good}}),env);assert.equal(logout.status,303);assert.equal(logout.headers.get('location'),'/auth/login');assert.ok(logout.headers.getSetCookie().every(v=>v.includes('Max-Age=0')&&v.includes('HttpOnly')&&v.includes('Secure')));
  // Browser cookie jar has now removed the session. Do not claim replay revocation: this is a stateless session.
  for(const path of pages)assert.equal((await worker.fetch(req(path),env)).status,303,path);
+});
+
+test('P1.1 dashboard snapshot counts only exact released content and rejects incomplete upstream evidence',async()=>{
+ const sha='a'.repeat(40),seen=[];
+ const responses=[{sha},{truncated:false,tree:[{type:'blob',path:'src/content/docs/index.mdx'},{type:'blob',path:'src/content/docs/ngon-ngu/index.md'},{type:'blob',path:'src/content/docs/ngon-ngu/hangul.mdx'},{type:'blob',path:'src/content/docs/lich-su/joseon.md'},{type:'blob',path:'src/content/docs/lich-su/image.webp'}]},[{slug:'a'},{slug:'b'}]];
+ const fixture=async(url,init)=>{seen.push(url);assert.equal(init.redirect,'manual');return Response.json(responses[seen.length-1]);};
+ assert.deepEqual(await dashboardSnapshot(fixture),{sha,tech:2,knowledge:2});
+ assert.equal(seen[0],'https://duykhang68.github.io/khoahoctienghan/release-sha.json');assert.ok(seen.slice(1).every(url=>url.includes(sha)));
+ await assert.rejects(dashboardSnapshot(async()=>Response.json({sha:'not-a-sha'})));
+ let count=0;await assert.rejects(dashboardSnapshot(async()=>Response.json([responses[0],{truncated:true,tree:[]},responses[2]][count++])));
+ assert.equal((await worker.fetch(req('/admin/api/dashboard/'),env)).status,403);
+ assert.equal((await worker.fetch(req('/admin/api/dashboard/',{headers:{Cookie:'__Host-bo_session=invalid.signature'}}),env)).status,403);
+});
+test('P1.1 authorized dashboard API is no-store, read-only and fails closed',async()=>{
+ const secret=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');const s=Buffer.from(await crypto.subtle.sign('HMAC',secret,new TextEncoder().encode(p))).toString('base64url');const headers={Cookie:'__Host-bo_session='+p+'.'+s};
+ const original=globalThis.fetch;
+ try{const sha='b'.repeat(40);globalThis.fetch=async url=>Response.json(url.endsWith('release-sha.json')?{sha}:url.includes('/git/trees/')?{truncated:false,tree:[{type:'blob',path:'src/content/docs/ngon-ngu/hangul.mdx'}]}:[{slug:'first'}]);
+ const res=await worker.fetch(req('/admin/api/dashboard/',{headers}),env);assert.equal(res.status,200);assert.equal(res.headers.get('cache-control'),'no-store');assert.deepEqual(await res.json(),{sha,tech:1,knowledge:1});
+ assert.equal((await worker.fetch(req('/admin/api/dashboard/?url=https://other.test',{headers}),env)).status,400);
+ assert.equal((await worker.fetch(req('/admin/api/dashboard/',{method:'POST',headers}),env)).status,405);
+ assert.equal((await worker.fetch(req('/admin/api/dashboard/',{headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,403);
+ globalThis.fetch=async()=>new Response('private upstream error',{status:429});const failed=await worker.fetch(req('/admin/api/dashboard/',{headers}),env);assert.equal(failed.status,502);assert.deepEqual(await failed.json(),{error:'SNAPSHOT_UNAVAILABLE'});
+ }finally{globalThis.fetch=original;}
 });
