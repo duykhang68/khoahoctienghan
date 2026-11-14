@@ -1,6 +1,6 @@
 # Candidate lesson — liên kết Engineering Foundation và hợp đồng footer
 
-Trạng thái: đã tái hiện local; chờ CI native trên HEAD sửa lỗi. Chưa xác nhận merge, deploy hoặc production. Không đóng incident hoặc xuất bản hồi cứu đã xác minh ở giai đoạn này.
+Trạng thái: đã tái hiện local và xác minh bản sửa bằng CI native trên SHA `ba25956e001bc991a44d91c12d81d0f5878b3dd4`, [run 43645005833](https://github.com/duykhang68/khoahoctienghan/actions/runs/43645005833), job `132600696593`. Cả 90 E2E desktop/mobile, 40 engineering tests và các gate build/static/security đều qua. Chưa xác nhận merge, deploy hoặc production. Không đóng incident hoặc xuất bản hồi cứu hoàn tất ở giai đoạn này.
 
 Incident: [#107](https://github.com/duykhang68/khoahoctienghan/issues/107), PR [#106](https://github.com/duykhang68/khoahoctienghan/pull/106). SHA lỗi: `afe038cdcb07534beee008b9c74fc9cf39ec98f1`. CI run `43644137504`, job `132598013784`; merge thử nghiệm của CI: `32f092f063eba4ce5acffa0b2d95493d110dedf9`, base `23b75be3ec8a3ddbe6f4a93a32463a840056ab8f`.
 
@@ -16,4 +16,4 @@ Bằng chứng local: `npm ci --no-audit --no-fund`, `npm run check`, 40 enginee
 
 Tài liệu chính thức: [Playwright assertions](https://playwright.dev/docs/test-assertions), [API mocking](https://playwright.dev/docs/mock). Hành vi UI mới cần assertion đích đến tương ứng, đồng thời duy trì phép đếm hữu hạn để phát hiện liên kết thừa.
 
-SHA sửa lỗi và bằng chứng CI/production: chờ có kết quả; không dùng kết quả local để tuyên bố production đã xác minh. Sau khi hoàn tất incident, hồi cứu riêng phải dùng slug `bugfix-issue-107` qua PR/CI/CD chuẩn, kiểm tra trùng bài và PR trước khi tạo.
+SHA sửa lỗi đã xác minh CI: `ba25956e001bc991a44d91c12d81d0f5878b3dd4`; run và job nêu ở đầu lesson. Bằng chứng merge/deploy/production: chưa có; không dùng CI để tuyên bố production đã xác minh. Sau khi hoàn tất incident, hồi cứu riêng phải dùng slug `bugfix-issue-107` qua PR/CI/CD chuẩn, kiểm tra trùng bài và PR trước khi tạo.
