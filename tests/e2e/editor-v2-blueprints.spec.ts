@@ -1,0 +1,49 @@
+import {test,expect} from '@playwright/test';
+import {SERIES_BLUEPRINTS,blueprintParts,instantiateBlueprint} from '../../src/lib/editor-v2/blueprints.mjs';
+import {buildDocument} from '../../src/lib/editor-v2/model.mjs';
+test('six original templates preserve outline headings and never serialize writing guides',async()=>{
+ expect(SERIES_BLUEPRINTS.map(t=>t.id)).toEqual(['tutorial','journal','review','general','cinema-review','device-hands-on']);
+ for(const template of SERIES_BLUEPRINTS){
+  const parts=blueprintParts(template.id),expected=template.markdown.split('\n').filter(line=>/^#{2,4} /.test(line)).map(line=>line.replace(/^#{2,4} /,''));
+  expect(parts.filter(p=>p.text).map(p=>p.text)).toEqual(expected);
+  expect(parts.some(p=>p.guide)).toBe(true);
+  const blocks=instantiateBlueprint(template.id),result=await buildDocument(blocks);
+  expect(result.body.content.map(n=>n.content[0].text)).toEqual(expected);
+  expect(blocks.every(b=>!(b.guide&&b.text))).toBe(true);
+ }
+ const general=await buildDocument(instantiateBlueprint('general'));
+ expect(general.body.content.some(n=>n.attrs?.level===4)).toBe(true);
+ expect(blueprintParts('cinema-review').some(p=>p.tone==='warning'&&p.guide.includes('CẢNH BÁO SPOILER'))).toBe(true);
+ expect(blueprintParts('device-hands-on').some(p=>p.guide?.includes('Chưa kiểm chứng'))).toBe(true);
+});
+test('long blueprint appends to existing draft, saves guidance locally and respects workspace boundary',async({page})=>{
+ await page.goto('./techblog/editorv2/');
+ await page.getByRole('textbox',{name:'Tiêu đề',exact:true}).fill('Bài thử mẫu dài');
+ await page.getByRole('textbox',{name:'Đoạn văn 1'}).fill('Nội dung đang viết');
+ await page.locator('[data-blueprints] summary').click();
+ const select=page.getByLabel('Chọn mẫu dàn ý',{exact:true}),insert=page.locator('[data-blueprint-insert]');
+ await expect(select.locator('option')).toHaveCount(7);
+ await expect(insert).toBeDisabled();
+ await select.selectOption('tutorial');
+ await expect(page.locator('[data-blueprint-headings] li')).toHaveCount(6);
+ await insert.click();
+ const heading=page.getByRole('textbox',{name:'Tiêu đề H2 2',exact:true}),first=page.getByRole('textbox',{name:'Đoạn văn 1',exact:true});
+ await expect(first).toHaveValue('Nội dung đang viết');
+ await expect(heading).toHaveValue('Mục tiêu của tập này');
+ await expect(page.locator('.ev2-template-guide').first()).toContainText('Mô tả những gì độc giả sẽ thực hiện được.');
+ await page.getByRole('button',{name:'Xem trước',exact:true}).click();
+ await expect(page.locator('[data-preview-body]')).toContainText('Nội dung đang viết');
+ await expect(page.locator('[data-preview-body]')).not.toContainText('Mô tả những gì độc giả sẽ thực hiện được.');
+ await page.getByRole('button',{name:/02 · Knowledge Base Editor/}).click();
+ await expect(page.locator('[data-blocks] .ev2-block')).toHaveCount(1);
+ if(!await select.isVisible())await page.locator('[data-blueprints] summary').click();
+ await select.selectOption('general');await insert.click();
+ await expect(page.locator('[data-kind="detailheading"]')).toHaveCount(2);
+ await page.getByRole('button',{name:/01 · Tech Blog Editor/}).click();
+ await expect(first).toHaveValue('Nội dung đang viết');
+ await expect(heading).toHaveValue('Mục tiêu của tập này');
+ await page.reload();
+ await expect(heading).toHaveValue('Mục tiêu của tập này');
+ await expect(page.locator('.ev2-template-guide').first()).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+});

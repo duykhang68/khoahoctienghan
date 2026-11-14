@@ -15,3 +15,6 @@ The same online route contains Tech Blog Editor and Knowledge Base Editor with f
 
 ## Series planner
 Both workspaces display the selected-episode projection (part / total), remaining episodes and percentage after that episode, and a calendar-day deadline based on Asia/Ho_Chi_Minh. Due today and overdue are explicit, incomplete or invalid inputs do not display invented percentages. Projection is not evidence of publication; no schema, FIFO or production content changes.
+
+## Long editorial blueprints
+Six full original templates from reddit-editor commit 1a1c3f3efc72b530c1c76ce494bdebd8baa3f795 (`apps/web/src/components/seriesBlueprints.js`) are copied verbatim as static data, not imported at runtime from V1. The separate collapsible selector works in both sub-editors without enabling Series; selection previews the complete heading structure and an explicit button appends editable blocks. Original H2/H3/H4 hierarchy is preserved; writing prompts (including review caveats and spoiler warning guidance) are visible non-published guidance, not fabricated article content. Enter actual text into a block for it to appear in preview and published data. Remove unused optional headings/sections before sending. The existing four-heading quick outline and FIFO submission flow remain unchanged.

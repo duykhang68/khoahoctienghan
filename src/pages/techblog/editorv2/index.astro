@@ -2,6 +2,7 @@
 import TechBlog from '../../../layouts/TechBlog.astro';
 import AuthorByline from '../../../components/AuthorByline.astro';
 import {topics} from '../../../lib/knowledge-topics';
+import {SERIES_BLUEPRINTS} from '../../../lib/editor-v2/blueprints-data.mjs';
 import '../../../styles/editor-v2.css';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
@@ -15,7 +16,13 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
   <div class="ev2-workspace-caption"><strong data-workspace-title>Engineering Editorial</strong><span data-workspace-description>Không gian độc lập cho Tech Blog.</span></div>
   <div class="ev2-actionbar"><div class="ev2-tabs" role="group" aria-label="Chế độ"><button type="button" data-mode="write" aria-pressed="true">Soạn thảo</button><button type="button" data-mode="preview" aria-pressed="false">Xem trước</button></div><div class="ev2-actions"><span data-save-status role="status">Bản nháp trên thiết bị</span><button type="button" data-backup>Lưu bản sao</button><button type="button" data-connect>Kết nối GitHub</button></div></div>
   <div class="ev2-layout">
-   <aside class="ev2-panel ev2-library" aria-label="Khối nội dung"><span class="ev2-kicker">01 · BLOCKS</span><h2 data-library-title>Khối kỹ thuật</h2><button class="ev2-outline" type="button" data-outline>＋ Thêm dàn ý kỹ thuật</button><div class="ev2-block-buttons">
+   <aside class="ev2-panel ev2-library" aria-label="Khối nội dung"><span class="ev2-kicker">01 · BLOCKS</span><h2 data-library-title>Khối kỹ thuật</h2><button class="ev2-outline" type="button" data-outline>＋ Thêm dàn ý kỹ thuật</button><details class="ev2-blueprints" data-blueprints>
+      <summary>✦ Mẫu dàn ý dài <span class="ev2-blueprint-count">{SERIES_BLUEPRINTS.length}</span></summary>
+      <p>Dàn ý dựng sẵn theo thể loại bài viết, dùng được cả khi không bật Series.</p>
+      <label>Chọn mẫu dàn ý<select data-blueprint-select aria-label="Chọn mẫu dàn ý"><option value="">Chọn một trong {SERIES_BLUEPRINTS.length} mẫu…</option>{SERIES_BLUEPRINTS.map(({id,label})=><option value={id}>{label}</option>)}</select></label>
+      <div data-blueprint-preview hidden><p data-blueprint-summary></p><ol data-blueprint-headings></ol></div>
+      <button type="button" data-blueprint-insert disabled>＋ Chèn dàn ý vào bài</button><small data-blueprint-status role="status">Chỉ chèn thêm, không ghi đè nội dung.</small>
+    </details><div class="ev2-block-buttons">
     { [['paragraph','¶','Đoạn văn'],['heading','H2','Tiêu đề'],['subheading','H3','Tiêu đề phụ'],['quote','❝','Trích dẫn'],['bullet','•','Danh sách'],['ordered','1.','Danh sách số'],['note','▣','Ghi chú'],['code','<>','Mã nguồn'],['table','▦','Bảng'],['image','▧','Ảnh từ máy'],['divider','—','Đường phân cách']].map(([kind,icon,label])=><button type="button" data-add={kind}><span aria-hidden="true">{icon}</span>{label}</button>)}
    </div><p data-library-help>Thêm đoạn phân tích, ví dụ code, bảng và ảnh minh họa.</p></aside>
    <section class="ev2-canvas ev2-panel" aria-label="Không gian viết">

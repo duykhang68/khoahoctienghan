@@ -17,7 +17,7 @@ export function metadata(draft){
  }
  return value;
 }
-export const kinds=['paragraph','heading','subheading','quote','bullet','ordered','code','note','table','image','divider'];
+export const kinds=['paragraph','heading','subheading','detailheading','quote','bullet','ordered','code','note','table','image','divider'];
 export const newBlock=kind=>({id:crypto.randomUUID(),kind,text:'',...(kind==='table'?{rows:[['Tiêu đề 1','Tiêu đề 2'],['','']]}:{}),...(kind==='note'?{tone:'info'}:{}),...(kind==='image'?{alt:'',src:'',width:0,height:0}:{}),marks:[]});
 export async function buildDocument(blocks){
  requireValue(Array.isArray(blocks)&&blocks.length<=250,'Tối đa 250 khối mỗi bài.');
@@ -42,7 +42,7 @@ export async function buildDocument(blocks){
    nodes.push({type:'table',content:b.rows.map((row,i)=>({type:'tableRow',content:row.map(cell=>({type:i?'tableCell':'tableHeader',content:[paragraph(cell)]}))}))});continue;
   }
   if(!text.trim())continue;
-  if(b.kind==='heading'||b.kind==='subheading')nodes.push({type:'heading',attrs:{level:b.kind==='heading'?2:3},content:inline(text)});
+  if(['heading','subheading','detailheading'].includes(b.kind))nodes.push({type:'heading',attrs:{level:{heading:2,subheading:3,detailheading:4}[b.kind]},content:inline(text)});
   else if(b.kind==='quote')nodes.push({type:'blockquote',content:[paragraph(text,marks)]});
   else if(b.kind==='note')nodes.push({type:'hdNote',attrs:{kind:['info','tip','warning'].includes(b.tone)?b.tone:'info'},content:[paragraph(text,marks)]});
   else if(b.kind==='code')nodes.push({type:'codeBlock',content:[textNode(text)]});
