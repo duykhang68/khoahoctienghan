@@ -1,0 +1,46 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {releaseRecoveryDecision,ciJobsPassed} from '../scripts/release-recovery.mjs';
+const repo='duykhang68/khoahoctienghan', main='a'.repeat(40), now=Date.parse('2026-11-14T11:25:00Z');
+const ci={head_sha:main,head_repository:{full_name:repo},head_branch:'main',event:'workflow_dispatch',status:'completed',conclusion:'success',updated_at:'2026-11-14T11:23:00Z'};
+const release={head_sha:main,head_repository:{full_name:repo},head_branch:'main',status:'completed',conclusion:'success'};
+const decide=(patch={})=>releaseRecoveryDecision({main,repo,ci,releases:[],now,...patch});
+test('missing release recovery only dispatches for fresh exact successful main CI',()=>{
+ assert.equal(decide(),'MISSING');
+ assert.equal(decide({ci:{...ci,event:'push'}}),'MISSING');
+ assert.equal(decide({ci:{...ci,event:'pull_request'}}),'WAITING_CI');
+ assert.equal(decide({ci:{...ci,head_sha:'old'}}),'WAITING_CI');
+ assert.equal(decide({ci:{...ci,conclusion:'failure'}}),'WAITING_CI');
+ assert.equal(decide({ci:{...ci,head_repository:{full_name:'fork/other'}}}),'WAITING_CI');
+ assert.equal(decide({now:Date.parse(ci.updated_at)+1000}),'GRACE');
+ assert.equal(decide({releases:[release]}),'EXISTS');
+ assert.equal(decide({releases:[{...release,status:'queued',conclusion:null}]}),'ACTIVE');
+ assert.equal(decide({releases:[{...release,conclusion:'failure'}]}),'BLOCKED');
+ assert.equal(decide({releases:[{...release,head_sha:'old'}]}),'MISSING');
+});
+test('no CI gate weakened: only explicitly named skipped main handoff is acceptable on PR or push',()=>{
+ const quality={name:'Content and Astro build',conclusion:'success'}, handoff={name:'Release handoff',conclusion:'skipped'};
+ assert.ok(ciJobsPassed([quality,handoff],'pull_request'));
+ assert.ok(ciJobsPassed([quality,handoff],'push'));
+ assert.ok(!ciJobsPassed([quality,handoff],'workflow_dispatch'));
+ assert.ok(ciJobsPassed([quality,{...handoff,conclusion:'success'}],'workflow_dispatch'));
+ assert.ok(!ciJobsPassed([quality,{name:'Security',conclusion:'skipped'}],'push'));
+ assert.ok(!ciJobsPassed([{...quality,conclusion:'failure'},handoff],'pull_request'));
+ assert.ok(!ciJobsPassed([handoff],'push'));
+});
+test('workflow handoff is isolated and release gates stay exact',()=>{
+ const ci=readFileSync('.github/workflows/ci.yml','utf8'),cd=readFileSync('.github/workflows/release.yml','utf8');
+ const handoff=ci.split('  release-handoff:')[1];
+ assert.match(handoff,/needs: quality/);
+ assert.match(handoff,/github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch'/);
+ assert.match(handoff,/actions: write/);
+ assert.doesNotMatch(handoff,/uses: actions\/checkout/);
+ assert.match(cd,/REQUESTED_SHA/);
+ assert.match(cd,/REQUESTED_RUN/);
+ assert.match(cd,/ALREADY_VERIFIED/);
+ assert.match(cd,/Check exact artifact provenance/);
+ assert.match(cd,/Check release is still current/);
+ assert.match(cd,/Verify public exact SHA and routes/);
+ assert.match(cd,/event == 'push'\)/);
+});
