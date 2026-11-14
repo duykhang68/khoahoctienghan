@@ -14,21 +14,42 @@ jobs:
   quality:
     name: Content and Astro build
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           package-manager-cache: false
-      - run: if test -f package-lock.json; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Bootstrap lockfile (temporary, remove before merge)
+        if: ${{ hashFiles('package-lock.json') == '' }}
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org/
+          node -e 'const s=require("fs").readFileSync("package-lock.json","utf8");const j=JSON.parse(s);for(const p of Object.values(j.packages||{})){if(p.resolved&&new URL(p.resolved).origin!=="https://registry.npmjs.org")throw Error("Non-public registry")}for(let i=0;i<s.length;i+=1200)console.log("LOCKFILE_CHUNK:"+JSON.stringify(s.slice(i,i+1200)));console.log("LOCKFILE_END")'
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
       - run: node scripts/security-check.mjs
       - run: npm run check
+      - run: npm run test:engineering
       - run: npm run build
       - run: node scripts/verify-build.mjs
-      - uses: actions/upload-artifact@v6
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Mark trusted main artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: node -e 'require("fs").writeFileSync("dist/release-sha.json",JSON.stringify({sha:process.env.GITHUB_SHA}))'
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: knowledge-base-preview
+          name: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'knowledge-base-release' || 'knowledge-base-preview' }}
           path: dist/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: failure()
+        with:
+          name: playwright-debug
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 3
