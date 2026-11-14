@@ -24,7 +24,7 @@ test('six visible cards per page, correct breadcrumbs and working page links wit
  const cards=page.locator('[data-tech-post]:visible');
  const pager=page.locator('#index-pagination');
  await expect(cards).toHaveCount(6);
- await expect(page.locator('#article-count')).toHaveText('13');
+ await expect(page.locator('[data-fixture]')).toHaveCount(13);
  await expect(pager.locator('[aria-current="page"]')).toHaveText('1');
  await expect(page.locator('.blog-breadcrumb')).toContainText('Tìm kiếm: Pagination fixture');
  const firstPage=await cards.evaluateAll(nodes=>nodes.map(n=>n.getAttribute('data-fixture')));

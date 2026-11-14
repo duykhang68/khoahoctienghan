@@ -10,7 +10,7 @@ test('search matches exact phrases and ranks title above body, not partial words
 });
 test('sidebar results show actual match evidence and title-only scope excludes incidental mentions',async({page})=>{
  await page.goto('./techblog/?q=sidebar');
- await expect(page.locator('.sort-label')).toHaveText('Liên quan nhất');
+ await expect(page.locator('#feed-heading')).toHaveText('Kết quả tìm kiếm');
  const cards=page.locator('[data-tech-post]:visible');
  const bugfix=cards.filter({has:page.locator('h3 a[href$="/bugfix-issue-2/"]')});
  const researcher=cards.filter({has:page.locator('h3 a[href$="/engineering-researcher-bo-nao-cua-self-healing-ci-cd/"]')});
@@ -19,14 +19,14 @@ test('sidebar results show actual match evidence and title-only scope excludes i
  await expect(researcher.locator('.search-evidence-label')).toContainText('Có nhắc trong nội dung');
  await expect(culture.locator('.search-evidence-label')).toContainText('Có nhắc trong nội dung');
  for(const card of [bugfix,researcher,culture])await expect(card.locator('mark')).toHaveText(/sidebar/i);
- await page.locator('#search-scope').selectOption('title');
+ await page.goto('./techblog/?q=sidebar&scope=title');
  await expect(page).toHaveURL(/scope=title/);
  await expect(bugfix).toBeVisible();
  await expect(page.locator('[data-tech-post]').first().locator('h3 a')).toHaveAttribute('href',/\/bugfix-issue-2\/$/);
  await expect(researcher).toHaveCount(0);
  await expect(culture).toHaveCount(0);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
- await page.locator('#clear-filters').click();
- await expect(page.locator('.sort-label')).toHaveText('Mới nhất');
+ await page.locator('.blog-breadcrumb a').click();
+ await expect(page.locator('#feed-heading')).toHaveText('BÀI MỚI NHẤT');
  await expect(page.locator('.search-evidence:visible')).toHaveCount(0);
 });

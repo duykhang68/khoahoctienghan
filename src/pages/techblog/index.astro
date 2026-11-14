@@ -39,13 +39,7 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
   const scope=params.get('scope')==='title'?'title':'all';
   const year=params.get('year')||'',category=params.get('category')||'';
   const active=Boolean(query||year||category);
-  const input=document.querySelector<HTMLInputElement>('#tech-query');
-  if(input)input.value=params.get('q')||'';
-  const select=document.querySelector<HTMLSelectElement>('#archive-year');
-  if(select)select.value=year;
   const cards=[...document.querySelectorAll<HTMLElement>('[data-tech-post]')];
-  const scopeSelect=document.querySelector<HTMLSelectElement>('#search-scope');
-  if(scopeSelect){scopeSelect.value=scope;scopeSelect.addEventListener('change',()=>{if(input?.value.trim())document.querySelector<HTMLFormElement>('#tech-search-form')?.requestSubmit();});}
   const candidates=cards.filter(card=>(!year||card.dataset.year===year)&&(!category||card.dataset.category===category));
   const labels={title:'Khớp tiêu đề',summary:'Khớp tóm tắt',heading:'Khớp đề mục',body:'Có nhắc trong nội dung',reference:'Có nhắc trong tài liệu tham khảo'} as const;
   const ranked=candidates.map(card=>({card,match:query?matchPost(JSON.parse(card.dataset.search||'[]'),query,scope):null})).filter(item=>!query||item.match);
@@ -65,21 +59,16 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
       snippet.replaceChildren(document.createTextNode(match.before),mark,document.createTextNode(match.after));
       evidence.hidden=false;
     }
-    const sortLabel=document.querySelector('.sort-label');
-    if(sortLabel)sortLabel.textContent='Liên quan nhất';
   }
   const matching=ranked.map(item=>item.card);
   const filterLinks=[...document.querySelectorAll<HTMLAnchorElement>('.edition-panel a')];
   const activeCategory=filterLinks.find(a=>new URL(a.href).searchParams.get('category')===category);
   if(activeCategory)activeCategory.setAttribute('aria-current','true');
-  else if(!category)document.querySelector('[data-all-categories]')?.setAttribute('aria-current','true');
+  else if(!category)filterLinks.find(a=>!new URL(a.href).searchParams.has('category'))?.setAttribute('aria-current','true');
   if(active){
     const heading=document.getElementById('feed-heading');
     if(heading)heading.textContent=query?'Kết quả tìm kiếm':category?'Chuyên mục: '+(activeCategory?.textContent?.trim()||'Không có'):'Lưu trữ '+year;
-    document.getElementById('clear-filters')?.removeAttribute('hidden');
   }
-  const count=document.getElementById('article-count');
-  if(count)count.textContent=String(matching.length);
   if(active&&!matching.length)document.getElementById('no-results')?.removeAttribute('hidden');
   const {pages,page,start,end}=pageWindow(matching.length,params.get('page'));
   const visible=new Set(matching.slice(start,end));
