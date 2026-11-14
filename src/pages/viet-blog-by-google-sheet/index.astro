@@ -1,9 +1,10 @@
 ---
 import TechBlog from '../../layouts/TechBlog.astro';
 import {topics} from '../../lib/knowledge-topics';
+import {sharedGoogleClientId} from '../../lib/sheet-blog/oauth-config.mjs';
 import '../../styles/sheet-blog.css';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
-const clientId=import.meta.env.PUBLIC_GOOGLE_SHEETS_CLIENT_ID||'';
+const clientId=import.meta.env.PUBLIC_GOOGLE_SHEETS_CLIENT_ID||sharedGoogleClientId;
 ---
 <TechBlog title="Viết blog by Google sheet" description="Chọn bài tiếng Việt từ Google Sheet và gửi vào hàng đợi xuất bản." knowledgeHome={true} article={true}>
  <section class="sheet-blog" data-sheet-blog data-base={base} data-client-id={clientId} data-topics={JSON.stringify(topics.map(({id,title})=>({id,title})))}>

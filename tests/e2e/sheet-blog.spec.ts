@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {checkHeaders,listRows,rowDraft,recommendDestination,sheetId} from '../../src/lib/sheet-blog/model.mjs';
 import {buildDocument} from '../../src/lib/editor-v2/model.mjs';
+import {sharedGoogleClientId} from '../../src/lib/sheet-blog/oauth-config.mjs';
 test('VN mapping preserves title and body, stable retry payload, and fails closed on changed row',async()=>{
  checkHeaders(['content id_vn','blog title','blog main content','group','topic']);
  expect(()=>checkHeaders(['blog title','blog main content'])).toThrow();
@@ -28,7 +29,8 @@ test('Google OAuth fixture lists only VN titles, previews exact chosen content a
   return route.fulfill({json:response});
  });
  await page.goto('./viet-blog-by-google-sheet/');
- await page.locator('[data-client]').fill('fixture.apps.googleusercontent.com');
+ await expect(page.locator('[data-client]')).toHaveValue(sharedGoogleClientId);
+ await expect(page.locator('[data-client-label]')).toBeHidden();
  await page.getByRole('button',{name:'Đăng nhập Google'}).click();
  await expect(page.getByRole('heading',{name:'Bài thử tiếng Việt'})).toBeVisible();
  expect(bodyRead).toBe(0);
