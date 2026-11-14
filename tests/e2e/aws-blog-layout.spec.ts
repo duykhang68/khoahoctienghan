@@ -23,7 +23,7 @@ test('self-hosted typography loads Vietnamese and share controls are available i
  const fontState=await page.evaluate(async()=>{
   const sample='Tiếng Việt: Tri thức Hàn Quốc, kỹ thuật, dữ liệu';
   const faces=await Promise.all([300,400,700].map(w=>document.fonts.load(w+' 18px "Open Sans Web"',sample)));
-  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,weight:getComputedStyle(document.querySelector('.blog-name')!).fontWeight,local:performance.getEntriesByType('resource').filter(e=>/OpenSans[^/]*\\.ttf(?:\\?|$)/i.test(e.name)).every(e=>new URL(e.name).origin===location.origin)};
+  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,weight:getComputedStyle(document.querySelector('.blog-name')!).fontWeight,local:performance.getEntriesByType('resource').filter(e=>/OpenSans[^/]*\.ttf$/i.test(new URL(e.name).pathname)).every(e=>new URL(e.name).origin===location.origin)};
  });
  expect(fontState.loaded).toBe(true);expect(fontState.family).toContain('Open Sans Web');expect(fontState.weight).toBe('300');expect(fontState.local).toBe(true);
  const first=page.locator('[data-tech-post]').first();
@@ -41,7 +41,7 @@ test('licensed Ember webfonts load without depending on locally installed fonts'
  const fonts=await page.evaluate(async()=>{
   const specs=['300 20px "Amazon Ember Display Web"','300 18px "Amazon Ember Web"','400 16px "Amazon Ember Web"','700 18px "Amazon Ember Web"','italic 300 18px "Amazon Ember Web"','400 16px "Amazon Ember Mono Web"'];
   const faces=await Promise.all(specs.map(spec=>document.fonts.load(spec,'Engineering 123')));
-  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,heading:getComputedStyle(document.querySelector('.blog-name')!).fontFamily,resources:performance.getEntriesByType('resource').filter(e=>/Ember-[^/]*\\.ttf(?:\\?|$)/i.test(e.name)).map(e=>({sameOrigin:new URL(e.name).origin===location.origin}))};
+  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,heading:getComputedStyle(document.querySelector('.blog-name')!).fontFamily,resources:performance.getEntriesByType('resource').filter(e=>/Ember-[^/]*\.ttf$/i.test(new URL(e.name).pathname)).map(e=>({sameOrigin:new URL(e.name).origin===location.origin}))};
  });
  expect(fonts.loaded).toBe(true);
  expect(fonts.family).toContain('Amazon Ember Web');
