@@ -152,6 +152,7 @@ export function mountEditor(root){
  all('[data-add]').forEach(b=>b.addEventListener('click',()=>{if(draft.blocks.length>=250)return;draft.blocks.push(newBlock(b.dataset.add));setMode('write');render();store();$('[data-blocks]').lastElementChild?.scrollIntoView({block:'nearest'})}));
  all('[data-field]').forEach(el=>{const changed=()=>{update();if(mode==='preview')showPreview()};el.addEventListener('input',changed);if(el.tagName==='SELECT')el.addEventListener('change',changed)});
  $('[data-confirm]').addEventListener('change',update);
+ root.addEventListener('editor-import',e=>{if(busy||uploads||drawio.isOpen())return;clearTimeout(timer);active=e.detail.kind;draft=e.detail;resetBlueprint();applyWorkspace();writeFields();render();setMode('write');$('[data-confirm]').checked=false;history.replaceState(null,'',location.pathname+location.search+'#workspace='+active);update();store()});
  $('[data-backup]').addEventListener('click',()=>{store();const url=URL.createObjectURL(new Blob([JSON.stringify(draft,null,2)],{type:'application/json'})),a=make('a');a.href=url;a.download=(slugify(draft.title)||'ban-nhap')+'.editor-v2.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
  $('[data-new]').addEventListener('click',()=>{if(busy||uploads||!confirm('Tạo bài mới? Hãy lưu bản sao nếu cần giữ bản nháp hiện tại.'))return;draft=empty(active);resetBlueprint();writeFields();render();setMode('write');$('[data-confirm]').checked=false;update();store()});
  const dialog=$('[data-auth]'),tokenInput=$('[data-token]');
