@@ -23,11 +23,6 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      - name: Bootstrap lockfile (temporary, remove before merge)
-        if: ${{ hashFiles('package-lock.json') == '' }}
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org/
-          node -e 'const s=require("fs").readFileSync("package-lock.json","utf8");const j=JSON.parse(s);for(const p of Object.values(j.packages||{})){if(p.resolved&&new URL(p.resolved).origin!=="https://registry.npmjs.org")throw Error("Non-public registry")}for(let i=0;i<s.length;i+=1200)console.log("LOCKFILE_CHUNK:"+JSON.stringify(s.slice(i,i+1200)));console.log("LOCKFILE_END")'
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - run: node scripts/security-check.mjs

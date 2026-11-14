@@ -20,4 +20,4 @@
 - Every agent must report merged vs deployed vs verified separately and include exact SHA.
 
 ## Commands
-npm ci, npm run check, npm run test:engineering, npm run build, node scripts/verify-build.mjs, npm run test:e2e. Do not merge the bootstrap PR before the generated package-lock.json is committed.
+npm ci, npm run check, npm run test:engineering, npm run build, node scripts/verify-build.mjs, npm run test:e2e. Keep package-lock.json committed and synchronized; CI must never regenerate it.
