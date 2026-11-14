@@ -45,14 +45,27 @@ def main():
     dest = Path(__file__).resolve().parents[1] / "src/assets/techblog-fonts"
     staged = []
     with ZipFile(args.archive) as archive:
+        # macOS and other ZIP tools may add enclosing folders or metadata.
+        # Select by verified digest, not archive path; never extract ZIP paths.
+        candidates = {}
+        for info in archive.infolist():
+            parts = info.filename.replace("\\", "/").split("/")
+            name = parts[-1]
+            if (info.is_dir() or "__MACOSX" in parts or name.startswith("._")
+                    or not name.lower().endswith((".ttf", ".otf"))
+                    or not 0 < info.file_size <= 2_000_000):
+                continue
+            payload = archive.read(info)
+            digest = hashlib.sha256(payload).hexdigest()
+            if digest in {face[2] for face in FACES}:
+                candidates[digest] = payload
         for source, target, expected in FACES:
-            matches = [i for i in archive.infolist() if i.filename == source]
-            if len(matches) != 1 or matches[0].file_size > 2_000_000:
-                raise SystemExit(f"Missing or invalid font: {source}")
-            payload = archive.read(matches[0])
-            if hashlib.sha256(payload).hexdigest() != expected:
-                raise SystemExit(f"Unexpected SHA-256: {source}")
-            staged.append((dest / target, payload))
+            if expected not in candidates:
+                raise SystemExit(
+                    f"Missing verified font: {source}. "
+                    "Use the original amazon-ember.zip supplied for this change."
+                )
+            staged.append((dest / target, candidates[expected]))
     for path, payload in staged:
         if path.exists() and path.read_bytes() != payload:
             raise SystemExit(f"Refusing to overwrite differing font: {path.name}")
