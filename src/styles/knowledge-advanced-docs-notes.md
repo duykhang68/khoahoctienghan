@@ -1,0 +1,4 @@
+# Advanced Astro Docs as the Knowledge Base UX reference
+Source: https://advanced-astro-docs.netlify.app/en/page-2/
+Upstream: https://github.com/advanced-astro/astro-docs-template (MainLayout, LeftSidebar, RightSidebar, PageContent, Header).
+Live demo could not be fetched; implementation follows inspected upstream source. Home is now the native Starlight root document, not a separate blog index. Preserve existing URLs, all ten topics, reading links, Pagefind and native mobile popover. Grouped navigation stays expanded; normal document flow, 20rem left sidebar, 75ch measure, 18rem right TOC; small screens have inline TOC under title. The header remains black, typography and palette remain the shared editorial system, and all Tech Blog routes remain unchanged. No dependency migration, language switch, dark mode, third-party Algolia or contributor widget. Real browser parity and CI verification pending.

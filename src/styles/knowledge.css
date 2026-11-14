@@ -88,66 +88,66 @@ main footer{border-color:var(--line);color:var(--muted)}
 @media(prefers-reduced-motion:reduce){.knowledge-card{transition:none}}
 
 
-/* Rapide-inspired documentation UX. The native Starlight controls retain
-   keyboard, search, scrollspy and navigation semantics. Editorial tokens
-   remain the only brand palette; this stylesheet is not loaded by Tech Blog. */
-.sidebar-pane summary{flex-direction:row-reverse;justify-content:flex-start;gap:.375rem;padding-block:.25rem}
-.sidebar-pane .top-level>li+li{margin-block-start:0}
-.sidebar-pane .top-level>li+li:has(details),
-.sidebar-pane .top-level>li:has(details)+li:not(:has(details)){margin-block-start:1rem}
-.sidebar-pane ul ul li{margin-inline-start:.65rem;border-inline-start:1px solid var(--line)}
-.sidebar-pane ul ul li:has(>a[aria-current='page']){border-inline-start-color:var(--ink)}
-.sidebar-pane a[aria-current='page']{background:transparent;color:var(--ink);font-weight:700;border-radius:0}
-.sidebar-pane a:not([aria-current='page']):hover{background:var(--soft);color:var(--ink)}
-.sidebar-pane summary:hover{color:var(--ink)}
-.sidebar-pane summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.content-panel{padding-block-start:1rem}
+/* Advanced Astro Docs UX. Keep shared editorial tokens; no changes to Tech Blog.
+   Reference layout: 20rem navigation, 75ch reading measure, 18rem TOC,
+   desktop header in flow, mobile menu and in-article contents. */
+:root,:root[data-theme='light']{--sl-content-width:75ch;--sl-sidebar-width:20rem;--sl-mobile-toc-height:0rem}
+html{scroll-padding-top:calc(var(--sl-nav-height) + 1rem)}
+header.header{border:0}
+header.header .header{max-width:82rem;margin-inline:auto}
+button[popovertarget="starlight__sidebar"]{background:var(--surface);color:var(--ink);box-shadow:none;inset-inline-start:var(--sl-nav-pad-x);inset-inline-end:auto}
+html[data-has-sidebar] header.header{padding-inline-start:calc(var(--sl-nav-pad-x) + var(--sl-menu-button-size) + var(--sl-nav-gap));padding-inline-end:var(--sl-nav-pad-x)}
+.knowledge-nav-groups,.knowledge-nav-groups ul{list-style:none;padding:0;margin:0}
+.knowledge-nav-groups>li+li.knowledge-nav-group{margin-top:2rem}
+.knowledge-nav-groups>li.knowledge-nav-direct+li.knowledge-nav-direct{margin-top:.25rem}
+.knowledge-nav-groups h2,.knowledge-nav-groups h3{font-family:var(--display);font-size:1rem;font-weight:700;margin:0 0 .5rem;padding:.1rem 1rem;color:var(--ink)}
+.knowledge-nav-groups h3{font-size:.9rem;margin-top:.75rem}
+.knowledge-nav-groups a{display:block;padding:.3rem 1rem;margin:1px;text-decoration:none;color:var(--ink);font-size:1rem;line-height:1.5;overflow-wrap:break-word}
+.knowledge-nav-groups a:hover,.knowledge-nav-groups a:focus-visible{background:var(--soft)}
+.knowledge-nav-groups a[aria-current='page']{background:var(--soft);color:var(--ink);font-weight:600;border-radius:0}
+.knowledge-nav-groups ul ul{padding-inline-start:.75rem}
+.content-panel{padding-block-start:1.5rem}
 .content-panel+.content-panel{border-block-start:0;padding-block-start:0}
+.content-panel .sl-container{width:100%;max-width:75ch;margin-inline:auto}
 .right-sidebar{border-inline-start:0}
-.right-sidebar starlight-toc li>a{border-inline-start:1px solid var(--line);border-radius:0;margin-inline-start:.35rem;padding-inline-start:calc(1rem * var(--depth,0) + .65rem)}
-.right-sidebar starlight-toc li>a[aria-current='true']{border-inline-start-color:var(--ink);color:var(--ink);font-weight:700}
-.right-sidebar starlight-toc li>a:hover{border-inline-start-color:var(--muted);color:var(--ink)}
-@media(min-width:72rem){.right-sidebar{padding-block-start:calc(var(--sl-nav-height) + 1.75rem)}}
-/* Native mobile TOC disclosure stays sticky and doesn't consume reading width. */
-mobile-starlight-toc nav{background:var(--surface);border-block-end:1px solid var(--line)}
-mobile-starlight-toc .dropdown{background:var(--surface);border-color:var(--line);max-height:60dvh;overflow:auto}
-mobile-starlight-toc .dropdown a:hover{background:var(--soft);color:var(--ink)}
-/* Pagefind dialog keeps native Ctrl/Cmd+K, Escape and focus restoration. */
-site-search dialog{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;box-shadow:none}
-site-search dialog .dialog-frame{padding:1rem}
-site-search dialog::backdrop{background:rgb(0 0 0 / .32)}
-site-search .pagefind-ui__search-input{background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:8px}
-site-search .pagefind-ui__search-input:focus-visible{outline:2px solid var(--focus)}
-site-search .pagefind-ui__result{border-color:var(--line)}
-site-search .pagefind-ui__result-link{color:var(--ink)}
-site-search .pagefind-ui__result-excerpt mark{background:#f5e8d4;color:var(--ink)}
-@media(min-width:50rem){header.header div:has(>site-search){justify-content:center}}
-@media(prefers-reduced-motion:no-preference){
- site-search dialog[open]{animation:knowledge-search-enter 150ms ease-out}
- @keyframes knowledge-search-enter{from{opacity:0;transform:translateY(-.5rem)}to{opacity:1;transform:translateY(0)}}
+.right-sidebar starlight-toc a{font-size:var(--type-small);color:var(--muted);line-height:1.5;text-decoration:none}
+.right-sidebar starlight-toc a[aria-current='true']{color:var(--ink);font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.knowledge-inline-toc{margin-block:1.5rem;padding:0;font-family:var(--sans)}
+.knowledge-inline-toc h2{font-size:1rem;font-weight:700;margin:0 0 .5rem}
+.knowledge-inline-toc ul{list-style:none;margin:0;padding:0}
+.knowledge-inline-toc ul ul{padding-inline-start:1rem}
+.knowledge-inline-toc a{display:block;padding:.2rem 0;color:var(--muted);font-size:var(--type-small);text-decoration:none}
+.knowledge-inline-toc a:hover,.knowledge-inline-toc a:focus-visible{color:var(--ink);text-decoration:underline}
+mobile-starlight-toc{display:none}
+.knowledge-topic-list .knowledge-card{display:inline;padding:0;border:0;border-radius:0;background:none;font-weight:600;text-decoration:underline!important;text-underline-offset:3px}
+.knowledge-topic-list li+li{margin-top:.45rem}
+site-search dialog{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+site-search .pagefind-ui__search-input{background:var(--soft);color:var(--ink)}
+@media(max-width:49.999rem){
+ .content-panel{padding-inline:1rem}
+ .main-frame{padding-top:var(--sl-nav-height)}
 }
-/* Kitchen-sink reading components: reuse Starlight's native interactions. */
-.sl-markdown-content tr:nth-child(even):not(:where(.not-content *)){background:var(--soft)}
-.sl-markdown-content :is(th,td):not(:where(.not-content *)){border:0;border-block-end:1px solid var(--line)}
-.sl-markdown-content details:not(:where(.not-content *)){border-inline-start-width:1px;border-color:var(--line)}
-.sl-markdown-content details>summary{cursor:pointer}
-.sl-markdown-content .card,.sl-markdown-content .sl-link-card{border-radius:8px;border-color:var(--line);box-shadow:none;background:var(--surface)}
-.sl-markdown-content .sl-link-card:hover{border-color:var(--ink)}
-.sl-markdown-content .sl-link-card .title{color:var(--ink)}
-.sl-markdown-content .sl-link-card .description{color:var(--muted)}
-.sl-markdown-content .starlight-aside{border-radius:8px;border-width:1px}
-.sl-markdown-content .expressive-code{--ec-brdRad:8px}
-.sl-markdown-content starlight-file-tree{background:var(--soft);border:1px solid var(--line);border-radius:8px}
-starlight-tabs .tablist-wrapper{overflow-y:hidden}
-starlight-tabs ul[role='tablist']{border-bottom-width:1px}
-starlight-tabs [role='tab']{padding-block:.5rem}
-starlight-tabs [role='tab'][aria-selected='true']{border-color:var(--ink);color:var(--ink);font-weight:700}
-.sl-markdown-content .sl-link-button{min-height:48px;padding:12px 24px;border-radius:8px;font-size:var(--type-button)}
-.sl-markdown-content .sl-link-button.primary{background:var(--button);border:1px solid var(--button);color:var(--surface)}
-.sl-markdown-content .sl-link-button.primary:hover{background:var(--button-hover);color:var(--surface)}
-.sl-markdown-content .sl-link-button.secondary{background:var(--surface);border:1px solid var(--line);color:var(--ink)}
-.pagination-links{border-block-start:1px solid var(--line);padding-block-start:1.5rem}
-.pagination-links a{border:0;border-radius:0;padding-inline:0;box-shadow:none}
-.pagination-links a:hover{background:transparent;text-decoration:underline;text-underline-offset:3px}
-.pagination-links a[rel='next']{text-align:end}
-@media(max-width:640px){.pagination-links a{min-width:0;overflow-wrap:anywhere}}
+@media(min-width:50rem){
+ html{scroll-padding-top:1rem}
+ .page.sl-flex{display:grid;grid-template-columns:20rem minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;max-width:100%;gap:0}
+ header.header{position:static;grid-column:1/-1;height:6rem;padding:1rem var(--pad)!important}
+ html[data-has-sidebar] header.header{padding-inline:var(--pad)!important}
+ header.header .header{display:flex;justify-content:space-between}
+ .sidebar{grid-column:1;position:sticky;top:0;min-width:0;height:100vh}
+ .sidebar-pane{position:static;inset:auto;width:100%;height:100%;border:0;overflow:auto}
+ .sidebar-content{padding:2rem 1rem 2rem 2rem;min-height:100%;height:auto}
+ .main-frame{grid-column:2;padding:0;min-width:0}
+ html:not([data-has-sidebar]) .main-frame{grid-column:1/-1}
+ .main-pane{min-width:0}
+ .content-panel{padding-inline:1rem}
+}
+@media(min-width:72rem){
+ .page.sl-flex{grid-template-columns:20rem minmax(0,1fr)}
+ .main-frame>div{display:grid;grid-template-columns:minmax(0,1fr) 18rem;align-items:start}
+ .main-frame>div:not(:has(.right-sidebar-container)){grid-template-columns:minmax(0,1fr)}
+ .main-frame .main-pane{grid-column:1;grid-row:1;width:100%!important;min-width:0;order:initial}
+ .right-sidebar-container{grid-column:2;grid-row:1;position:sticky;top:0;width:100%;height:100vh;margin:0;order:initial}
+ .right-sidebar{position:static;width:100%;height:100%;padding:2rem 0;overflow-y:auto}
+ .right-sidebar-panel .sl-container{width:100%;max-width:none}
+ .knowledge-inline-toc{display:none}
+}
