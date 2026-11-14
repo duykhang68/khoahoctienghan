@@ -54,3 +54,5 @@ test('engineering resource budget preserves essential triggers and avoids redund
 import './release-recovery.test.mjs';
 
 import './knowledge-visual-validation.test.mjs';
+
+import './studio-document.test.mjs';

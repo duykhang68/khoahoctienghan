@@ -1,0 +1,21 @@
+---
+import StudioNode from './StudioNode.astro';
+import {normalizeDocument} from '../lib/studio-document.mjs';
+const {body}=Astro.props;
+const node=normalizeDocument(body);
+---
+<div class="studio-document"><StudioNode {node}/></div>
+<style is:global>
+ .studio-document{min-width:0;overflow-wrap:anywhere}
+ .studio-document img{display:block;max-width:100%;height:auto;margin:auto;border-radius:8px}
+ .studio-document figure{margin:24px 0}
+ .studio-document figcaption{font-size:.85rem;text-align:center;color:#616161}
+ .studio-document .studio-note{padding:16px 20px;margin:20px 0;border-radius:8px;border-left:4px solid #658cca;background:#eef4fc}
+ .studio-document .studio-note-tip{background:#e5f1e6;border-color:#56835f}
+ .studio-document .studio-note-warning{background:#fbefda;border-color:#bd8a36}
+ .studio-document .studio-table{max-width:100%;overflow:auto}
+ .studio-document table{border-collapse:collapse;width:100%;table-layout:fixed}
+ .studio-document th,.studio-document td{padding:10px;border:1px solid #d9d9d9;overflow-wrap:anywhere}
+ .studio-document th{background:#eff3f8}
+ .studio-document details{border:1px solid #ddd;border-radius:8px;padding:12px 16px;margin:16px 0}
+</style>
