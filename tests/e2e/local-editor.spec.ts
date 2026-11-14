@@ -28,6 +28,13 @@ test('local studio edits rendered documents and retains original structured visu
  await expect(page.locator('#visual-editor [data-visual="bars"] svg')).toBeVisible();
  await expect(page.locator('#visual-editor [data-visual="flow"] svg')).toBeVisible();
  await expect(page.locator('#visual-editor table')).toBeVisible();
+ await page.locator('.visual-editable-block').first().getByRole('button',{name:'Chỉnh sửa minh họa'}).click();
+ const inspector=page.getByRole('dialog');
+ await inspector.getByLabel('Giá trị 1',{exact:true}).fill('15');
+ await expect(inspector.locator('.visual-live')).toContainText('15');
+ await inspector.getByRole('button',{name:'Áp dụng',exact:true}).click();
+ const editedCatalogue=await page.evaluate(path=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}')[path]?.content,visuals);
+ expect(JSON.parse(editedCatalogue)['hangul-basic-letters'].items[0].value).toBe('15');
  await expect(page.locator('#visual-editor')).not.toContainText('import KnowledgeVisual');
  const first=page.locator('#visual-editor p.paper-field[aria-label="Đoạn văn"]').first();
  await expect(first.locator('strong').first()).toHaveText('ký tự');
@@ -45,5 +52,18 @@ test('local studio edits rendered documents and retains original structured visu
  const saved=await page.evaluate(path=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}')[path]?.content,posts);
  const parsed=JSON.parse(saved);expect(parsed[0].title).toBe('Tiêu đề đã sửa');expect(parsed[0].sections[0].visuals).toEqual(sample[0].sections[0].visuals);
  await expect(page.locator('#visual-editor figure.visual-block')).toHaveCount(1);
+ const picker=page.getByLabel('Loại minh họa');
+ for(const kind of ['swatches','buttons','type','spacing','wireframe','table','flow','bars','code']){
+  await picker.selectOption(kind);
+  await page.getByRole('button',{name:'+ Thêm minh họa',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  await dialog.getByLabel('Chú thích',{exact:true}).fill('Minh họa '+kind);
+  await expect(dialog.locator('.visual-live figcaption')).toHaveText('Minh họa '+kind);
+  await dialog.getByRole('button',{name:'Áp dụng',exact:true}).click();
+ }
+ await expect(page.locator('#visual-editor figure.visual-block')).toHaveCount(10);
+ await page.locator('#save').click();
+ const all=await page.evaluate(path=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}')[path]?.content,posts);
+ expect(JSON.parse(all)[0].sections[0].visuals.map((v:{kind:string})=>v.kind)).toEqual(['flow','swatches','buttons','type','spacing','wireframe','table','flow','bars','code']);
  expect(errors).toEqual([]);
 });
