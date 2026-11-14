@@ -3155,5 +3155,762 @@
       "target_date": "",
       "status": "completed"
     }
+  },
+  {
+    "slug": "bugfix-issue-116",
+    "title": "Khi CI xanh nhưng Production vẫn lỗi: Giải phẫu sự cố Google Authentication trên Cloudflare Workers",
+    "summary": "Hồ sơ #116: một tham số fetch không tương thích khiến Google Sign-in trả 403 AUTH_KEYS dù CI xanh. Phân tích JWKS, RS256, runtime fidelity, regression test và exact-SHA deployment. Bản vá đã triển khai và xác minh đường tải khóa; đăng nhập bằng tài khoản Google thật vẫn chờ nghiệm thu.",
+    "date": "2026-11-15T06:39:24+07:00",
+    "issues": [
+      116
+    ],
+    "sections": [
+      {
+        "heading": "01 — Tổng quan sự cố #116",
+        "paragraphs": [
+          "Ngày 15/11/2026 theo giờ Việt Nam, hệ thống Back Office của Tri thức Hàn Quốc gặp sự cố trong quá trình xác thực bằng tài khoản Google. Người quản trị không thể hoàn tất đăng nhập; máy chủ trả HTTP 403 với mã AUTH_KEYS. Điều đáng chú ý là nguyên nhân không nằm ở mật khẩu, quyền truy cập Google hay dấu hiệu token hết hạn đã được xác nhận, mà ở một tham số trong lời gọi fetch(). Đây là lỗi runtime production do người dùng báo cáo, không phải một lần CI thất bại.",
+          "Trạng thái tại thời điểm công bố: PR #117 đã merge sau maintainer review, bản vá đã được triển khai lên Cloudflare Workers và đường tải JWKS/kiểm tra chữ ký đã được xác minh trên production. Issue #116 vẫn mở vì chưa có kết quả đăng nhập bằng tài khoản Google thật được cấp quyền. Bài này phân tích sự cố đang chờ nghiệm thu, không phải báo cáo đóng incident hay tuyên bố toàn bộ Back Office đã production-ready. Thông tin sẽ được cập nhật trên cùng URL khi có bằng chứng mới."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "title": "403 AUTH_KEYS — hồ sơ sự cố",
+            "caption": "Trạng thái theo Issue #116, tại thời điểm biên soạn.",
+            "columns": [
+              "Hạng mục",
+              "Kết quả"
+            ],
+            "rows": [
+              [
+                "Triệu chứng",
+                "HTTP 403 · AUTH_KEYS"
+              ],
+              [
+                "Nguyên nhân",
+                "Runtime không hỗ trợ redirect: error"
+              ],
+              [
+                "PR #117",
+                "Merged"
+              ],
+              [
+                "Cloudflare Worker",
+                "Deployed"
+              ],
+              [
+                "Đường JWKS và chữ ký",
+                "Verified"
+              ],
+              [
+                "Google Sign-in bằng tài khoản thật",
+                "Chờ nghiệm thu; incident OPEN"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Kiến trúc xác thực của Back Office",
+        "paragraphs": [
+          "Khác với Knowledge Base công khai được xây dựng bằng Astro và triển khai trên GitHub Pages, Back Office cần một môi trường thực thi phía máy chủ để xác minh danh tính, kiểm tra quyền quản trị và quản lý phiên đăng nhập. Cloudflare Workers đảm nhiệm vai trò đó. Không nên đặt bí mật OAuth, khóa phiên hay logic cấp quyền chỉ trong JavaScript phía trình duyệt.",
+          "Google Identity Services cung cấp ID Token cho luồng đăng nhập. Token chuyển đến backend, nơi Worker kiểm tra chữ ký, các claims, nonce và quyền quản trị, rồi mới cấp session. Authentication trả lời câu hỏi người dùng là ai; Authorization trả lời người đó được phép làm gì. Có tài khoản Google hợp lệ không đồng nghĩa có quyền truy cập Back Office. Hệ thống còn phải kiểm tra danh sách quản trị viên được phép và từ chối mặc định."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Kiến trúc xác thực Back Office",
+            "caption": "Sơ đồ logic; không biểu thị trao đổi mạng trực tiếp giữa mọi khối.",
+            "items": [
+              {
+                "label": "Trình duyệt",
+                "detail": "Người quản trị khởi tạo đăng nhập."
+              },
+              {
+                "label": "Google Identity Services",
+                "detail": "Cung cấp ID Token."
+              },
+              {
+                "label": "Cloudflare Workers",
+                "detail": "Nhận token và tải khóa xác minh.",
+                "icon": "cloud"
+              },
+              {
+                "label": "Security Gate",
+                "detail": "Signature, claims, nonce và allowlist.",
+                "icon": "shield"
+              },
+              {
+                "label": "Back Office",
+                "detail": "Chỉ cấp phiên quản trị sau khi toàn bộ kiểm tra hợp lệ.",
+                "icon": "check"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "title": "Authentication và Authorization",
+            "caption": "Hai lớp kiểm soát bổ sung cho nhau.",
+            "columns": [
+              "Authentication",
+              "Authorization"
+            ],
+            "rows": [
+              [
+                "Bạn là ai?",
+                "Bạn được phép làm gì?"
+              ],
+              [
+                "ID Token được xác minh",
+                "Allowlist quản trị viên"
+              ],
+              [
+                "Danh tính hợp lệ",
+                "Quyền truy cập được cấp rõ ràng"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — JWKS là gì và tại sao hệ thống cần nó?",
+        "paragraphs": [
+          "JWKS là viết tắt của JSON Web Key Set, tập hợp các khóa công khai được biểu diễn dưới định dạng JSON. Google dùng khóa riêng để ký ID Token; Back Office sử dụng khóa công khai tương ứng để kiểm tra chữ ký. Hệ thống không cần và không được yêu cầu khóa riêng của Google.",
+          "Google công bố jwks_uri thông qua OpenID Connect Discovery: https://www.googleapis.com/oauth2/v3/certs. Các khóa có thể được luân chuyển định kỳ. Worker duy trì cache khóa theo thông tin max-age với giới hạn thời gian trong mã nguồn; khi không tìm thấy kid phù hợp, worker thử tải lại một lần từ URL Google cố định, thay vì tin vào URL khóa do token cung cấp.",
+          "JWT (JSON Web Token) trong luồng này gồm ba phần được phân cách bằng dấu chấm. Header chứa alg và kid; payload có các claims như iss, aud, exp, sub và nonce; signature là bằng chứng mật mã để kiểm tra tính toàn vẹn và nguồn gốc. Việc giải mã payload không đồng nghĩa xác minh token, bởi dữ liệu có thể bị tạo giả nếu chữ ký không được kiểm tra."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Mật mã khóa công khai trong Google Sign-in",
+            "caption": "Minh họa nguyên lý ký và xác minh RS256; không chứa khóa hoặc token thực.",
+            "items": [
+              {
+                "label": "Google · khóa riêng",
+                "detail": "Ký nội dung ID Token."
+              },
+              {
+                "label": "ID Token",
+                "detail": "header.payload.signature"
+              },
+              {
+                "label": "Google JWKS · khóa công khai",
+                "detail": "Worker chọn khóa RSA theo kid."
+              },
+              {
+                "label": "Worker · Web Crypto",
+                "detail": "Import khóa công khai và kiểm tra chữ ký.",
+                "icon": "shield"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "title": "Ba phần của JWT",
+            "caption": "Tên trường minh họa, không phải token thực.",
+            "columns": [
+              "HEADER",
+              "PAYLOAD",
+              "SIGNATURE"
+            ],
+            "rows": [
+              [
+                "alg · kid",
+                "iss · aud · exp · nonce",
+                "Chữ ký RS256"
+              ],
+              [
+                "Thuật toán và mã khóa",
+                "Claims về danh tính và hiệu lực",
+                "Kiểm tra tính toàn vẹn và nguồn gốc"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Giải phẫu nguyên nhân gốc rễ",
+        "paragraphs": [
+          "Tại thời điểm xảy ra sự cố, googleKeys() dùng redirect: 'error' khi gọi endpoint JWKS của Google. Mục tiêu ban đầu hoàn toàn hợp lý: ngăn hệ thống tự động đi theo HTTP redirect khi đang tải khóa xác thực. Tuy nhiên, khác với một số runtime thực hiện Fetch API, Cloudflare Workers không hỗ trợ redirect mode này.",
+          "Runtime ném TypeError trước khi yêu cầu HTTP được gửi. Catch chuyển thành keys unavailable; endpoint /auth/session trả 403 AUTH_KEYS. Phép thử workerd xác nhận trước sửa outbound=0. Đây không phải bằng chứng Google ngừng cung cấp khóa hoặc sự cố mạng: chính request chưa từng rời Worker. Tải lại trang không giải quyết được lỗi cấu hình runtime."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "title": "Lời gọi gây lỗi",
+            "caption": "Trích đoạn rút gọn từ baseline trước PR #117.",
+            "language": "javascript",
+            "code": "const res = await fetch(\n  'https://www.googleapis.com/oauth2/v3/certs',\n  { redirect: 'error' }\n);"
+          },
+          {
+            "kind": "flow",
+            "title": "Chuỗi sự cố trước khi sửa",
+            "caption": "Luồng nguyên nhân theo Issue #116 và tái hiện workerd.",
+            "items": [
+              {
+                "label": "Người dùng đăng nhập",
+                "detail": "ID Token chuyển đến backend."
+              },
+              {
+                "label": "googleKeys()",
+                "detail": "Yêu cầu tải khóa Google."
+              },
+              {
+                "label": "redirect: 'error'",
+                "detail": "Chế độ không được Workers hỗ trợ."
+              },
+              {
+                "label": "TypeError",
+                "detail": "Outbound request = 0."
+              },
+              {
+                "label": "403 AUTH_KEYS",
+                "detail": "Backend từ chối cấp session.",
+                "icon": "shield"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "05 — Tại sao một tham số trong Fetch API lại quan trọng?",
+        "paragraphs": [
+          "Fetch API có nhiều chế độ xử lý chuyển hướng nhưng việc tùy chọn tồn tại trong tiêu chuẩn không có nghĩa mọi môi trường thực hiện giống nhau. Môi trường edge thường có những khác biệt API cụ thể so với trình duyệt hoặc Node.js. Vì vậy phải đọc tài liệu của chính runtime triển khai, không chỉ tài liệu JavaScript chung.",
+          "Tự động follow redirect có thể mở rộng đích đến ngoài mong muốn và Cloudflare cảnh báo header có thể được chuyển tiếp đến đích khác trong chế độ follow. Với luồng xác minh khóa công khai, yêu cầu bảo mật là chỉ tin endpoint Google đã định trước. Không được đổi sang follow chỉ để lỗi biến mất."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "title": "Ba chế độ xử lý redirect",
+            "caption": "Nguồn: Cloudflare Workers Request API.",
+            "columns": [
+              "Mode",
+              "Hành vi",
+              "Workers"
+            ],
+            "rows": [
+              [
+                "follow",
+                "Tự động theo chuyển hướng",
+                "Hỗ trợ"
+              ],
+              [
+                "manual",
+                "Không tự theo; ứng dụng kiểm tra response",
+                "Hỗ trợ"
+              ],
+              [
+                "error",
+                "Từ chối chuyển hướng",
+                "Không hỗ trợ"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "06 — Bản sửa lỗi: một dòng code",
+        "paragraphs": [
+          "PR #117 đổi duy nhất redirect: 'error' thành redirect: 'manual' trong googleKeys(). Điều kiện !res.ok vẫn từ chối mọi response ngoài khoảng 2xx, bao gồm chuyển hướng 3xx. Endpoint cố định, cache khóa và các lớp xác thực khác được bảo toàn. Đây là một minimal fix: giải quyết nguyên nhân trực tiếp mà không mở rộng quyền hoặc thay đổi chức năng không liên quan.",
+          "Đoạn mã dưới đây rút gọn để minh họa chính sách no-follow và kiểm tra schema; triển khai đầy đủ còn có cache, xử lý JSON, bắt lỗi request và refresh khóa theo kid. Không nên thay thế toàn bộ hàm production bằng ví dụ rút gọn."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "title": "Bản vá thực tế",
+            "caption": "Thay đổi hành vi request; các kiểm tra khác giữ nguyên.",
+            "language": "diff",
+            "code": "- redirect: 'error'\n+ redirect: 'manual'"
+          },
+          {
+            "kind": "code",
+            "title": "Minh họa no-follow và fail closed",
+            "caption": "Ví dụ rút gọn, không phải toàn bộ worker.mjs.",
+            "language": "javascript",
+            "code": "async function fetchGoogleKeys() {\n  const res = await fetch(\n    'https://www.googleapis.com/oauth2/v3/certs',\n    { redirect: 'manual' }\n  );\n  if (!res.ok) {\n    throw new Error('keys unavailable');\n  }\n  const body = await res.json();\n  if (!Array.isArray(body.keys)) {\n    throw new Error('invalid keys');\n  }\n  return body.keys;\n}"
+          }
+        ]
+      },
+      {
+        "heading": "07 — Tại sao toàn bộ CI xanh mà Production vẫn gặp lỗi?",
+        "paragraphs": [
+          "Năm bài kiểm thử Back Office trước đó đều thành công, nhưng mock fetch trong Node.js chỉ kiểm tra URL và trả dữ liệu khóa mong muốn. Nó không kiểm tra request options. Vì vậy ngay cả tùy chọn bị Workers từ chối vẫn nhận một response JSON hợp lệ trong môi trường test.",
+          "Khoảng cách giữa hành vi của môi trường kiểm thử và runtime triển khai có thể gọi là runtime fidelity gap. Unit test kiểm tra logic nghiệp vụ hữu ích, nhưng có thể bỏ sót khác biệt về API mạng, Web Crypto, filesystem, compatibility date và các hành vi riêng của nền tảng. CI xanh chỉ chứng minh các kiểm tra được thực thi thành công; không chứng minh mọi tình huống production đã được kiểm tra."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "title": "Mock cũ — ví dụ rút gọn",
+            "caption": "Mock bỏ qua đối số init nên không phát hiện redirect không tương thích.",
+            "language": "javascript",
+            "code": "globalThis.fetch = async url => {\n  return Response.json({ keys: testKeys });\n};"
+          },
+          {
+            "kind": "table",
+            "title": "Cùng mã nguồn, hai môi trường",
+            "caption": "Kết quả được ghi nhận trước PR #117.",
+            "columns": [
+              "Node.js với mock",
+              "Cloudflare Workers"
+            ],
+            "rows": [
+              [
+                "PASS",
+                "FAIL"
+              ],
+              [
+                "Mock trả khóa hợp lệ",
+                "Runtime từ chối redirect mode"
+              ],
+              [
+                "Không kiểm tra init",
+                "Request chưa được gửi ra ngoài"
+              ],
+              [
+                "Bài test xanh",
+                "Người dùng nhận 403 AUTH_KEYS"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "08 — Regression Testing: biến lỗi thành kinh nghiệm",
+        "paragraphs": [
+          "Sau khi xác định nguyên nhân, mock được sửa để kiểm tra cả URL và redirect mode. Nếu một thay đổi sau này đưa redirect: 'error' trở lại, regression test sẽ không còn âm thầm chấp nhận. Session exchange được kiểm tra với RSA fixture có chữ ký hợp lệ; các trường hợp lỗi được kiểm tra trong module cô lập để tránh cache làm sai lệch kết quả.",
+          "PR #117 bổ sung năm nhóm phản hồi bất thường, kiểm tra không có session trong mọi nhánh lỗi, challenge bị xóa và truy cập admin ẩn danh vẫn bị chuyển về login. Trường hợp unknown kid chỉ được gọi lại đúng một lần tới URL Google cố định; các trường hợp lỗi khác chỉ gửi một request. Regression bảo vệ hợp đồng bảo mật chứ không chỉ kiểm tra HTTP status."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "title": "Mock mới — kiểm tra hợp đồng runtime",
+            "caption": "Trích đoạn minh họa từ worker.test.mjs.",
+            "language": "javascript",
+            "code": "globalThis.fetch = async (url, init) => {\n  assert.equal(url, 'https://www.googleapis.com/oauth2/v3/certs');\n  assert.equal(init?.redirect, 'manual');\n  return Response.json({ keys: testKeys });\n};"
+          },
+          {
+            "kind": "table",
+            "title": "Năm nhóm phản hồi JWKS bất thường",
+            "caption": "PR #117: tất cả đều trả 403 AUTH_KEYS, không cấp session.",
+            "columns": [
+              "Kịch bản",
+              "Request",
+              "Kết quả"
+            ],
+            "rows": [
+              [
+                "HTTP 302 Redirect",
+                "1",
+                "Từ chối; không follow"
+              ],
+              [
+                "HTTP 503",
+                "1",
+                "Từ chối"
+              ],
+              [
+                "JSON không hợp lệ",
+                "1",
+                "Từ chối"
+              ],
+              [
+                "keys sai schema",
+                "1",
+                "Từ chối"
+              ],
+              [
+                "Không tìm thấy kid",
+                "2",
+                "Từ chối sau một lần refresh"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "09 — Kiểm thử bằng runtime Cloudflare thực tế",
+        "paragraphs": [
+          "Miniflare và workerd được dùng để tái hiện sự cố trong runtime cục bộ với RSA fixture, thay vì chỉ trông chờ vào mock Node.js. Trước bản sửa, session exchange trả 403 AUTH_KEYS và không có outbound request; sau bản sửa, cùng phép thử trả 200 OK và một request tải khóa. Session fixture truy cập admin được 200, còn truy cập ẩn danh vẫn nhận 303.",
+          "Miniflare 5.20261104.0-beta và workerd dependency 1.20261104.1 được dùng từ cache có sẵn. Binary cục bộ chỉ hỗ trợ compatibility date đến 2026-11-11; production dùng 2026-11-14. Vì vậy đây là chứng cứ bổ sung về hành vi runtime, không phải sự thay thế cho xác minh production. Không thêm dependency hoặc thay lockfile trong PR."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "title": "Outbound request trước và sau bản sửa",
+            "caption": "Một lần chạy probe trong mỗi điều kiện; không phải số liệu lưu lượng production.",
+            "unit": "request",
+            "source": "Issue #116 và engineering lesson; phép thử workerd với RSA fixture ngày 15/11/2026 (GMT+7).",
+            "items": [
+              {
+                "label": "Trước sửa",
+                "value": "0",
+                "color": "#CE5C60"
+              },
+              {
+                "label": "Sau sửa",
+                "value": "1",
+                "color": "#33865C"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "title": "Kết quả workerd probe",
+            "caption": "Các mã và phiên bản được ghi nhận trong hồ sơ sự cố.",
+            "columns": [
+              "Hạng mục",
+              "Trước / Sau"
+            ],
+            "rows": [
+              [
+                "Session exchange trước sửa",
+                "403 AUTH_KEYS"
+              ],
+              [
+                "Session exchange sau sửa",
+                "200 OK · RSA fixture"
+              ],
+              [
+                "Admin với fixture hợp lệ sau sửa",
+                "200"
+              ],
+              [
+                "Admin ẩn danh sau sửa",
+                "303"
+              ],
+              [
+                "Miniflare",
+                "5.20261104.0-beta"
+              ],
+              [
+                "workerd dependency",
+                "1.20261104.1"
+              ],
+              [
+                "Compatibility date local / production",
+                "2026-11-11 / 2026-11-14"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "10 — Bảo mật không được đánh đổi để sửa lỗi",
+        "paragraphs": [
+          "Một hệ thống tự động sửa lỗi dễ mắc sai lầm nếu chỉ tối ưu cho mục tiêu làm CI chuyển từ đỏ sang xanh. PR #117 giữ nguyên RS256, issuer, audience, expiry, nonce, allowlist quản trị và cookie/session. Token phải đúng thuật toán, tìm được khóa RSA tương ứng, có chữ ký hợp lệ, claims phù hợp và thuộc danh tính được phép.",
+          "Đây là nguyên tắc fail closed: lỗi tải khóa, cấu trúc JSON, khóa không tồn tại, chữ ký không hợp lệ hoặc quyền không đủ đều phải dẫn đến từ chối truy cập. Việc dịch lỗi nội bộ sang mã lỗi công khai có thể hạn chế lộ chi tiết nhạy cảm. Không ghi raw credential, session cookie, secret hoặc log thô lên một repository công khai."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "title": "Security gates được giữ nguyên",
+            "caption": "Đối chiếu phạm vi thay đổi thực tế PR #117.",
+            "columns": [
+              "Security gate",
+              "Vai trò",
+              "Trạng thái"
+            ],
+            "rows": [
+              [
+                "RS256 Signature",
+                "Xác minh chữ ký mật mã",
+                "Giữ nguyên"
+              ],
+              [
+                "Issuer & Audience",
+                "Nguồn cấp và ứng dụng đích",
+                "Giữ nguyên"
+              ],
+              [
+                "Expiration / thời gian",
+                "Giới hạn hiệu lực token",
+                "Giữ nguyên"
+              ],
+              [
+                "Nonce",
+                "Liên kết token với challenge",
+                "Giữ nguyên"
+              ],
+              [
+                "Administrator Allowlist",
+                "Chỉ danh tính được cấp quyền",
+                "Giữ nguyên"
+              ],
+              [
+                "Cookie & Session",
+                "Bảo vệ phiên phía máy chủ",
+                "Giữ nguyên"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "11 — Kiểm thử, CI/CD và triển khai",
+        "paragraphs": [
+          "PR #117 trải qua maintainer review và native PR CI thành công trên HEAD 262790a37d24f5640535f77675754b8a9a642b64, job 132610837534, run 43648276618. Hồ sơ ghi nhận 40 engineering tests, 6 Back Office tests và 90 E2E desktop/mobile đều qua, cùng content check, build, static smoke, secret-pattern check và các gate Editor. Tổng 136 là số test của ba nhóm nêu trên, không phải số lượng toàn bộ bước CI.",
+          "Sau squash merge, chính commit d3c215aa663b98b7539a9fcf61ac7341ba74f316 được kiểm thử trên main, run 43648420080. Quality job 132611290219 và release handoff 132611556540 đều success. Main được kiểm tra còn đúng SHA trước upload. Worker mới được triển khai với 100% lưu lượng; module raw được đọc lại và đối chiếu với source ở commit đó, không bundle/rebuild ngoài quy trình. Compatibility date và bindings được giữ nguyên; không thay secret."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "title": "136 test thuộc ba nhóm",
+            "caption": "Kết quả test được ghi nhận trong hồ sơ CI của PR #117; không tính các gate riêng.",
+            "unit": "test",
+            "source": "Issue #116, native PR CI run 43648276618, ngày 15/11/2026 (GMT+7).",
+            "items": [
+              {
+                "label": "Engineering",
+                "value": "40",
+                "color": "#477CC5"
+              },
+              {
+                "label": "Back Office",
+                "value": "6",
+                "color": "#CC8936"
+              },
+              {
+                "label": "Desktop & Mobile E2E",
+                "value": "90",
+                "color": "#4F9F75"
+              }
+            ],
+            "variant": "summary"
+          },
+          {
+            "kind": "flow",
+            "title": "CI → merge → main CI → Worker",
+            "caption": "Quy trình thực tế theo Issue #116 và PR #117.",
+            "items": [
+              {
+                "label": "Native PR CI",
+                "detail": "Exact HEAD và các quality gates thành công.",
+                "icon": "check"
+              },
+              {
+                "label": "Maintainer Review",
+                "detail": "Bản vá xác thực được xem xét."
+              },
+              {
+                "label": "Squash Merge",
+                "detail": "Commit mới trên main.",
+                "icon": "merge"
+              },
+              {
+                "label": "Main CI",
+                "detail": "Build, quality và release handoff thành công.",
+                "icon": "shield"
+              },
+              {
+                "label": "Worker Deployment",
+                "detail": "Đọc lại source và kiểm tra đúng SHA.",
+                "icon": "cloud"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "12 — Timeline xử lý sự cố",
+        "paragraphs": [
+          "Toàn bộ thời điểm bên dưới được chuyển sang giờ Việt Nam (GMT+7) từ dữ liệu Issue, PR và deployment. Timeline cho thấy nhịp độ phản ứng của sự cố; không nên đồng nhất thời điểm tạo issue với thời điểm lỗi lần đầu xuất hiện hay lấy thời gian deploy làm thời điểm khôi phục đầy đủ."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "15/11/2026 · GMT+7",
+            "caption": "Nguồn: Issue #116, PR #117 và bằng chứng Worker deployment.",
+            "items": [
+              {
+                "label": "05:26:32 · Phát hiện",
+                "detail": "Tạo incident #116."
+              },
+              {
+                "label": "05:28:28 · Pull Request",
+                "detail": "Tạo PR #117, sửa redirect và thêm regression.",
+                "icon": "pull"
+              },
+              {
+                "label": "05:30:11 · Merge",
+                "detail": "Bản vá được tích hợp vào main.",
+                "icon": "merge"
+              },
+              {
+                "label": "05:32:08 · Deploy",
+                "detail": "Worker mới nhận 100% lưu lượng.",
+                "icon": "cloud"
+              },
+              {
+                "label": "05:33:00 · Production evidence",
+                "detail": "Ghi nhận kiểm tra đường JWKS; chờ login Google thật.",
+                "icon": "check"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "13 — Điều thú vị: HTTP 403 sau bản sửa vẫn là kết quả tốt",
+        "paragraphs": [
+          "Trong xác minh production, phép thử sử dụng kid công khai của Google và token thử nghiệm có chữ ký cố ý không hợp lệ. Trước deploy hệ thống trả 403 AUTH_KEYS; sau deploy trả 403 AUTH_SIGNATURE và không cấp session. Cùng một HTTP status nhưng ý nghĩa khác nhau: ở lần thứ hai, fetch JWKS và import khóa đã qua, đường kiểm tra chữ ký nhận ra chữ ký sai.",
+          "Đây là bằng chứng có phạm vi cụ thể, không phải nghiệm thu đăng nhập bằng tài khoản thật. Các kiểm tra bổ sung ghi nhận GET /auth/login trả 200, anonymous /admin/ trả 303 về login, anonymous /api/private trả 403, POST khác Origin trả 403 và logout trả 303 đồng thời xóa cookie. Không sử dụng Google ID Token thật trong phép thử và không lưu credential/cookie.",
+          "Kỹ thuật negative testing này hữu ích hơn việc đơn giản tìm một HTTP 200 ở endpoint. Khi đầu vào sai, từ chối là hành vi mong muốn. Phải kiểm tra đúng điểm thất bại và rằng hệ thống vẫn fail closed."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "title": "Cùng 403, khác ý nghĩa",
+            "caption": "Probe production dùng chữ ký giả; chưa kiểm tra login Google thật.",
+            "columns": [
+              "Trước deploy",
+              "Sau deploy"
+            ],
+            "rows": [
+              [
+                "403 AUTH_KEYS",
+                "403 AUTH_SIGNATURE"
+              ],
+              [
+                "Không tải được khóa",
+                "Chữ ký cố ý sai bị từ chối"
+              ],
+              [
+                "Không session",
+                "Không session"
+              ]
+            ]
+          },
+          {
+            "kind": "table",
+            "title": "Kiểm tra các đường dẫn bảo mật",
+            "caption": "Kết quả production được ghi tại Issue #116.",
+            "columns": [
+              "Phép kiểm tra",
+              "Kết quả"
+            ],
+            "rows": [
+              [
+                "GET /auth/login",
+                "200"
+              ],
+              [
+                "Anonymous /admin/",
+                "303 → login"
+              ],
+              [
+                "Anonymous /api/private",
+                "403"
+              ],
+              [
+                "POST khác Origin",
+                "403"
+              ],
+              [
+                "Logout",
+                "303 và xóa session cookie"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "14 — Engineering Knowledge Base: hệ thống học từ chính sai lầm",
+        "paragraphs": [
+          "Kinh nghiệm được ghi lại ở engineering/lessons/back-office-jwks-redirect-mode.md. File lesson ban đầu ghi trạng thái candidate, còn Issue #116 là nguồn trạng thái mới nhất. Mục tiêu không chỉ sửa lỗi đăng nhập mà tạo nguồn tri thức kỹ thuật có thể tái sử dụng. Nội dung bài học phải có nguyên nhân, cách tái hiện, bản sửa tối thiểu, regression, bằng chứng exact SHA và giới hạn xác minh.",
+          "Engineering Researcher có thể đối chiếu các lỗi tương tự; Auto Fixer chỉ nên áp dụng phương pháp đã kiểm chứng trong phạm vi allowlist an toàn. Cùng mã lỗi công khai có thể xuất phát từ nguyên nhân khác nhau, nên không tự động đổi mọi redirect mode hoặc nới lỏng chính sách xác thực. Lỗi chưa biết cần dừng để nghiên cứu. Bài viết này minh họa vòng lặp học hỏi chứ không tuyên bố sự cố #116 đã được đóng."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Vòng lặp cải tiến kỹ thuật liên tục",
+            "caption": "Mô hình đề xuất; gộp xác minh và triển khai vào một bước để phù hợp sơ đồ năm giai đoạn.",
+            "items": [
+              {
+                "label": "Detect",
+                "detail": "Ghi nhận lỗi và dấu hiệu."
+              },
+              {
+                "label": "Research",
+                "detail": "Đọc tài liệu, tái hiện đúng runtime."
+              },
+              {
+                "label": "Fix",
+                "detail": "Bản vá tối thiểu, không hạ bảo mật."
+              },
+              {
+                "label": "Validate & Deploy",
+                "detail": "Regression, CI, exact SHA và production probe."
+              },
+              {
+                "label": "Learn",
+                "detail": "Lưu bài học cùng giới hạn bằng chứng."
+              }
+            ],
+            "variant": "cycle",
+            "centerLabel": [
+              "Học hỏi",
+              "liên tục"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "15 — Bằng chứng kỹ thuật và khả năng truy xuất",
+        "paragraphs": [
+          "Incident: https://github.com/duykhang68/khoahoctienghan/issues/116 — trạng thái và bằng chứng production.",
+          "Bản sửa: https://github.com/duykhang68/khoahoctienghan/pull/117 — diff, review và merge.",
+          "PR CI: https://github.com/duykhang68/khoahoctienghan/actions/runs/43648276618 — job 132610837534.",
+          "Main CI: https://github.com/duykhang68/khoahoctienghan/actions/runs/43648420080 — quality và release handoff.",
+          "Engineering Lesson: https://github.com/duykhang68/khoahoctienghan/blob/d3c215aa663b98b7539a9fcf61ac7341ba74f316/engineering/lessons/back-office-jwks-redirect-mode.md",
+          "Commit được kiểm thử trên PR: 262790a37d24f5640535f77675754b8a9a642b64. Commit được merge, kiểm thử main và triển khai Worker: d3c215aa663b98b7539a9fcf61ac7341ba74f316. Lưu SHA chính xác để phân biệt mã nguồn đã kiểm thử với mã đã triển khai và gắn các phép xác minh với đúng phiên bản. Không cần công khai các giá trị binding, token hay cookie."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "title": "Bằng chứng phát hành — tách riêng ba trạng thái",
+            "caption": "Theo hồ sơ Issue #116; không đồng nhất merged với verified full login.",
+            "columns": [
+              "Trạng thái",
+              "Bằng chứng"
+            ],
+            "rows": [
+              [
+                "Merged",
+                "PR #117 · d3c215aa663b98b7539a9fcf61ac7341ba74f316"
+              ],
+              [
+                "Worker deployed",
+                "Cùng SHA · 100% lưu lượng"
+              ],
+              [
+                "Production verified",
+                "Đường JWKS và từ chối chữ ký giả"
+              ],
+              [
+                "Full sign-in verified",
+                "Chưa có bằng chứng; issue còn mở"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "16 — Kết luận",
+        "paragraphs": [
+          "Issue #116 cho thấy chất lượng phần mềm không thể được đánh giá chỉ bằng số lượng kiểm thử hoặc dấu tích xanh trên GitHub Actions. Một dòng code có thể khiến chức năng đăng nhập không hoạt động; một mock thiếu chính xác có thể che giấu vấn đề trong quá trình kiểm thử. Điều cần thiết là kiểm thử hợp đồng API, thực thi với runtime gần production và xác minh độc lập trên môi trường thực.",
+          "Giá trị lâu dài của việc xử lý sự cố nằm ở khả năng biến lỗi thành kiến thức, kiến thức thành regression test, regression test thành một tầng bảo vệ cho các phiên bản sau. Sửa lỗi là khôi phục chức năng. Engineering là xây dựng khả năng ngăn lỗi đó quay trở lại.",
+          "Ghi chú nghiệm thu: bản vá và đường xử lý khóa đã được xác minh, nhưng chưa có bằng chứng xác nhận đăng nhập Google thật. Khi quản trị viên hoàn tất thử nghiệm, có thể cập nhật chính bài này với bằng chứng mới thay vì tạo bài trùng hoặc đóng issue chỉ vì CI xanh."
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Cloudflare Workers — Request API: https://developers.cloudflare.com/workers/runtime-apis/request/",
+          "Cloudflare — Miniflare: https://developers.cloudflare.com/workers/testing/miniflare/",
+          "Google Identity — Verify Google ID tokens: https://developers.google.com/identity/gsi/web/guides/verify-google-id-token",
+          "Google OpenID Connect Discovery: https://accounts.google.com/.well-known/openid-configuration",
+          "Hồ sơ dự án: Issue #116, PR #117, hai CI runs và engineering lesson được liên kết trong mục bằng chứng."
+        ]
+      }
+    ]
   }
 ]
