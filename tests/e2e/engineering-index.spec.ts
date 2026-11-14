@@ -1,0 +1,34 @@
+import {test,expect} from '@playwright/test';
+test('editorial landing uses latest feature, date-ordered grid and working list toggle',async({page})=>{
+ await page.goto('./techblog/');
+ await expect(page.locator('.engineering-index .index-intro')).toBeVisible();
+ await expect(page.locator('.tech-sidebar')).toHaveCount(0);
+ const cards=page.locator('[data-tech-post]');
+ const dates=await cards.locator('time').evaluateAll(nodes=>nodes.map(n=>Date.parse(n.getAttribute('datetime')||'')));
+ expect(dates.length).toBeGreaterThan(0);
+ expect(dates).toEqual([...dates].sort((a,b)=>b-a));
+ await expect(page.locator('.feature-story h2 a')).toHaveAttribute('href',await cards.first().locator('h3 a').getAttribute('href')||'');
+ await expect(cards.first().locator('.editorial-cover')).toBeVisible();
+ const grid=page.locator('#tech-post-list');
+ await expect(grid).toHaveAttribute('data-layout','grid');
+ await page.getByRole('button',{name:'Dạng danh sách'}).click();
+ await expect(grid).toHaveAttribute('data-layout','list');
+ await expect(page.getByRole('button',{name:'Dạng danh sách'})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Dạng lưới'}).click();
+ await expect(grid).toHaveAttribute('data-layout','grid');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
+ await cards.first().locator('h3 a').click();
+ await expect(page.locator('.engineering-index')).toHaveCount(0);
+ await expect(page.locator('.article-grid .tech-sidebar')).toBeVisible();
+ await expect(page.locator('.article-heading [data-copy-permalink]')).toBeVisible();
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
+});
+test('filtered index hides the unfiltered featured panel and shows correct result count',async({page})=>{
+ await page.goto('./techblog/?q=zz-no-such-post-xyz');
+ await expect(page.locator('#latest-feature')).toBeHidden();
+ await expect(page.locator('#article-count')).toHaveText('0');
+ await expect(page.locator('#no-results')).toBeVisible();
+ await expect(page.locator('#clear-filters')).toBeVisible();
+ await page.locator('#clear-filters').click();
+ await expect(page.locator('#latest-feature')).toBeVisible();
+});

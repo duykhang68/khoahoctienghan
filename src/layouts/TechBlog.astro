@@ -1,7 +1,7 @@
 ---
 import '../styles/techblog.css';
 import {categories} from '../lib/techblog';
-const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false}=Astro.props;
+const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false,indexPage=false}=Astro.props;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const canonical=new URL(Astro.url.pathname,Astro.site);
 ---
@@ -20,7 +20,7 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   {cover && <meta property="og:image" content={new URL(cover,Astro.site).toString()}/>}
   <link rel="icon" href={base+'/favicon.svg'}/>
 </head>
-<body>
+<body class:list={[indexPage&&'engineering-index-page']}>
   <a class="skip" href="#content">Bỏ qua điều hướng</a>
   <header class="engineering-header">
     <div class="utility-band"><div class="utility-inner"><span>Tri thức Hàn Quốc</span><nav aria-label="Liên kết hỗ trợ"><a href="https://github.com/duykhang68/khoahoctienghan">GitHub</a><a href="https://github.com/duykhang68/khoahoctienghan/issues">Issues</a></nav></div></div>
