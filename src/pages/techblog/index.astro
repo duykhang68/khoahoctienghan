@@ -6,10 +6,6 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
 <TechBlog title="Tech Blog">
   <div class="tech-shell">
-    <section class="index-heading">
-      <h1>Engineering Blog</h1>
-      <p>Những bài học thực tế về kiến trúc, chất lượng phần mềm và cách chúng tôi xây dựng một kho tri thức đáng tin cậy.</p>
-    </section>
     <div class="editorial-grid">
       <div class="post-feed">
         <div class="filter-line"><h2 id="feed-heading">Bài viết mới nhất</h2><a id="clear-filters" href={base+'/techblog/'} hidden>Xóa bộ lọc</a></div>
@@ -17,16 +13,24 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
           const cover=coverURL(post.cover,base);
           const href=base+'/techblog/'+post.slug+'/';
           const category=inferCategory(post);
-          return <article class:list={['feed-post',index===0&&'featured-post']} data-tech-post data-category={category.id} data-year={yearLabel(post.date)} data-search={[post.title,post.summary,post.author||'',...post.sections.flatMap(s=>[s.heading,...s.paragraphs])].join(' ').toLocaleLowerCase('vi')}>
-            {cover&&<a class="feed-cover" href={href} tabindex="-1" aria-hidden="true"><img src={cover} alt="" width="1200" height="675" loading={index===0?'eager':'lazy'} decoding="async"/></a>}
-            <div class="feed-copy"><div class="post-meta"><a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a><time datetime={post.date}>{dateLabel(post.date)}</time><span>{readingMinutes(post)} phút đọc</span></div>
+          return <article class="feed-post" data-tech-post data-category={category.id} data-year={yearLabel(post.date)} data-search={[post.title,post.summary,post.author||'',...post.sections.flatMap(s=>[s.heading,...s.paragraphs])].join(' ').toLocaleLowerCase('vi')}>
+            <div class="feed-copy">
               <h3><a href={href}>{post.title}</a></h3>
-              <p>{post.summary}</p>
-              {post.author&&<div class="byline">{post.author}</div>}
-              <a class="read-link" href={href}>Đọc bài viết <span aria-hidden="true">→</span></a>
+              <div class="post-meta">
+                {post.author&&<span class="meta-author">Bởi {post.author}</span>}
+                <time datetime={post.date}>{dateLabel(post.date)}</time>
+                <span class="meta-category">trong <a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></span>
+                <span>{readingMinutes(post)} phút đọc</span>
+                <a href={href}>Permalink</a>
+              </div>
+              <div class:list={['feed-excerpt',cover&&'has-cover']}>
+                {cover&&<a class="feed-cover" href={href} tabindex="-1" aria-hidden="true"><img src={cover} alt="" width="1200" height="675" loading={index===0?'eager':'lazy'} decoding="async"/></a>}
+                <p>{post.summary}</p>
+              </div>
+              <a class="read-link" href={href}>Đọc tiếp <span aria-hidden="true">›</span></a>
             </div>
           </article>
-        })}</div> : <section class="empty-state"><span class="empty-label">ENGINEERING NOTES</span><h3>Nhật ký đang được xây dựng</h3><p>Mỗi nhóm năm sự cố kỹ thuật đã xác minh sẽ được xem xét để tổng hợp thành một bài viết. Chưa có bài hồi cứu được phê duyệt.</p><a class="read-link" href="https://github.com/duykhang68/khoahoctienghan/issues">Xem các issue kỹ thuật <span aria-hidden="true">→</span></a></section>}
+        })}</div> : <section class="empty-state"><span class="empty-label">ENGINEERING NOTES</span><h3>Nhật ký đang được xây dựng</h3><p>Mỗi sự cố kỹ thuật đã được sửa và xác minh sẽ được xem xét để viết một bài chia sẻ kinh nghiệm. Chưa có bài hồi cứu được phê duyệt.</p><a class="read-link" href="https://github.com/duykhang68/khoahoctienghan/issues">Xem các issue kỹ thuật <span aria-hidden="true">→</span></a></section>}
         <p id="no-results" class="muted" role="status" hidden>Không có bài viết phù hợp.</p>
       </div>
       <TechSidebar/>

@@ -1,6 +1,6 @@
 ---
 import '../styles/techblog.css';
-const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover}=Astro.props;
+const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false}=Astro.props;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const canonical=new URL(Astro.url.pathname,Astro.site);
 ---
@@ -23,17 +23,25 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   <header class="engineering-header">
     <nav class="engineering-nav" aria-label="Điều hướng Engineering">
       <a class="engineering-brand" href={base+'/techblog/'}>
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>Engineering <small>Tri thức Hàn Quốc</small></span>
+        <span class="site-brand">Tri thức Hàn Quốc</span>
       </a>
       <div class="nav-links">
         <a href={base+'/'}>Kho tri thức</a>
-        <a href={base+'/techblog/'}>Bài viết</a>
+        <a href={base+'/techblog/'} aria-current="true">Engineering Blog</a>
         <a href="https://github.com/duykhang68/khoahoctienghan/issues">Issues</a>
         <a class="nav-search" href={base+'/techblog/#search'} aria-label="Tìm kiếm bài viết"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></a>
       </div>
     </nav>
   </header>
+  <div class="blog-navigation"><div class="blog-nav-inner">
+    <nav class="blog-breadcrumb" aria-label="Đường dẫn">
+      <a href={base+'/'}>Trang chủ</a><span aria-hidden="true">›</span>
+      {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">Engineering Blog</span>}
+      {article&&<><span aria-hidden="true">›</span><span aria-current="page">Bài viết</span></>}
+    </nav>
+    <a class="blog-edition" href={base+'/techblog/#search'}>Tìm kiếm bài viết</a>
+  </div></div>
+  <div class="blog-masthead"><div class="masthead-inner">{article?<a class="blog-name" href={base+'/techblog/'}>Engineering Blog</a>:<h1 class="blog-name">Engineering Blog</h1>}</div></div>
   <main id="content"><slot/></main>
   <footer class="engineering-footer"><div class="footer-inner"><a class="footer-brand" href={base+'/techblog/'}>Engineering</a><p>Ghi lại những điều học được khi xây dựng phần mềm.</p><div class="footer-links"><a href={base+'/'}>Kho tri thức</a><a href="https://github.com/duykhang68/khoahoctienghan">GitHub</a><a href="#content">Về đầu trang ↑</a></div></div></footer>
 </body>
