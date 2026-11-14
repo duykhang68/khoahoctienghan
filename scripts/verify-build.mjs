@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile,access,readdir} from 'node:fs/promises';
-for(const path of ['index.html','ngon-ngu/index.html','ngon-ngu/hangul/index.html','techblog/index.html','pagefind']){
+for(const path of ['index.html','ngon-ngu/index.html','ngon-ngu/hangul/index.html','techblog/index.html','techblog/editorv2/index.html','pagefind']){
  await access('dist/'+path);
 }
 const home=await readFile('dist/index.html','utf8');

@@ -82,7 +82,8 @@ jobs:
           if [[ $(printf '%s' "$marker" | jq -r '.sha' 2>/dev/null || true) == "$sha" ]] &&
              curl -fsS --max-time 10 "$base/" >/dev/null &&
              curl -fsS --max-time 10 "$base/ngon-ngu/hangul/" >/dev/null &&
-             curl -fsS --max-time 10 "$base/techblog/" >/dev/null; then
+             curl -fsS --max-time 10 "$base/techblog/" >/dev/null &&
+             curl -fsS --max-time 10 "$base/techblog/editorv2/" >/dev/null; then
             echo 'ready=false' >> "$GITHUB_OUTPUT"
             echo "ALREADY_VERIFIED $sha" >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -104,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(jq -r .sha dist/release-sha.json)" = "$EXPECTED_SHA"
-          test -f dist/index.html && test -f dist/techblog/index.html
+          test -f dist/index.html && test -f dist/techblog/index.html && test -f dist/techblog/editorv2/index.html
           test -z "$(find dist -type l -print -quit)"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         if: steps.select.outputs.ready == 'true'
@@ -160,6 +161,7 @@ jobs:
               curl -fsS --max-time 15 "$base/" >/dev/null
               curl -fsS --max-time 15 "$base/ngon-ngu/hangul/" >/dev/null
               curl -fsS --max-time 15 "$base/techblog/" >/dev/null
+              curl -fsS --max-time 15 "$base/techblog/editorv2/" >/dev/null
               echo "VERIFIED $EXPECTED_SHA" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
