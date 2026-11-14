@@ -27,3 +27,16 @@ test('owner perf branch receives sync without bypassing sensitive review',()=>{
  assert.ok(!trustedPR({...p,user:{login:'other'}},repo));
  assert.ok(!trustedPR({...p,head:{...p.head,repo:{full_name:'fork/other'}}},repo));
 });
+
+test('owner content branch receives sync without bypassing trust or review',()=>{
+ const repo='duykhang68/khoahoctienghan';
+ const p={user:{login:'duykhang68'},head:{repo:{full_name:repo},ref:'content/engineering-editorial-design-system-1'},draft:false,mergeable:true};
+ assert.ok(trustedPR(p,repo));
+ assert.equal(branchSyncDecision(p,{status:'diverged',ahead_by:1,behind_by:1}),'UPDATE');
+ assert.equal(branchSyncDecision(p,{status:'ahead',ahead_by:1,behind_by:0}),'CURRENT');
+ assert.ok(!trustedPR({...p,draft:true},repo));
+ assert.ok(!trustedPR({...p,user:{login:'other'}},repo));
+ assert.ok(!trustedPR({...p,head:{...p.head,repo:{full_name:'fork/other'}}},repo));
+ assert.ok(!trustedPR({...p,head:{...p.head,ref:'content-other/test'}},repo));
+ assert.ok(sensitiveFile('scripts/engineering-policy.mjs'));
+});
