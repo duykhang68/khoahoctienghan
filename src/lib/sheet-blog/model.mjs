@@ -15,6 +15,7 @@ export function listRows(ab,de,start=2){
 }
 export function rowDraft(selected,row,topics,kind,category){
  const [id,title,body,group,topic]=row||[];
+ if(clean(id)||clean(selected.id))throw Error('Bài đã có Content ID. Không gửi bài trùng.');
  if(!equal(id,selected.id)||clean(title)!==selected.title||clean(group)!==selected.group||clean(topic)!==selected.topic)throw Error('Dòng nguồn đã thay đổi. Tải lại danh sách trước khi gửi.');
  if(!['knowledge','tech'].includes(kind)||kind==='knowledge'&&!topics.some(t=>t.id===category))throw Error('Chọn nơi xuất bản và chuyên mục hợp lệ.');
  const content=String(body??'').replace(/\r\n?/g,'\n');
@@ -33,28 +34,28 @@ export function recommendDestination(row,topics){
  return {kind:'',category:topic?.id||''};
 }
 export function sheetsClient(token,fetcher=fetch){
- const get=async(suffix)=>{
-  const response=await fetcher('https://sheets.googleapis.com/v4/spreadsheets/'+sheetId+suffix,{headers:{Authorization:'Bearer '+token},redirect:'error',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
-  if(response.status===401)throw Error('Phiên Google đã hết hạn. Kết nối lại.');
+ const values=async(range,stage)=>{
+  const response=await fetcher('https://sheets.googleapis.com/v4/spreadsheets/'+sheetId+'/values/'+encodeURIComponent("'VN'!"+range),{headers:{Authorization:'Bearer '+token},redirect:'error',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer'});
+  if(response.status===401)throw Error('Phiên Google đã hết hạn. Ngắt Google và kết nối lại.');
   if(response.status===403)throw Error('Google từ chối truy cập. Kiểm tra quyền tài khoản và Google Sheets API.');
-  if(!response.ok)throw Error('Google Sheets HTTP '+response.status);
-  return response.json();
- };
- const values=range=>get('/values/'+encodeURIComponent(range)+'?valueRenderOption=FORMATTED_VALUE');
- async function list(){
-  checkHeaders((await values('VN!A1:E1')).values?.[0]);
-  const meta=await get('?fields='+encodeURIComponent('sheets(properties(title,gridProperties(rowCount))'));
-  const count=meta.sheets?.find(s=>s.properties?.title==='VN')?.properties?.gridProperties?.rowCount;
-  if(!Number.isInteger(count)||count<1||count>20000)throw Error('Không xác định được phạm vi tab VN hoặc tab vượt giới hạn 20.000 dòng.');
-  const rows=[];
-  for(let start=2;start<=count;start+=1000){
-   const end=Math.min(start+999,count);
-   const params=new URLSearchParams();params.append('ranges','VN!A'+start+':B'+end);params.append('ranges','VN!D'+start+':E'+end);
-   const res=await get('/values:batchGet?'+params);
-   rows.push(...listRows(res.valueRanges?.[0]?.values,res.valueRanges?.[1]?.values,start));
+  if(!response.ok){
+   let reason='';try{const result=await response.json();const code=result?.error?.status;if(typeof code==='string'&&/^[A-Z_]{1,40}$/.test(code))reason=' · '+code}catch{}
+   throw Error('Google Sheets HTTP '+response.status+reason+' · '+stage+'. Kiểm tra tab VN và nhấn Tải lại.');
   }
-  return rows;
+  const result=await response.json();
+  if(result.values!==undefined&&!Array.isArray(result.values))throw Error('Dữ liệu Google Sheet không hợp lệ · '+stage);
+  return result.values||[];
+ };
+ async function list(){
+  // Read only requested columns, without a metadata field mask or batchGet.
+  // Open-ended A1 ranges stop at the last populated row in the values API.
+  checkHeaders((await values('A1:E1','đọc tiêu đề cột'))[0]);
+  const ab=await values('A2:B','đọc danh sách tiêu đề');
+  if(ab.length>19999)throw Error('Tab VN vượt giới hạn 20.000 dòng.');
+  if(!ab.length)return [];
+  const de=await values('D2:E','đọc Group và Topic');
+  return listRows(ab,de,2);
  }
- async function read(row){if(!Number.isInteger(row)||row<2||row>20000)throw Error('Dòng nguồn không hợp lệ.');return (await values('VN!A'+row+':E'+row)).values?.[0]||[]}
+ async function read(row){if(!Number.isInteger(row)||row<2||row>20000)throw Error('Dòng nguồn không hợp lệ.');return (await values('A'+row+':E'+row,'đọc bài đã chọn'))[0]||[]}
  return {list,read};
 }
