@@ -12,6 +12,7 @@ export type TechPost = {
   author?: string;
   cover?: string;
   coverAlt?: string;
+  coverCaption?: string;
   readingMinutes?: number;
 };
 export const posts = (data as TechPost[]).slice().sort((a,b) => Date.parse(b.date) - Date.parse(a.date));

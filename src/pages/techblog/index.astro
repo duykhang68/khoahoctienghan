@@ -1,65 +1,90 @@
 ---
 import TechBlog from '../../layouts/TechBlog.astro';
-import TechSidebar from '../../components/TechSidebar.astro';
-import {posts,dateLabel,yearLabel,readingMinutes,coverURL,inferCategory} from '../../lib/techblog';
+import TechCover from '../../components/TechCover.astro';
+import '../../styles/techblog-index.css';
+import {posts,dateLabel,yearLabel,coverURL,inferCategory,categories,archiveYears} from '../../lib/techblog';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const latest=posts[0];
+const featureCover=latest?coverURL(latest.cover,base):undefined;
+const featureHref=latest?base+'/techblog/'+latest.slug+'/':'';
 ---
-<TechBlog title="Tech Blog">
-  <div class="tech-shell">
-    <div class="editorial-grid">
-      <div class="post-feed">
-        <div class="filter-line"><h2 id="feed-heading">Bài viết mới nhất</h2><a id="clear-filters" href={base+'/techblog/'} hidden>Xóa bộ lọc</a></div>
-        {posts.length ? <div class="feed-list" id="tech-post-list">{posts.map((post,index)=>{
+<TechBlog title="Tech Blog" indexPage={true}>
+  <div class="engineering-index">
+    <div class="index-intro"><p>Chia sẻ cách chúng tôi xây dựng, vận hành và cải tiến các hệ thống phần mềm đáng tin cậy — từ kiến trúc, công cụ phát triển đến kỹ thuật production.</p></div>
+    {latest&&<section class="index-feature" id="latest-feature" aria-label="Bài mới nhất">
+      <a class="feature-visual" href={featureHref} tabindex="-1" aria-hidden="true"><TechCover cover={featureCover} slug={latest.slug} eager={true}/></a>
+      <div class="feature-story">
+        <div class="feature-kicker"><span>Bài mới nhất</span><span class="feature-divider" aria-hidden="true">·</span><time datetime={latest.date}>{dateLabel(latest.date)}</time></div>
+        <h2><a href={featureHref}>{latest.title}</a></h2>
+        <p>{latest.summary}</p>
+        <a class="index-read" href={featureHref}>Đọc bài viết <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>}
+    <section class="index-archive" aria-labelledby="feed-heading">
+      <div class="index-toolbar filter-line">
+        <div class="index-feed-title"><span class="article-count" id="article-count">{posts.length}</span><h2 id="feed-heading">Bài viết mới nhất</h2></div>
+        <div class="index-view-tools"><span class="sort-label">Mới nhất</span><div class="view-switch" role="group" aria-label="Kiểu hiển thị"><button type="button" data-view="grid" aria-label="Dạng lưới" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx=".5"/><rect x="12" y="2" width="6" height="6" rx=".5"/><rect x="2" y="12" width="6" height="6" rx=".5"/><rect x="12" y="12" width="6" height="6" rx=".5"/></svg></button><button type="button" data-view="list" aria-label="Dạng danh sách" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h16M2 10h16M2 16h16"/></svg></button></div></div>
+      </div>
+      <div class="index-filters" id="search">
+        <form class="search-box index-search" method="get" action={base+'/techblog/'}>
+          <label class="sr-only" for="tech-query">Tìm kiếm bài viết</label>
+          <input id="tech-query" name="q" type="search" placeholder="Tìm bài viết..."/>
+          <button class="aws-button search-submit" type="submit" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+        </form>
+        <nav class="index-categories" aria-label="Lọc chuyên mục"><a href={base+'/techblog/'} data-all-categories>Tất cả</a>{categories.map(c=><a data-category-filter={c.id} href={base+'/techblog/?category='+c.id}>{c.label}</a>)}</nav>
+        <form class="index-year-form" method="get" action={base+'/techblog/'}><label class="sr-only" for="archive-year">Năm lưu trữ</label><select id="archive-year" name="year"><option value="">Tất cả năm</option>{archiveYears.map(y=><option value={y}>{y}</option>)}</select><button type="submit" class="index-year-submit">Lọc</button></form>
+        <a id="clear-filters" href={base+'/techblog/'} hidden>Xóa bộ lọc</a>
+      </div>
+      <div class="index-grid feed-list" id="tech-post-list" data-layout="grid">
+        {posts.map(post=>{
           const cover=coverURL(post.cover,base);
           const href=base+'/techblog/'+post.slug+'/';
           const category=inferCategory(post);
-          return <article class="feed-post" data-tech-post data-category={category.id} data-year={yearLabel(post.date)} data-search={[post.title,post.summary,post.author||'',...post.sections.flatMap(s=>[s.heading,...s.paragraphs])].join(' ').toLocaleLowerCase('vi')}>
-            <div class="feed-copy">
+          return <article class="index-card feed-post" data-tech-post data-category={category.id} data-year={yearLabel(post.date)} data-search={[post.title,post.summary,post.author||'',...post.sections.flatMap(s=>[s.heading,...s.paragraphs])].join(' ').toLocaleLowerCase('vi')}>
+            <a class="index-card-visual" href={href} tabindex="-1" aria-hidden="true"><TechCover cover={cover} slug={post.slug}/></a>
+            <div class="index-card-copy">
+              <div class="post-meta"><time datetime={post.date}>{dateLabel(post.date)}</time><a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></div>
               <h3><a href={href}>{post.title}</a></h3>
-              <div class="post-meta">
-                {post.author&&<span class="meta-author">Bởi {post.author}</span>}
-                <time datetime={post.date}>{dateLabel(post.date)}</time>
-                <span class="meta-category">trong <a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></span>
-                <span>{readingMinutes(post)} phút đọc</span>
-                <a href={href}>Permalink</a>
-                <button class="share-link" type="button" data-copy-permalink={href}>Chia sẻ</button>
-                <span class="share-status" role="status" aria-live="polite"></span>
-              </div>
-              <div class:list={['feed-excerpt',cover&&'has-cover']}>
-                {cover&&<a class="feed-cover" href={href} tabindex="-1" aria-hidden="true"><img src={cover} alt="" width="1200" height="675" loading={index===0?'eager':'lazy'} decoding="async"/></a>}
-                <p>{post.summary}</p>
-              </div>
-              <a class="read-link" href={href}>Đọc tiếp <span aria-hidden="true">›</span></a>
             </div>
           </article>
-        })}</div> : <section class="empty-state"><span class="empty-label">ENGINEERING NOTES</span><h3>Nhật ký đang được xây dựng</h3><p>Mỗi sự cố kỹ thuật đã được sửa và xác minh sẽ được xem xét để viết một bài chia sẻ kinh nghiệm. Chưa có bài hồi cứu được phê duyệt.</p><a class="read-link" href="https://github.com/duykhang68/khoahoctienghan/issues">Xem các issue kỹ thuật <span aria-hidden="true">→</span></a></section>}
-        <p id="no-results" class="muted" role="status" hidden>Không có bài viết phù hợp.</p>
+        })}
       </div>
-      <TechSidebar/>
-    </div>
+      {!posts.length&&<p class="muted">Chưa có bài viết được xuất bản.</p>}
+      <p id="no-results" class="muted" role="status" hidden>Không có bài viết phù hợp.</p>
+      <div class="index-more"><button id="show-more" type="button" hidden>Xem thêm <span aria-hidden="true">↓</span></button></div>
+    </section>
   </div>
 </TechBlog>
 <script>
   const params=new URLSearchParams(location.search);
   const query=(params.get('q')||'').trim().toLocaleLowerCase('vi');
-  const year=params.get('year')||'';
-  const category=params.get('category')||'';
+  const year=params.get('year')||'',category=params.get('category')||'';
+  const active=Boolean(query||year||category);
   const input=document.querySelector<HTMLInputElement>('#tech-query');
   if(input)input.value=params.get('q')||'';
-  if(query||year||category){
-    const cards=[...document.querySelectorAll<HTMLElement>('[data-tech-post]')];
-    let count=0;
-    for(const card of cards){
-      const match=(!query||(card.dataset.search||'').includes(query))&&(!year||card.dataset.year===year)&&(!category||card.dataset.category===category);
-      card.hidden=!match;
-      if(match)count++;
-    }
+  const select=document.querySelector<HTMLSelectElement>('#archive-year');
+  if(select)select.value=year;
+  const cards=[...document.querySelectorAll<HTMLElement>('[data-tech-post]')];
+  const matching=cards.filter(card=>(!query||(card.dataset.search||'').includes(query))&&(!year||card.dataset.year===year)&&(!category||card.dataset.category===category));
+  const filterLinks=[...document.querySelectorAll<HTMLElement>('[data-category-filter]')];
+  const activeCategory=filterLinks.find(a=>a.dataset.categoryFilter===category);
+  if(activeCategory)activeCategory.setAttribute('aria-current','true');
+  else if(!category)document.querySelector('[data-all-categories]')?.setAttribute('aria-current','true');
+  if(active){
+    document.getElementById('latest-feature')?.setAttribute('hidden','');
     const heading=document.getElementById('feed-heading');
-    const categoryName=[...document.querySelectorAll<HTMLElement>('[data-category-filter]')].find(a=>a.dataset.categoryFilter===category)?.textContent?.trim();
-    if(heading)heading.textContent=query?'Kết quả tìm kiếm':category?('Chuyên mục: '+(categoryName||'Không có')):('Lưu trữ '+year);
-    const active=[...document.querySelectorAll<HTMLElement>('[data-category-filter]')].find(a=>a.dataset.categoryFilter===category);
-    active?.setAttribute('aria-current','true');
+    if(heading)heading.textContent=query?'Kết quả tìm kiếm':category?'Chuyên mục: '+(activeCategory?.textContent?.trim()||'Không có'):'Lưu trữ '+year;
     document.getElementById('clear-filters')?.removeAttribute('hidden');
-    if(!count)document.getElementById('no-results')?.removeAttribute('hidden');
   }
+  const count=document.getElementById('article-count');
+  if(count)count.textContent=String(matching.length);
+  if(active&&!matching.length)document.getElementById('no-results')?.removeAttribute('hidden');
+  const more=document.querySelector<HTMLButtonElement>('#show-more');
+  const pageSize=12;let limit=pageSize;
+  function render(){const visible=new Set(matching.slice(0,limit));for(const card of cards)card.hidden=!visible.has(card);if(more)more.hidden=matching.length<=limit;}
+  render();
+  more?.addEventListener('click',()=>{const firstNew=matching[limit];limit+=pageSize;render();firstNew?.querySelector('h3 a')?.focus();});
+  const grid=document.getElementById('tech-post-list');
+  const toggles=[...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
+  for(const toggle of toggles)toggle.addEventListener('click',()=>{const mode=toggle.dataset.view;if(!grid||!mode)return;grid.dataset.layout=mode;for(const item of toggles)item.setAttribute('aria-pressed',String(item===toggle));});
 </script>

@@ -1,0 +1,7 @@
+---
+const {cover,slug='',eager=false}=Astro.props as {cover?:string;slug?:string;eager?:boolean};
+const motif=slug.startsWith('bugfix-')?'repair':slug.includes('researcher')?'network':slug.includes('culture')?'pipeline':['pipeline','network','repair'][Array.from(slug).reduce((n,c)=>n+c.charCodeAt(0),0)%3];
+---
+<span class="editorial-cover" data-motif={motif} data-cover-kind={cover?'image':'decorative'}>
+  {cover?<img src={cover} alt="" width="1200" height="675" loading={eager?'eager':'lazy'} decoding="async" fetchpriority={eager?'high':'auto'}/>:<span class="cover-art" aria-hidden="true"><span class="art-grid"></span><span class="art-shape art-one"></span><span class="art-shape art-two"></span><span class="art-shape art-three"></span><span class="art-shape art-four"></span></span>}
+</span>

@@ -27,7 +27,7 @@ const category=inferCategory(post);
           <span class="share-status" role="status" aria-live="polite"></span>
         </div>
       </header>
-      {cover&&<figure class="article-cover"><img src={cover} alt={post.coverAlt||''} width="1200" height="675" fetchpriority="high" decoding="async"/></figure>}
+      {cover&&<figure class="article-cover editorial-figure"><img src={cover} alt={post.coverAlt||''} width="1200" height="675" fetchpriority="high" decoding="async"/>{post.coverCaption&&<figcaption>{post.coverCaption}</figcaption>}</figure>}
         <div class="article-body">
           <p class="article-lead">{post.summary}</p>
           {post.sections.map((section,i)=><section class:list={[isReferenceHeading(section.heading)&&'article-references']} aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{isReferenceHeading(section.heading)?<TechReferences paragraphs={section.paragraphs}/>:section.paragraphs.map(p=><TechParagraph value={p}/>)}</section>)}
