@@ -1,0 +1,22 @@
+name: Security · Back Office production smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: back-office-production-smoke
+  cancel-in-progress: false
+jobs:
+  anonymous-security:
+    if: github.repository == 'duykhang68/khoahoctienghan' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Read-only production route and security smoke
+        run: node scripts/verify-back-office-production.mjs
