@@ -1,14 +1,21 @@
 ---
 import {topics} from '../lib/knowledge-topics';
+import {getCollection} from 'astro:content';
+import {buildKnowledgeFeed} from '../lib/knowledge-feed.mjs';
+import metadata from '../data/studio-metadata.json';
+const articles=buildKnowledgeFeed(await getCollection('docs'),metadata,topics);
+const articleIdsByTopic=new Map(topics.map(topic=>[topic.id,articles.filter(article=>article.topic===topic.id).map(article=>article.slug).sort()]));
 import TechCover from './TechCover.astro';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
 <div class="not-content index-archive" aria-label="Các chuyên mục tri thức">
  <div class="index-grid feed-list" id="tech-post-list" data-layout="grid">
- {topics.map(topic=><article class="index-card feed-post" data-knowledge-topic>
-  <a class="index-card-visual" href={base+'/'+topic.id+'/'} tabindex="-1" aria-hidden="true"><TechCover slug={topic.id}/></a>
+ {topics.map(topic=>{
+ const ids=articleIdsByTopic.get(topic.id)??[];
+ return <article class="index-card feed-post" data-knowledge-topic={topic.id} data-topic-articles={JSON.stringify(ids)}>
+  <a class="index-card-visual topic-count-visual" href={base+'/'+topic.id+'/'} tabindex="-1" aria-hidden="true"><TechCover slug={topic.id}/><span class="topic-count-overlay" data-topic-count-overlay hidden style={`--topic-count-digits:${String(ids.length).length}`}><span>{ids.length}</span></span></a>
   <div class="index-card-copy"><div class="post-meta">Tri thức Hàn Quốc</div><h3><a class="knowledge-card" href={base+'/'+topic.id+'/'}>{topic.title}</a></h3><p class="post-summary">{topic.desc}</p></div>
- </article>)}
+ </article>})}
  </div>
  <nav id="index-pagination" class="index-pagination" aria-label="Phân trang chuyên mục" hidden></nav>
 </div>
@@ -16,6 +23,44 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
  import {pageWindow,pageNumbers} from '../lib/tech-pagination.mjs';
  const cards=[...document.querySelectorAll<HTMLElement>('[data-knowledge-topic]')];
  const params=new URLSearchParams(location.search);
+ // Compare article identities, not counts or editorial timestamps: backdated
+ // publications and simultaneous additions/deletions are detected as well.
+ const snapshot=Object.fromEntries(cards.map(card=>[card.dataset.knowledgeTopic!,JSON.parse(card.dataset.topicArticles||'[]') as string[]]));
+ const storageKey='khoahoctienghan.topic-articles.v1';
+ const visitKey='khoahoctienghan.topic-articles.visit.v1';
+ let updated=new Set<string>();
+ try{
+  const raw=localStorage.getItem(storageKey);
+  const previous:unknown=raw===null?null:JSON.parse(raw);
+  if(previous&&typeof previous==='object'&&!Array.isArray(previous)){
+   for(const [topic,ids] of Object.entries(snapshot)){
+    const before=(previous as Record<string,unknown>)[topic];
+    if(Array.isArray(before)&&before.every(id=>typeof id==='string')&&ids.some(id=>!before.includes(id)))updated.add(topic);
+   }
+  }
+  // Pagination is still the same homepage visit. A reload or a return from
+  // another route starts a fresh comparison, while page 2 retains its indicators.
+  try{
+   const referrer=document.referrer?new URL(document.referrer):null;
+   const navigation=performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming|undefined;
+   if(navigation?.type==='navigate'&&referrer?.origin===location.origin&&referrer.pathname===location.pathname){
+    const visit=JSON.parse(sessionStorage.getItem(visitKey)||'[]');
+    if(Array.isArray(visit))for(const topic of visit)if(typeof topic==='string'&&Object.hasOwn(snapshot,topic))updated.add(topic);
+   }
+   sessionStorage.setItem(visitKey,JSON.stringify([...updated]));
+  }catch{/* Private browsing or unavailable session storage: no persistence of pagination indicators. */}
+  localStorage.setItem(storageKey,JSON.stringify(snapshot));
+ }catch{/* No storage or invalid snapshot: leave all overlays hidden. */}
+ for(const card of cards){
+  const topic=card.dataset.knowledgeTopic!;
+  const overlay=card.querySelector<HTMLElement>('[data-topic-count-overlay]');
+  const heading=card.querySelector<HTMLAnchorElement>('.knowledge-card');
+  const count=snapshot[topic].length;
+  if(updated.has(topic)&&count>0&&overlay){
+   overlay.hidden=false;
+   if(heading)heading.setAttribute('aria-label',heading.textContent?.trim()+', có bài mới, tổng '+count+' bài viết');
+  }
+ }
  const {page,pages,start,end}=pageWindow(cards.length,params.get('page'));
  cards.forEach((card,i)=>card.hidden=i<start||i>=end);
  const pager=document.getElementById('index-pagination');
@@ -24,3 +69,10 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
  function link(n:number,text:string,label:string){const a=document.createElement('a');a.href=href(n);a.textContent=text;a.setAttribute('aria-label',label);if(n===page&&text===String(n))a.setAttribute('aria-current','page');return a;}
  if(pager&&pages>1){if(page>1)pager.append(link(page-1,'‹','Trang trước'));for(const n of pageNumbers(page,pages))pager.append(link(n,String(n),'Trang '+n));if(page<pages)pager.append(link(page+1,'›','Trang sau'));pager.hidden=false;}
 </script>
+
+<style>
+ .topic-count-visual{position:relative;isolation:isolate}
+ .topic-count-overlay[hidden]{display:none!important}
+ .topic-count-overlay{position:absolute;inset:0;z-index:2;display:grid;place-items:center;overflow:hidden;pointer-events:none;container-type:size;background:rgba(15,23,42,.3);color:white}
+ .topic-count-overlay>span{font-family:var(--display,system-ui);font-weight:800;font-size:min(87cqh,calc(145cqw / var(--topic-count-digits)));line-height:1;letter-spacing:-.035em;font-variant-numeric:tabular-nums;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+</style>
