@@ -1,5 +1,6 @@
 import {newBlock,kinds,slugify,metadata,buildDocument,richKinds,inlineRuns,richLines} from './model.mjs';
 import {mountRich,paintRuns} from './rich-browser.mjs';
+import {optimizeMedia,mediaInfo} from './media.mjs';
 import {githubClient} from './github.mjs';
 import {seriesProgress} from './series-progress.mjs';
 import {mountDrawio,downloadDrawio,importDrawio} from './drawio-browser.mjs';
@@ -47,8 +48,9 @@ export function mountEditor(root){
   set('[data-series-days]',p.days===null?'—':p.days<0?Math.abs(p.days)+' ngày trễ':p.days===0?'Hôm nay':p.days+' ngày');
   set('[data-series-deadline]',p.days===null?'Chọn ngày dự kiến kết thúc.':p.days<0?'Đã quá hạn theo lịch GMT+7.':p.days===0?'Hạn kết thúc là hôm nay (GMT+7).':'Hạn '+draft.series.target_date.split('-').reverse().join('/')+' · GMT+7');
  }
- function update(){readFields();renderSeriesProgress();$('[data-category-label]').hidden=draft.kind!=='knowledge';$('[data-auto-category]').hidden=draft.kind!=='tech';$('[data-series]').hidden=!draft.series.enabled;$('[data-route]').textContent=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+(slugify(draft.title)||'ten-bai-viet')+'/';$('[data-publish]').disabled=busy||uploads>0||!client||!$('[data-confirm]').checked||!draft.title.trim();all('[data-workspace]').forEach(b=>b.disabled=busy||uploads>0);$('[data-new]').disabled=busy||uploads>0;syncBlueprintButton();clearTimeout(timer);timer=setTimeout(store,350);}
+ function update(){readFields();renderSeriesProgress();$('[data-category-label]').hidden=draft.kind!=='knowledge';$('[data-auto-category]').hidden=draft.kind!=='tech';$('[data-series]').hidden=!draft.series.enabled;$('[data-route]').textContent=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+(slugify(draft.title)||'ten-bai-viet')+'/';$('[data-publish]').disabled=busy||uploads>0||!client||!$('[data-confirm]').checked||!draft.title.trim();all('[data-workspace]').forEach(b=>b.disabled=busy||uploads>0);$('[data-new]').disabled=busy||uploads>0;$('[data-media-upload]').disabled=busy||uploads>0;syncBlueprintButton();clearTimeout(timer);timer=setTimeout(store,350);}
  function button(label,fn,aria){const b=make('button',label);b.type='button';if(aria)b.setAttribute('aria-label',aria);b.addEventListener('click',fn);return b}
+ function renderMedia(){const tray=$('[data-media-list]');tray.replaceChildren();const blocks=draft.blocks.filter(b=>['image','diagram'].includes(b.kind));let total=0,missing=0;for(const b of blocks){let info;try{info=mediaInfo(b)}catch{info={bytes:0,width:0,height:0,ready:false}}total+=info.bytes;if(!info.ready)missing++;const row=make('div',undefined,'ev2-media-row');if(info.bytes){const img=make('img');img.src=b.src;img.alt=b.alt||'Ảnh chưa có mô tả';img.width=info.width;img.height=info.height;row.append(img)}const body=make('div');body.append(make('strong',b.alt||'Chưa có mô tả'),make('small',info.bytes?info.width+' × '+info.height+' px · '+Math.ceil(info.bytes/1024)+' KiB · WebP':'Chưa có ảnh'));body.append(make('small',info.ready?'Sẵn sàng':'Cần bổ sung ảnh hoặc alt'));row.append(body);tray.append(row)}$('[data-media-summary]').textContent=blocks.length+' ảnh/sơ đồ · '+Math.ceil(total/1024)+' KiB · '+missing+' mục cần hoàn thiện';if(!blocks.length)tray.append(make('p','Chưa có ảnh trong bản nháp này.'));}
  function render(){const area=$('[data-blocks]');area.replaceChildren();
   draft.blocks.forEach((b,i)=>{
    const wrapper=make('section',undefined,'ev2-block');wrapper.dataset.kind=b.kind;
@@ -67,15 +69,15 @@ export function mountEditor(root){
     file.addEventListener('change',async()=>{const selected=file.files?.[0];if(!selected||busy||uploads||drawio.isOpen())return;uploads++;update();try{const xml=await importDrawio(selected);if(draft.blocks.includes(b))drawio.open(b,xml)}catch(e){$('[data-result]').textContent=e.message}finally{uploads--;file.value='';update()}});
     if(b.drawioXml){actions.append(button('Tải file .drawio',()=>{try{downloadDrawio(b.drawioXml)}catch(e){$('[data-result]').textContent=e.message}}))}
     const repo=make('a','Mở repository trong github.dev');repo.href='https://github.dev/duykhang68/khoahoctienghan';repo.target='_blank';repo.rel='noopener noreferrer';actions.append(repo);wrapper.append(actions);
-    for(const [key,label,max] of [['alt','Mô tả sơ đồ (bắt buộc)',500],['caption','Chú thích sơ đồ (tùy chọn)',1000]]){const l=make('label',label),input=make('input');input.value=b[key]||'';input.maxLength=max;input.addEventListener('input',()=>{b[key]=input.value;store()});l.append(input);wrapper.append(l)}
+    for(const [key,label,max] of [['alt','Mô tả sơ đồ (bắt buộc)',500],['caption','Chú thích sơ đồ (tùy chọn)',1000]]){const l=make('label',label),input=make('input');input.value=b[key]||'';input.maxLength=max;input.addEventListener('input',()=>{b[key]=input.value;store();renderMedia()});l.append(input);wrapper.append(l)}
     if(b.src&&/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src)){const image=make('img');image.src=b.src;image.alt=b.alt||'';wrapper.append(image)}
     else wrapper.append(make('p','Chưa có sơ đồ. Vẽ hoặc nhập file, rồi lưu từ draw.io.','ev2-diagram-empty'));
    }
    else if(b.kind==='image'){
     const label=make('label','Chọn ảnh từ thiết bị'),input=make('input');input.type='file';input.accept='image/png,image/jpeg,image/webp,image/gif';label.append(input);wrapper.append(label);
-    const altLabel=make('label','Mô tả ảnh (bắt buộc)'),alt=make('input');alt.value=b.alt||'';alt.maxLength=500;alt.addEventListener('input',()=>{b.alt=alt.value;store()});altLabel.append(alt);wrapper.append(altLabel);
+    const altLabel=make('label','Mô tả ảnh (bắt buộc)'),alt=make('input');alt.value=b.alt||'';alt.maxLength=500;alt.addEventListener('input',()=>{b.alt=alt.value;store();renderMedia()});altLabel.append(alt);wrapper.append(altLabel);
     if(b.src&&/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src)){const image=make('img');image.src=b.src;image.alt=b.alt||'';wrapper.append(image)}
-    input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;uploads++;update();try{if(f.size>30_000_000)throw Error('Ảnh gốc tối đa 30 MB.');const bitmap=await createImageBitmap(f);const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=make('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let src=canvas.toDataURL('image/webp',.82);if(src.length>2_000_030)src=canvas.toDataURL('image/webp',.58);if(!src.startsWith('data:image/webp;')||src.length>2_000_030)throw Error('Không thể tối ưu WebP dưới 1,5 MB.');Object.assign(b,{src,width:canvas.width,height:canvas.height});render();store();if(mode==='preview')showPreview()}catch(e){$('[data-result]').textContent=e.message}finally{uploads--;update()}});
+    input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f||busy||uploads>0)return;uploads++;update();try{const image=await optimizeMedia(f);if(!draft.blocks.includes(b))return;Object.assign(b,image);render();store();if(mode==='preview')showPreview()}catch(e){$('[data-result]').textContent=e.message}finally{input.value='';uploads--;update()}});
    }else if(b.kind==='table'){
     const table=make('div',undefined,'ev2-table');
     b.rows.forEach((row,ri)=>{const tr=make('div',undefined,'ev2-table-row');tr.style.gridTemplateColumns='repeat('+row.length+',minmax(0,1fr))';row.forEach((cell,ci)=>{const input=make('input');input.value=cell;input.maxLength=2000;input.setAttribute('aria-label','Ô bảng '+(ri+1)+', '+(ci+1));input.addEventListener('input',()=>{b.rows[ri][ci]=input.value;store()});tr.append(input)});table.append(tr)});
@@ -92,7 +94,7 @@ export function mountEditor(root){
     }
    }
    area.append(wrapper);
-  });
+  });renderMedia();
  }
  function showPreview(){
   $('[data-preview-title]').textContent=draft.title||'Bài viết chưa có tiêu đề';$('[data-preview-summary]').textContent=draft.summary;
@@ -147,6 +149,7 @@ export function mountEditor(root){
  $('[data-outline]').addEventListener('click',()=>{if(busy||uploads||draft.blocks.length+workspace[active].sections.length*2>250)return;for(const title of workspace[active].sections){draft.blocks.push({...newBlock('heading'),text:title},newBlock('paragraph'))}setMode('write');render();store()});
  function setMode(next){mode=next;$('[data-write]').hidden=next!=='write';$('[data-preview]').hidden=next!=='preview';all('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));if(next==='preview')showPreview()}
  all('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+ $('[data-media-upload]').addEventListener('change',async event=>{const input=event.currentTarget,files=[...input.files];if(!files.length||busy||uploads)return;if(files.length>10||draft.blocks.length+files.length>250){$('[data-result]').textContent='Tối đa 10 ảnh mỗi lượt và 250 khối mỗi bài.';input.value='';return;}uploads++;update();let added=0,failed=0;try{for(const file of files){try{const value=await optimizeMedia(file);draft.blocks.push({...newBlock('image'),...value});added++;}catch{failed++;}}setMode('write');render();const saved=store();$('[data-result]').textContent='Đã thêm '+added+' ảnh WebP; '+failed+' ảnh không hợp lệ. Bổ sung alt trước khi gửi.'+(saved?'':' Lưu bản sao ngay nếu bộ nhớ đầy.');}finally{uploads--;input.value='';update();}});
  all('[data-add]').forEach(b=>b.addEventListener('click',()=>{if(draft.blocks.length>=250)return;draft.blocks.push(newBlock(b.dataset.add));setMode('write');render();store();$('[data-blocks]').lastElementChild?.scrollIntoView({block:'nearest'})}));
  all('[data-field]').forEach(el=>{const changed=()=>{update();if(mode==='preview')showPreview()};el.addEventListener('input',changed);if(el.tagName==='SELECT')el.addEventListener('change',changed)});
  $('[data-confirm]').addEventListener('change',update);

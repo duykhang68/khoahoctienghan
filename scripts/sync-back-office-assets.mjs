@@ -6,7 +6,7 @@ const topics=allTopics.map(({id,title})=>({id,title}));
 const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const template=await read('back-office/sheets.html');
 const html=template.replace('__TOPICS_JSON__',esc(JSON.stringify(topics))).replace('__TOPIC_OPTIONS__',topics.map(t=>'<option value="'+esc(t.id)+'">'+esc(t.title)+'</option>').join(''));
-const paths=["sheet-blog/browser.mjs","sheet-blog/model.mjs","sheet-blog/progress-browser.mjs","sheet-blog/progress.mjs","sheet-blog/source.mjs","editor-v2/github.mjs","editor-v2/model.mjs","editor-v2/drawio-source.mjs"];
+const paths=["sheet-blog/browser.mjs","sheet-blog/model.mjs","sheet-blog/progress-browser.mjs","sheet-blog/progress.mjs","sheet-blog/source.mjs","editor-v2/github.mjs","editor-v2/model.mjs","editor-v2/drawio-source.mjs","editor-v2/media.mjs"];
 const assets={};
 for(const p of paths)assets[p]=await read('src/lib/'+p);
 assets['sheet-blog/entry.mjs']="import {mountSheetBlog} from './browser.mjs';\nmountSheetBlog(document.querySelector('[data-sheet-blog]'));\n";

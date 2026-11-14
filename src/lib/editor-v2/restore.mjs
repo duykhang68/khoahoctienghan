@@ -1,4 +1,5 @@
 import {kinds,newBlock,inlineRuns} from './model.mjs';
+import {validateMedia} from './media.mjs';
 export function mountRestore(root){
  const input=root.querySelector('[data-restore]'),status=root.querySelector('[data-restore-status]');
  const str=(v,max)=>typeof v==='string'&&v.length<=max;
@@ -15,7 +16,7 @@ export function mountRestore(root){
     const n=newBlock(b.kind);n.text=b.text??'';n.marks=Array.isArray(b.marks)?b.marks.filter(m=>['bold','italic','underline','strike'].includes(m)):[];if(b.runs!==undefined){n.runs=inlineRuns({...n,runs:b.runs});n.marks=[];}
     for(const [k,max] of [['guide',50000],['tone',40],['language',100],['alt',500],['caption',500],['drawioXml',300000]])if(b[k]!==undefined){if(!str(b[k],max))throw Error('Thuộc tính khối không hợp lệ.');n[k]=b[k];}
     if(b.kind==='table'){if(!Array.isArray(b.rows)||b.rows.length<2||b.rows.length>20||!Array.isArray(b.rows[0])||b.rows[0].length<2||b.rows[0].length>8||!b.rows.every(r=>Array.isArray(r)&&r.length===b.rows[0].length&&r.every(v=>str(v,2000))))throw Error('Bảng không hợp lệ.');n.rows=b.rows;}
-    if(['image','diagram'].includes(b.kind)&&b.src){if(!str(b.src,2000030)||!/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(b.src)||![b.width,b.height].every(v=>Number.isInteger(v)&&v>0&&v<=1600))throw Error('Ảnh không hợp lệ.');n.src=b.src;n.width=b.width;n.height=b.height;}
+    if(['image','diagram'].includes(b.kind)&&b.src){validateMedia(b,{requireAlt:false});n.src=b.src;n.width=b.width;n.height=b.height;}
     return n;
    });
    const out={kind:d.kind,title:d.title,summary:d.summary??'',category:d.category,labels:d.labels??'',series:{enabled:series.enabled===true,name:String(series.name??'').slice(0,180),part:String(series.part??1).slice(0,4),total_parts:String(series.total_parts??1).slice(0,4),target_date:String(series.target_date??'').slice(0,10)},blocks};
