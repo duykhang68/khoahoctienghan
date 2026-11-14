@@ -39,3 +39,7 @@ for(const path of htmlPaths){
 }
 assert(checked>0,'Expected rendered Tech Blog links');
 console.log('Validated '+checked+' rendered Tech Blog links across '+htmlPaths.length+' HTML files');
+
+const oldDashboard=await readFile('dist/engineering-foundation/index.html','utf8');
+assert(oldDashboard.includes('https://korean-backoffice.tamsudev-com.workers.dev/admin/engineering/'),'Legacy engineering route must point to private Back Office');
+assert(!oldDashboard.includes('id="trend"')&&!oldDashboard.includes('api.github.com/repos/'),'Public build contains dashboard implementation');
