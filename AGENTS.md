@@ -3,6 +3,7 @@
 ## Scope and roadmap
 - Work P0–P10 in sequence; do not implement unrelated work. Current P0 is public Korean Knowledge Base. No paid content, payment, student credentials, or LMS backend in public assets.
 - Target main only. One logical change = one PR. Never force push main, bypass tests, or resolve conflicts by blanket ours/theirs. Never invent verification.
+- Tech Blog categories are inferred from post title, summary and body at build time; authors need not enter category. Prefer stable category names and reuse existing subjects. Do not alter the fixed Knowledge Base topic navigation for blog taxonomy changes.
 - Vietnamese content; Light Mode; accessible, responsive; explicit slugs, GMT+7 with seconds for publication dates. Preserve existing content.
 - Read engineering/lessons before making changes. Check installed dependency versions and official migration docs. Reuse regression tests.
 

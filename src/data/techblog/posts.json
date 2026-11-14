@@ -102,5 +102,109 @@
         ]
       }
     ]
+  },
+  {
+    "slug": "engineering-researcher-bo-nao-cua-self-healing-ci-cd",
+    "title": "Engineering Researcher: Bộ não phía sau hệ thống CI/CD tự phục hồi",
+    "summary": "Khi GitHub Actions báo lỗi, hệ thống không nhất thiết phải chờ con người đọc từng dòng log. Engineering Researcher kết hợp cơ chế phát hiện theo sự kiện, phân loại lỗi bằng quy tắc, nghiên cứu với AI, bản vá có kiểm soát và kho kinh nghiệm để biến mỗi sự cố thành tri thức kỹ thuật có thể tái sử dụng.",
+    "date": "2026-11-14T15:06:44+07:00",
+    "issues": [
+      2,
+      3,
+      6
+    ],
+    "sections": [
+      {
+        "heading": "01 — Từ một dấu X đỏ đến một câu hỏi kỹ thuật",
+        "paragraphs": [
+          "Một workflow thất bại chỉ cho chúng ta biết có một bước không đáp ứng điều kiện. Nó chưa nói được nguyên nhân nằm ở mã nguồn, dependency, mạng, quyền truy cập hay môi trường triển khai. Nếu cứ chạy lại mọi lần thất bại, chúng ta tiêu tốn tài nguyên mà không tạo ra thêm tri thức. Nếu sửa từng lỗi theo cảm tính, chúng ta còn có thể tạo ra sự cố mới.",
+          "Engineering Researcher được xây dựng để thay đổi cách dự án Tri thức Hàn Quốc phản ứng với thất bại. Mục tiêu của cơ chế này không phải làm cho tất cả các đèn trên GitHub Actions chuyển xanh, mà là khôi phục chất lượng bằng một chuỗi quyết định có bằng chứng, có giới hạn quyền hạn và có thể kiểm tra lại.",
+          "Biểu tượng bộ não là một cách hình dung. Hệ thống hiện tại gồm hai lớp khác nhau: Engineering Controller chạy mã JavaScript xác định trước trong GitHub Actions, và Researcher định kỳ được giao nhiệm vụ nghiên cứu kỹ thuật với AI. Controller không phải mô hình ngôn ngữ, không tự đào tạo mô hình AI và không có khả năng tự hiểu mọi loại lỗi."
+        ]
+      },
+      {
+        "heading": "02 — Hệ thống thần kinh: phát hiện theo sự kiện",
+        "paragraphs": [
+          "Khi một lượt CI hoặc CD hoàn thành, workflow Engineering · Learn and Reconcile nhận sự kiện workflow_run. Controller lấy thông tin liên quan đến run, kiểm tra repository nguồn và kết luận của workflow. Chỉ những quy trình thuộc phạm vi dự án mới được đưa vào vòng xử lý.",
+          "Cơ chế ưu tiên sự kiện thay cho polling liên tục. Ngoài sự kiện hoàn thành workflow, nhánh PR của chủ repository có các trigger thích hợp và một lượt reconciliation định kỳ mỗi giờ để khôi phục một số công việc bị bỏ lỡ. Researcher định kỳ là lớp nghiên cứu bổ sung; không có nghĩa một mô hình AI được lập tức gọi sau mọi lỗi CI.",
+          "Các lần chạy privileged luôn checkout nhánh main đáng tin cậy, không thực thi trực tiếp mã PR chưa được kiểm duyệt. Đây là ranh giới quan trọng: dữ liệu đầu vào có thể đến từ một lỗi chưa tin cậy, nhưng quyền sửa code và triển khai không được tự động trao cho dữ liệu đó."
+        ]
+      },
+      {
+        "heading": "03 — Đọc log giống đọc chứng cứ",
+        "paragraphs": [
+          "Controller cố lấy log của những job thất bại và metadata các bước thực thi. Run ID, job ID và commit SHA là dấu vết để xác định chính xác phiên bản bị ảnh hưởng. Một đoạn thông báo ngắn có thể giúp phân loại ban đầu, nhưng không thay cho việc đối chiếu dependency, cấu hình và tài liệu chính thức.",
+          "Khi không thể truy cập log, hệ thống phải thừa nhận thiếu bằng chứng. Ví dụ, một job bị chặn bởi environment protection trước khi runner thực thi có thể không có log thông thường. GitHub annotations và kết quả của job là nguồn bổ sung để nghiên cứu nguyên nhân. Không được biến sự vắng mặt của log thành một kết luận chắc chắn.",
+          "Các log có thể chứa thông tin nhạy cảm hoặc chuỗi văn bản không đáng tin cậy. Controller chỉ dùng chúng làm dữ liệu đối chiếu, không chạy câu lệnh được ghi trong log và không sao chép toàn bộ log vào issue công khai."
+        ]
+      },
+      {
+        "heading": "04 — Bộ phân loại: không phải mọi lỗi đều đáng retry",
+        "paragraphs": [
+          "Lớp phân loại hiện có nằm trong scripts/engineering-policy.mjs. Nó nhận thông tin run, job, log và SHA hiện tại của main rồi trả về một trạng thái. Các trạng thái gồm IGNORE, SUPERSEDED, STARLIGHT_SIDEBAR, ENVIRONMENT_BLOCKED, TRANSIENT và UNKNOWN. Những quy tắc này được viết rõ và có regression test.",
+          "TRANSIENT là dấu hiệu của sự cố tạm thời như lỗi kết nối hoặc phân giải DNS, với điều kiện không đồng thời xuất hiện dấu hiệu lỗi cấu hình hay lỗi chương trình mà quy tắc đã nhận biết. Chỉ lỗi tạm thời còn liên quan tới phiên bản hiện tại mới được retry tự động, tối đa ba lần chạy tính cả lượt đầu. Không phải mọi lỗi mạng đều có thể được nhận diện chính xác bằng biểu thức chính quy.",
+          "ENVIRONMENT_BLOCKED yêu cầu nghiên cứu cấu hình hạ tầng thay vì sửa ứng dụng một cách ngẫu nhiên. UNKNOWN là câu trả lời hợp lệ khi hệ thống chưa có đủ bằng chứng. SUPERSEDED mô tả tình huống một bản phát hành cũ không còn phù hợp vì main đã tiến lên, và không nên bị tính như một lỗi phần mềm."
+        ]
+      },
+      {
+        "heading": "05 — Trí nhớ kỹ thuật nằm ở repository, không nằm trong lời hứa của AI",
+        "paragraphs": [
+          "AGENTS.md quy định phạm vi quyền hạn, cách xử lý xung đột, điều kiện merge, giới hạn retry và yêu cầu xác minh. Thư mục engineering/lessons ghi lại nguyên nhân, cách sửa và regression của các vấn đề đã nghiên cứu. GitHub Issues lưu lịch sử sự cố, phiên bản, liên kết tới job và trạng thái xác minh.",
+          "Khi gặp lỗi mới, Researcher được yêu cầu đọc trước những tài liệu này. Nếu một vấn đề đã được giải quyết, nó cần kiểm tra kinh nghiệm hiện có thay vì lặp lại quá trình tìm kiếm từ đầu. Phần tri thức tăng lên bằng những thay đổi có kiểm chứng trong repository, chứ không phải bằng việc huấn luyện lại mô hình sau từng lỗi.",
+          "Controller dùng marker dựa trên run ID để tránh mở issue trùng cho cùng một lượt chạy. Đây là deduplication ở cấp run, chưa phải nhận diện đầy đủ một nguyên nhân xuất hiện trên nhiều run khác nhau. Researcher cần tiếp tục đối chiếu dấu hiệu gốc và các issue liên quan trước khi mở rộng kết luận."
+        ]
+      },
+      {
+        "heading": "06 — Hai cách sửa: phép biến đổi đã biết và nghiên cứu nguyên nhân mới",
+        "paragraphs": [
+          "Nhánh xử lý tự động đầu tiên là một bản vá có phạm vi rất hẹp cho cấu hình sidebar Starlight. Khi gặp đúng hai dấu hiệu lỗi schema, Controller kiểm tra PR thuộc owner, SHA còn hiện hành và phạm vi file. Nó chỉ thay đổi biểu thức cấu hình autogenerate đã được cho phép, không chạy code tùy ý mà log yêu cầu.",
+          "Nhánh xử lý thứ hai dành cho nguyên nhân chưa biết. Researcher cần nghiên cứu tài liệu đúng phiên bản, kiểm tra log thực tế, tìm cách tái hiện và đề xuất bản vá nhỏ nhất. Nếu có quyền và bằng chứng đầy đủ, agent có thể tạo commit sửa lỗi trên nhánh PR hoặc mở PR riêng. Khi thiếu quyền hay chưa đủ chứng cứ, phản hồi đúng là BLOCKED chứ không cố sửa bằng mọi giá.",
+          "Tại thời điểm bài viết, Controller có một fixer cụ thể cho Starlight, không phải một bộ sinh patch đa năng. Researcher có khả năng suy luận và đề xuất qua AI nhưng chạy theo lịch, không bảo đảm phản ứng tức thì hoặc giải quyết thành công mọi lỗi."
+        ]
+      },
+      {
+        "heading": "07 — Bài học từ Starlight và GitHub Pages",
+        "paragraphs": [
+          "Issue #2 là một ví dụ thực tế về lỗi tương thích phiên bản. Starlight từ v0.39 không còn hỗ trợ nhóm sidebar theo cấu trúc label và autogenerate cũ. CI đã chỉ ra vấn đề; bản vá đưa autogenerate vào items của nhóm, giữ collapsed ở cấp nhóm. Commit sửa lỗi 5d305dc75c604e26cbb832cf6b12e07ac19ce216 đã vượt qua CI và issue được đóng với bằng chứng.",
+          "Issue #3 cho thấy kỹ năng quan trọng không kém sửa code là biết khi nào không nên sửa code. GitHub Pages từ chối nhánh main theo quy tắc bảo vệ môi trường. Sau khi chủ repository điều chỉnh danh sách nhánh được triển khai, lượt CD thứ ba của run 43571827715 hoàn thành cả build, deploy và verify. Ở thời điểm đọc issue, hồ sơ vẫn còn mở; không vì kết quả chạy xanh mà tự nhận hồ sơ đã được cập nhật và đóng.",
+          "Issue #6 ghi nhận một release cũ bị từ chối bởi bước Reject stale release. Engineering Culture 2.0 bổ sung phân loại SUPERSEDED cho trường hợp tương ứng. Bản chất của ba ví dụ khác nhau: lỗi tương thích cần sửa code, lỗi protection cần sửa đúng cấu hình có quyền, còn release lỗi thời cần phân loại và điều phối chính xác."
+        ]
+      },
+      {
+        "heading": "08 — Tự phục hồi mà không xóa lịch sử",
+        "paragraphs": [
+          "Nếu commit A làm CI thất bại, Controller hoặc Researcher có thể đưa bản sửa thành commit B trên cùng PR khi được phép. CI phải kiểm tra B và phiên bản tích hợp với nhánh đích, thay vì dùng kết quả xanh của một SHA cũ. Nếu phiên bản cuối đáp ứng required checks và các quy tắc merge, GitHub có thể squash những commit đó thành một commit hoàn chỉnh trên main.",
+          "Không cần force push để xóa A. A là một phần của lịch sử nghiên cứu và B thể hiện cách vấn đề được khắc phục. Squash Merge giúp lịch sử main gọn mà vẫn giữ bằng chứng trong PR. Các thay đổi nhạy cảm về workflow, dependency, policy và quyền truy cập không thuộc nhóm được Controller tự merge.",
+          "Nếu xảy ra xung đột ngữ nghĩa, Researcher cần bảo toàn ý định của cả hai thay đổi. Không tự chọn toàn bộ ours hoặc theirs, không vô hiệu hóa quality gate và không giả định rằng một lần rerun xanh có thể thay thế việc tìm nguyên nhân khi lỗi tái diễn."
+        ]
+      },
+      {
+        "heading": "09 — Bằng chứng quyết định khi nào một lỗi đã được xử lý",
+        "paragraphs": [
+          "Vòng lặp sửa lỗi gồm phát hiện, phân loại, nghiên cứu, bản vá, regression test, xác minh và ghi nhận. Trạng thái MERGED chưa đồng nghĩa DEPLOYED; DEPLOYED cũng chưa đồng nghĩa VERIFIED. Một bản sửa ứng dụng cần được kiểm thử tại SHA chính xác; nếu sự cố nằm ở production thì cần xác minh thêm bản phát hành thực tế.",
+          "CI đã có kiểm tra nội dung, mẫu secret cơ bản, policy regression, Astro build và Playwright trên desktop/mobile. CD lấy artifact của CI trên main, kiểm tra release marker và nghiệm thu các đường dẫn công khai. Đây là các lớp bằng chứng khác nhau, không phải một dấu tích xanh duy nhất chứng minh mọi thứ đều đúng.",
+          "Điều kiện kết thúc của một incident phải gắn với bằng chứng tương ứng. Với lỗi CI, có thể xác nhận khi bản sửa đúng SHA vượt qua kiểm thử; với lỗi triển khai, cần kiểm tra release-sha.json và URL public. Những tình huống chưa xác minh phải giữ trạng thái rõ ràng."
+        ]
+      },
+      {
+        "heading": "10 — Mỗi năm sự cố, thêm một bài học cho cộng đồng",
+        "paragraphs": [
+          "Controller tìm các issue engineering đã đóng có marker verified-sha, sắp xếp và gom những issue chưa được dùng thành nhóm năm. Mỗi nhóm có marker batch cố định để tránh tạo trùng một đề cương. Nó tạo issue ứng viên cho bài hồi cứu, chứ không tự bịa nội dung hoặc tự xuất bản mọi nhóm năm issue.",
+          "Researcher có thể tiếp tục phân tích nhóm đó để trích xuất những bài học chung, kiểm tra lại tài liệu, và chuẩn bị bài tiếng Việt thông qua PR. Những vấn đề chưa được giải quyết, lỗi trùng lặp không bổ sung bài học và dữ liệu nhạy cảm không nên trở thành nội dung hồi cứu công khai.",
+          "Engineering Blog chính là bề mặt chia sẻ tri thức của hệ thống. Bài giới thiệu này là nội dung biên tập độc lập, không phải một batch đã đủ năm incident. Để đánh giá hệ thống trong tương lai, có thể đặt các chỉ số như số phút từ lỗi tới phân loại, tỷ lệ bản vá đã kiểm thử, sự cố lặp lại, retry không cần thiết và tỷ lệ vấn đề buộc phải chuyển cho con người. Hiện chưa có benchmark đủ lớn để công bố mức cải thiện."
+        ]
+      },
+      {
+        "heading": "Tài liệu và mã nguồn tham khảo",
+        "paragraphs": [
+          "GitHub Actions — workflow_run và lưu ý bảo mật: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run",
+          "GitHub Actions — môi trường triển khai: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments",
+          "Starlight — tài liệu sidebar: https://starlight.astro.build/guides/sidebar/",
+          "Mã nguồn Controller: https://github.com/duykhang68/khoahoctienghan/blob/80bf0e274b13c2ec0a11edf8d37b4d05e5498546/scripts/engineering-controller.mjs",
+          "Mã nguồn phân loại: https://github.com/duykhang68/khoahoctienghan/blob/80bf0e274b13c2ec0a11edf8d37b4d05e5498546/scripts/engineering-policy.mjs",
+          "Bộ quy tắc kỹ thuật: https://github.com/duykhang68/khoahoctienghan/blob/80bf0e274b13c2ec0a11edf8d37b4d05e5498546/AGENTS.md"
+        ]
+      }
+    ]
   }
 ]
