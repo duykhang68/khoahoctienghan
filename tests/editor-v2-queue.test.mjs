@@ -1,0 +1,31 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {marker,queueHead,submissionId,validateSubmission,prepareQueued} from '../scripts/editor-v2-queue-policy.mjs';
+import {newBlock} from '../src/lib/editor-v2/model.mjs';
+import {normalizeDocument} from '../src/lib/studio-document.mjs';
+const sha='a'.repeat(40),id='b'.repeat(64);
+const issue=(number,phase,state='open',login='github-actions[bot]')=>({number,state,user:{login},body:marker+JSON.stringify({id,source:sha,phase})+' -->'});
+test('FIFO uses accepted issue number and never skips failed or prematurely closed head',()=>{
+ assert.equal(queueHead([issue(9,'QUEUED'),issue(8,'MERGED'),issue(7,'VERIFIED','closed')]).number,8);
+ assert.equal(queueHead([issue(9,'QUEUED'),issue(8,'WAITING_CI','closed')]).number,8);
+ assert.equal(queueHead([issue(2,'QUEUED','open','stranger'),issue(9,'QUEUED')]).number,9);
+ assert.equal(submissionId('refs/heads/content/editor-v2-'+id),id);
+ assert.equal(submissionId('refs/heads/main'),null);
+});
+test('immutable draft validation and projections respect native Astro schema',async()=>{
+ const draft={title:'Học tiếng Hàn',summary:'Bài học',kind:'knowledge',category:'ngon-ngu',labels:'TOPIK, Hangul',series:{enabled:true,name:'Tiếng Hàn',part:1,total_parts:2,target_date:''},blocks:[{...newBlock('paragraph'),text:'Nội dung',marks:['bold']}]};
+ const raw=JSON.stringify({version:1,draft}),digest=createHash('sha256').update(raw).digest('hex');
+ assert.deepEqual(await validateSubmission(digest,raw),draft);
+ await assert.rejects(validateSubmission(id,raw),/digest/);
+ const snapshot={paths:['src/content/docs/ngon-ngu/index.md'],posts:[],documents:{},metadata:{},categorySource:'---\ntitle: Ngôn ngữ\ndescription: Bài học\n---\n'};
+ const date='2026-11-14T14:00:00Z';
+ const kb=await prepareQueued(draft,snapshot,date);
+ assert.equal(kb.route,'ngon-ngu/hoc-tieng-han/');
+ const doc=JSON.parse(kb.changes.get('src/data/studio-documents.json').text)['ngon-ngu--hoc-tieng-han'];assert.deepEqual(normalizeDocument(doc),doc);
+ const m=JSON.parse(kb.changes.get('src/data/studio-metadata.json').text)['ngon-ngu--hoc-tieng-han'];
+ assert.deepEqual(m.labels,['TOPIK','Hangul']);assert.equal(m.series.part,1);assert.equal(m.date,'2026-11-14T21:00:00+07:00');
+ const tech=await prepareQueued({...draft,kind:'tech'},snapshot,date);const post=JSON.parse(tech.changes.get('src/data/techblog/posts.json').text)[0];assert.deepEqual(normalizeDocument(post.studioBody),post.studioBody);
+ assert.equal(post.date,m.date);
+ await assert.rejects(prepareQueued({...draft,title:'Editor V2',kind:'tech'},snapshot,date),/URL/);
+});

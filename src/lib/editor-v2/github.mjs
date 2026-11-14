@@ -1,10 +1,11 @@
-import {prepareV2,buildDocument,metadata,slugify} from './model.mjs';
+import {buildDocument,metadata,slugify} from './model.mjs';
 const repo='/repos/duykhang68/khoahoctienghan';
 export function githubClient(token,fetcher=fetch){
- const request=async(path,method='GET',body)=>{
+ const request=async(path,method='GET',body,optional=false)=>{
   if(!path.startsWith('/')||path.startsWith('//'))throw Error('Invalid GitHub path');
   const response=await fetcher('https://api.github.com'+path,{method,redirect:'error',cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+token,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
-  if(!response.ok)throw Error('GitHub HTTP '+response.status+' — kiểm tra quyền token hoặc trạng thái repository.');
+  if(optional&&response.status===404)return null;
+  if(!response.ok)throw Error('GitHub HTTP '+response.status+' — kiểm tra quyền token hoặc repository.');
   return response.json();
  };
  async function verify(){
@@ -14,36 +15,27 @@ export function githubClient(token,fetcher=fetch){
   return user.login;
  }
  async function publish(draft,topicIds,progress=()=>{}){
-  if(draft.kind==='knowledge'&&!topicIds.includes(draft.category))throw Error('Chuyên mục không hợp lệ.');
-  if(!slugify(draft.title))throw Error('Nhập tiêu đề.');
+  const slug=slugify(draft.title);
+  if(!slug||['index','editorv2'].includes(slug)||draft.title.trim().length>180||String(draft.summary||'').length>500)throw Error('Tiêu đề, URL hoặc mô tả không hợp lệ.');
+  if(!['tech','knowledge'].includes(draft.kind)||(draft.kind==='knowledge'&&!topicIds.includes(draft.category)))throw Error('Chuyên mục không hợp lệ.');
   metadata(draft);await buildDocument(draft.blocks);
-  await verify();progress('Đang đọc main…');
-  const sha=(await request(repo+'/git/ref/heads/main')).object.sha;
-  const commit=await request(repo+'/git/commits/'+sha);
-  const tree=await request(repo+'/git/trees/'+commit.tree.sha+'?recursive=1');
-  if(tree.truncated)throw Error('Danh sách file không đầy đủ; chưa ghi.');
-  const paths=tree.tree.filter(f=>f.type==='blob').map(f=>f.path);
-  const content=async path=>{
-   const f=await request(repo+'/contents/'+path+'?ref='+sha);
-   if(f.encoding!=='base64')throw Error('Không đọc được file dữ liệu.');
-   return new TextDecoder().decode(Uint8Array.from(atob(f.content.replace(/\s/g,'')),c=>c.charCodeAt(0)));
-  };
-  const [posts,documents,meta,categorySource]=await Promise.all([content('src/data/techblog/posts.json').then(JSON.parse),content('src/data/studio-documents.json').then(JSON.parse),content('src/data/studio-metadata.json').then(JSON.parse),draft.kind==='knowledge'?content('src/content/docs/'+draft.category+'/index.md'):null]);
-  const prepared=await prepareV2(draft,{paths,posts,documents,metadata:meta,categorySource},topicIds);
-  progress('Đang chuẩn bị commit…');const entries=[];
-  for(const [path,value] of prepared.changes){
-   if(value.binary){const b=await request(repo+'/git/blobs','POST',{content:value.binary,encoding:'base64'});entries.push({path,mode:'100644',type:'blob',sha:b.sha})}
-   else entries.push({path,mode:'100644',type:'blob',content:value.text});
-  }
-  const nextTree=await request(repo+'/git/trees','POST',{base_tree:commit.tree.sha,tree:entries});
-  const next=await request(repo+'/git/commits','POST',{message:'content: add article from Editor V2',tree:nextTree.sha,parents:[sha]});
-  if((await request(repo+'/git/ref/heads/main')).object.sha!==sha)throw Error('Main đã đổi. Thử lại, bản nháp vẫn còn.');
-  const branch='content/editor-v2-'+crypto.randomUUID();
-  await request(repo+'/git/refs','POST',{ref:'refs/heads/'+branch,sha:next.sha});
-  progress('Đang tạo Draft PR…');
-  let pr;try{pr=await request(repo+'/pulls','POST',{title:'content: '+draft.title.trim(),head:branch,base:'main',draft:true,body:'Created by independent Editor V2. Review content and native CI before merge.'})}catch{throw Error('Đã tạo nhánh '+branch+' nhưng chưa xác nhận PR. Kiểm tra GitHub trước khi gửi lại.')}
-  if(pr.draft!==true||!Number.isInteger(pr.number))throw Error('Chưa xác nhận Draft PR; kiểm tra GitHub.');
-  return {number:pr.number,url:'https://github.com/duykhang68/khoahoctienghan/pull/'+pr.number,route:prepared.route,sha:next.sha};
+  const payload=JSON.stringify({version:1,draft});
+  const bytes=new TextEncoder().encode(payload);
+  if(bytes.length>8_000_000)throw Error('Bản gửi tối đa 8 MB. Giảm dung lượng ảnh.');
+  const id=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+  const branch='content/editor-v2-'+id,path='editor-submissions/'+id+'.json';
+  const route=(draft.kind==='tech'?'techblog':draft.category)+'/'+slug+'/';
+  await verify();progress('Đang gửi commit vào hàng đợi…');
+  const result=sha=>({sha,route,id,commitUrl:'https://github.com/duykhang68/khoahoctienghan/commit/'+sha,queueUrl:'https://github.com/duykhang68/khoahoctienghan/issues?q=is%3Aissue+%22Editor+V2%22+in%3Atitle'});
+  const existing=await request(repo+'/git/ref/heads/'+branch,'GET',null,true);
+  if(existing){const previous=await request(repo+'/commits/'+existing.object.sha);if(previous.files?.length!==1||previous.files[0].filename!==path)throw Error('Nhánh gửi không khớp. Kiểm tra GitHub.');return result(existing.object.sha)}
+  const sha=(await request(repo+'/git/ref/heads/main')).object.sha,commit=await request(repo+'/git/commits/'+sha);
+  const blob=await request(repo+'/git/blobs','POST',{content:payload,encoding:'utf-8'});
+  const nextTree=await request(repo+'/git/trees','POST',{base_tree:commit.tree.sha,tree:[{path,mode:'100644',type:'blob',sha:blob.sha}]});
+  const next=await request(repo+'/git/commits','POST',{message:'content(editor-v2): enqueue '+id,tree:nextTree.sha,parents:[sha]});
+  try{await request(repo+'/git/refs','POST',{ref:'refs/heads/'+branch,sha:next.sha})}
+  catch{const after=await request(repo+'/git/ref/heads/'+branch,'GET',null,true);if(!after||after.object.sha!==next.sha)throw Error('Chưa xác nhận nhánh gửi. Giữ nguyên bản nháp và kiểm tra hàng đợi trước khi thử lại.')}
+  return result(next.sha);
  }
  return {verify,publish};
 }

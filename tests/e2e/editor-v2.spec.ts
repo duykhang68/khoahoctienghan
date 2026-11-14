@@ -15,7 +15,7 @@ test('independent online editor composes, previews, saves local draft and gates 
  await page.getByRole('button',{name:'Xem trước',exact:true}).click();
  await expect(page.locator('[data-preview-body]')).toContainText('Nội dung trực quan tiếng Việt');
  await expect(page.locator('[data-preview-body] h2')).toHaveText('Phần tiếp theo');
- await expect(page.getByRole('button',{name:'Gửi bài → Draft PR'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Gửi bài → Hàng đợi FIFO'})).toBeDisabled();
  await expect(page.locator('[data-save-status]')).toContainText('Đã lưu');
  await page.reload();
  await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bản thử Editor V2');

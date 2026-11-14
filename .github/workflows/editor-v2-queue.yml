@@ -1,0 +1,76 @@
+name: Editor V2 · FIFO publication
+on:
+  push:
+    branches: ['content/editor-v2-*']
+  workflow_run:
+    workflows: ['P0 · Knowledge Base CI', 'CD · Public Knowledge Base']
+    types: [completed]
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  enqueue:
+    if: github.repository == 'duykhang68/khoahoctienghan' && github.event_name == 'push' && github.actor == 'duykhang68' && github.event.created && !github.event.deleted
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: editor-v2-enqueue-${{ github.sha }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: node scripts/editor-v2-queue.mjs enqueue
+        env:
+          GH_TOKEN: ${{ github.token }}
+  reconcile:
+    needs: enqueue
+    if: >-
+      always() && github.repository == 'duykhang68/khoahoctienghan' &&
+      ((github.event_name == 'push' && needs.enqueue.result == 'success') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.head_repository.full_name == github.repository) ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    concurrency:
+      group: editor-v2-fifo-reconcile
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Create scoped content automation token
+        id: app
+        if: vars.ENGINEERING_APP_CLIENT_ID != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
+        with:
+          client-id: ${{ vars.ENGINEERING_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ENGINEERING_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - run: node scripts/editor-v2-queue.mjs reconcile
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH_APP_TOKEN: ${{ steps.app.outputs.token }}

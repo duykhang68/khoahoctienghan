@@ -56,3 +56,5 @@ import './release-recovery.test.mjs';
 import './knowledge-visual-validation.test.mjs';
 
 import './studio-document.test.mjs';
+
+import './editor-v2-queue.test.mjs';
