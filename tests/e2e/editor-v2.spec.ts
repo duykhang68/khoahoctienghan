@@ -1,6 +1,7 @@
-import {test,expect} from '@playwright/test';
-test('dual online workspaces preserve distinct drafts, preview and fixed publication destinations',async({page})=>{
- await page.goto('./techblog/editorv2/');
+import {expect} from '@playwright/test';
+import {test} from './private-office-fixture';
+test('dual online workspaces preserve distinct drafts, preview and fixed publication destinations',async({page,office})=>{
+ await page.goto(office+'/admin/editor/');
  const tech=page.getByRole('button',{name:/01 · Tech Blog Editor/}),knowledge=page.getByRole('button',{name:/02 · Knowledge Base Editor/});
  const title=page.getByRole('textbox',{name:'Tiêu đề',exact:true});
  await expect(tech).toHaveAttribute('aria-pressed','true');
@@ -40,9 +41,9 @@ test('dual online workspaces preserve distinct drafts, preview and fixed publica
  await expect(knowledge).toHaveAttribute('aria-pressed','true');await expect(title).toHaveValue('Bản thử bài học');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
-test('legacy V2 draft migrates only to its intended workspace',async({page})=>{
+test('legacy V2 draft migrates only to its intended workspace',async({page,office})=>{
  await page.addInitScript(()=>{const key='khoahoctienghan.editor-v2.draft.v1';if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({title:'Bài cũ',kind:'knowledge',category:'lich-su',blocks:[{id:'old',kind:'paragraph',text:'Bản nháp cũ',marks:[]}]}))});
- await page.goto('./techblog/editorv2/');
+ await page.goto(office+'/admin/editor/');
  await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bài cũ');
  await expect(page.getByLabel('Chuyên mục',{exact:true})).toHaveValue('lich-su');
  await page.getByRole('button',{name:/01 · Tech Blog Editor/}).click();
@@ -51,10 +52,10 @@ test('legacy V2 draft migrates only to its intended workspace',async({page})=>{
  await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bài cũ');
 });
 
-test('Series planner updates live in both workspaces and counts days in GMT+7',async({page})=>{
+test('Series planner updates live in both workspaces and counts days in GMT+7',async({page,office})=>{
  // 23:30 UTC on November 14 is already November 15 in Vietnam.
  await page.clock.setFixedTime(new Date('2026-11-14T23:30:00Z'));
- await page.goto('./techblog/editorv2/');
+ await page.goto(office+'/admin/editor/');
  for(const kind of ['tech','knowledge']){
   await page.locator('[data-workspace="'+kind+'"]').click();
   await expect(page.locator('[data-series-progress]')).toBeHidden();
@@ -85,4 +86,24 @@ test('Series planner updates live in both workspaces and counts days in GMT+7',a
   await page.getByLabel('Bài thuộc Series').uncheck();
   await expect(planner).toBeHidden();
  }
+});
+
+test('public legacy route exports local draft without exposing editor or deleting storage',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('khoahoctienghan.editor-v2.draft.v2.tech',JSON.stringify({kind:'tech',title:'Bản cũ',blocks:[]})));
+ await page.goto('./techblog/editorv2/');
+ await expect(page.getByRole('link',{name:'Mở Back Office'})).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/editor/');
+ await expect(page.locator('[data-editor-v2]')).toHaveCount(0);
+ const waiting=page.waitForEvent('download');await page.getByRole('button',{name:'Tải bản nháp Tech Blog'}).click();const download=await waiting;expect(download.suggestedFilename()).toBe('tech.editor-v2.json');
+ expect(await page.evaluate(()=>localStorage.getItem('khoahoctienghan.editor-v2.draft.v2.tech'))).toContain('Bản cũ');
+});
+test('private office imports a local draft into its correct workspace without publishing',async({page,office})=>{
+ await page.goto(office+'/admin/editor/');
+ await page.getByRole('textbox',{name:'Tiêu đề',exact:true}).fill('Bài kỹ thuật giữ lại');
+ page.on('dialog',d=>d.accept());
+ await page.locator('[data-restore]').setInputFiles({name:'draft.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({kind:'knowledge',title:'Bài phục hồi',summary:'',category:'ngon-ngu',labels:'',blocks:[{kind:'paragraph',text:'Nội dung phục hồi',marks:[]}]}))});
+ await expect(page.locator('[data-restore-status]')).toHaveText('Đã nhập bản nháp.');
+ await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bài phục hồi');
+ await expect(page.locator('[data-publish]')).toBeDisabled();
+ await page.getByRole('button',{name:/01 · Tech Blog Editor/}).click();
+ await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bài kỹ thuật giữ lại');
 });
