@@ -29,7 +29,7 @@ test('long blueprint appends to existing draft, saves guidance locally and respe
  await expect(page.locator('[data-blueprint-headings] li')).toHaveCount(6);
  await insert.click();
  const heading=page.getByRole('textbox',{name:'Tiêu đề H2 2',exact:true}),first=page.getByRole('textbox',{name:'Đoạn văn 1',exact:true});
- await expect(first).toHaveValue('Nội dung đang viết');
+ await expect(first).toHaveText('Nội dung đang viết');
  await expect(heading).toHaveValue('Mục tiêu của tập này');
  await expect(page.locator('.ev2-template-guide').first()).toContainText('Mô tả những gì độc giả sẽ thực hiện được.');
  await page.getByRole('button',{name:'Xem trước',exact:true}).click();
@@ -41,7 +41,7 @@ test('long blueprint appends to existing draft, saves guidance locally and respe
  await select.selectOption('general');await insert.click();
  await expect(page.locator('[data-kind="detailheading"]')).toHaveCount(2);
  await page.getByRole('button',{name:/01 · Tech Blog Editor/}).click();
- await expect(first).toHaveValue('Nội dung đang viết');
+ await expect(first).toHaveText('Nội dung đang viết');
  await expect(heading).toHaveValue('Mục tiêu của tập này');
  await page.reload();
  await expect(heading).toHaveValue('Mục tiêu của tập này');

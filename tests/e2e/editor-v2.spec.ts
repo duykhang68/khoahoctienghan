@@ -33,7 +33,7 @@ test('dual online workspaces preserve distinct drafts, preview and fixed publica
  await expect(page.locator('[data-preview-reading]')).toBeHidden();
  await expect(page.getByRole('button',{name:'Gửi bài → Hàng đợi FIFO'})).toBeDisabled();
  await tech.click();await expect(title).toHaveValue('Bản thử kỹ thuật');
- await expect(page.getByRole('textbox',{name:'Đoạn văn 1'})).toHaveValue('Nội dung kỹ thuật');
+ await expect(page.getByRole('textbox',{name:'Đoạn văn 1'})).toHaveText('Nội dung kỹ thuật');
  await knowledge.click();await expect(title).toHaveValue('Bản thử bài học');
  await expect(page.getByLabel('Tên Series')).toHaveValue('Học tiếng Hàn');
  await expect(page.locator('[data-save-status]')).toContainText('Đã lưu');
