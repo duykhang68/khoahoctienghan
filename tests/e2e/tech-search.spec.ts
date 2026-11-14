@@ -22,6 +22,7 @@ test('sidebar results show actual match evidence and title-only scope excludes i
  await page.locator('#search-scope').selectOption('title');
  await expect(page).toHaveURL(/scope=title/);
  await expect(bugfix).toBeVisible();
+ await expect(page.locator('[data-tech-post]').first().locator('h3 a')).toHaveAttribute('href',/\/bugfix-issue-2\/$/);
  await expect(researcher).toHaveCount(0);
  await expect(culture).toHaveCount(0);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);

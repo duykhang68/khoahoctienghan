@@ -78,9 +78,10 @@ const featureHref=latest?base+'/techblog/'+latest.slug+'/':'';
   if(query){
     ranked.sort((a,b)=>(b.match?.score||0)-(a.match?.score||0));
     const list=document.getElementById('tech-post-list');
+    // Keep ranked results ahead of nonmatches in both visual and DOM order.
+    list?.prepend(...ranked.map(item=>item.card));
     for(const {card,match} of ranked){
       if(!match)continue;
-      list?.append(card);
       const evidence=card.querySelector<HTMLElement>('.search-evidence');
       const label=evidence?.querySelector('.search-evidence-label');
       const snippet=evidence?.querySelector('.search-snippet');
