@@ -11,7 +11,7 @@ test('homepage topic navigation and Hangul article',async({page})=>{
 });
 test('tech blog renders, search filters and article text is justified',async({page})=>{
  await page.goto('./techblog/');
- await expect(page.locator('h1')).toHaveText('Engineering Blog');
+ await expect(page.locator('h1')).toHaveText('BÀI MỚI NHẤT');
  const card=page.locator('[data-tech-post]').first();
  await expect(card).toBeVisible();
  const title=(await card.locator('h3').innerText()).trim();

@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 test('AWS-inspired editorial shell keeps navigation, heading and metadata in reading order',async({page})=>{
  await page.goto('./techblog/');
- await expect(page.locator('.blog-masthead h1')).toHaveText('Engineering Blog');
+ await expect(page.locator('#feed-heading')).toHaveText('BÀI MỚI NHẤT');
  await expect(page.locator('.engineering-header')).toHaveCSS('background-color','rgb(22, 29, 38)');
  const first=page.locator('[data-tech-post]').first();
  await expect(first.locator('h3 a')).toBeVisible();
@@ -15,7 +15,7 @@ test('AWS-inspired editorial shell keeps navigation, heading and metadata in rea
  await expect(page.locator('.blog-breadcrumb a').last()).toHaveText('Engineering Blog');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
  await page.locator('.blog-breadcrumb a').last().click();
- await expect(page.locator('.blog-masthead h1')).toHaveText('Engineering Blog');
+ await expect(page.locator('#feed-heading')).toHaveText('BÀI MỚI NHẤT');
 });
 
 test('Source Sans 3 and IBM Plex Mono are served as self-hosted WOFF2, with Vietnamese glyphs',async({page})=>{
@@ -45,7 +45,7 @@ test('Source Sans 3 and IBM Plex Mono are served as self-hosted WOFF2, with Viet
  const isSourceSans3=(name:string)=>/^sourcesans3(?:vf)?$/i.test(name.replace(/[\s-]/g,''));
  expect(fonts.every(f=>f.isCustomFont&&isSourceSans3(f.familyName)),JSON.stringify(fonts)).toBe(true);
  await page.locator('#viet-font-probe').evaluate(el=>el.remove());
- await expect(page.locator('.blog-name')).toHaveCSS('font-weight','300');
+ await expect(page.locator('#feed-heading')).toHaveCSS('font-weight','700');
  await page.locator('[data-tech-post]').first().locator('h3 a').click();
  await expect(page.locator('.article-heading h1')).toHaveCSS('font-weight','600');
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','400');

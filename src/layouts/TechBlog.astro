@@ -42,7 +42,6 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
     {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">Engineering Blog</span>}
     {article&&<><span class="crumb-divider" aria-hidden="true">›</span><span class="current-crumb" aria-current="page">{title}</span></>}
   </nav></div>
-  {!article&&<div class="blog-masthead"><div class="masthead-inner"><h1 class="blog-name">Engineering Blog</h1></div></div>}
   <main id="content"><slot/></main>
   <footer class="engineering-footer"><div class="footer-inner">
     <section class="footer-intro"><a class="footer-brand" href={base+'/techblog/'}>Engineering Blog</a><p>Ghi lại những điều học được khi xây dựng phần mềm.</p><a class="aws-button footer-cta" href={base+'/'}>Về kho tri thức Hàn Quốc</a></section>
