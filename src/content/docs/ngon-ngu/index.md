@@ -1,0 +1,18 @@
+---
+title: "Ngôn ngữ Hàn Quốc"
+description: "Hangul, ngữ pháp, từ vựng và TOPIK"
+sidebar:
+  order: 0
+---
+
+Bắt đầu với bảng chữ cái, sau đó học cách ghép âm tiết, phát âm và cấu trúc câu.
+
+## Hướng khám phá
+
+Hangul, ngữ pháp, từ vựng và TOPIK. Đây là trang tổng quan của chuyên mục; các bài chuyên sâu sẽ được bổ sung và liên kết tại đây.
+
+- [Hangul và cấu trúc âm tiết](/ngon-ngu/hangul/)
+
+## Nguồn tra cứu
+
+- [Nguồn thông tin chính thức](https://nuri.iksi.or.kr/)

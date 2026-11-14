@@ -1,0 +1,25 @@
+name: P0 · Knowledge Base CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    name: Content and Astro build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npm run build
+      - run: test -f dist/index.html && test -d dist/pagefind
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-base-preview
+          path: dist/
