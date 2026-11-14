@@ -5,6 +5,7 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const latest=posts.filter(p=>p.slug!==currentSlug).slice(0,5);
 ---
 <aside class="tech-sidebar" aria-label="Khám phá Engineering">
+  <section class="sidebar-section about-blog"><h2>Engineering Blog</h2><p>Những bài học thực tế về kiến trúc, chất lượng phần mềm và quá trình xây dựng Tri thức Hàn Quốc.</p><a href="https://github.com/duykhang68/khoahoctienghan">Mã nguồn trên GitHub <span aria-hidden="true">›</span></a></section>
   <section class="sidebar-section" id="search">
     <h2>Tìm kiếm</h2>
     <form class="search-box" method="get" action={base+'/techblog/'}>
