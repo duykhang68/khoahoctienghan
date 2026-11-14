@@ -17,7 +17,7 @@ export function assertPreviewSource(path,content,old){
  // Preview executes only trusted checkout code. Authored Markdown/MDX subset is deliberately strict.
  assert(metadataRest(doc[1])===metadataRest(previous?.[1]||''),'Preview cannot change advanced metadata');
  for(const line of doc[1].split(/\r?\n/).filter(l=>/^(title|description):/.test(l))){
-  const value=line.slice(line.indexOf(':')+1).trim();assert(value&&!/^[>|&*!{[\]]/.test(value),'Unsafe preview metadata');
+  const value=line.slice(line.indexOf(':')+1).trim();assert(value&&!/^[>|&*!{[\]]/.test(value)&&!/[\r\n]/.test(value),'Unsafe preview metadata');
  }
  const depth=path.slice('src/content/docs/'.length).split('/').length;
  const prefix='../'.repeat(depth+1)+'components/';
@@ -32,7 +32,7 @@ export function assertPreviewSource(path,content,old){
 const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json','.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.woff':'font/woff','.woff2':'font/woff2','.ico':'image/x-icon','.wasm':'application/wasm'};
 let active=null,building=false;
 async function stopPreview(){
- if(!active)return;const current=active;active=null;await new Promise(resolve=>current.server.close(resolve));await rm(current.dir,{recursive:true,force:true});
+ if(!active)return;const current=active;active=null;await new Promise(resolve=>{current.server.close(resolve);current.server.closeAllConnections()});await rm(current.dir,{recursive:true,force:true});
 }
 export async function createPreview(root,snapshot,changes,route){
  assert(validPreviewRoute(route),'Invalid preview route');assert(!building,'Preview build already running');building=true;

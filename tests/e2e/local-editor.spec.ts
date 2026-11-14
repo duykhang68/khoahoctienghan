@@ -115,3 +115,39 @@ test('local studio edits rendered documents and retains original structured visu
  await expect(page.locator('.publishing-dashboard')).toBeVisible();
  expect(errors).toEqual([]);
 });
+
+
+import {spawn} from 'node:child_process';
+import {createServer} from 'node:net';
+test('actual Astro draft preview renders placed Knowledge image and existing visual without publishing',async({page},testInfo)=>{
+ test.skip(testInfo.project.name!=='desktop-chromium','one real production renderer build for both projects');
+ test.setTimeout(240000);
+ const probe=createServer();await new Promise<void>((resolve,reject)=>{probe.once('error',reject);probe.listen(0,'127.0.0.1',resolve)});
+ const port=(probe.address() as import('node:net').AddressInfo).port;await new Promise<void>(resolve=>probe.close(()=>resolve()));
+ const child=spawn(process.execPath,['local-editor/server.mjs'],{env:{...process.env,EDITOR_PORT:String(port)},stdio:['ignore','pipe','pipe']});
+ const base='http://127.0.0.1:'+port;
+ try{
+  await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Editor not listening')),10000);child.once('error',error=>{clearTimeout(timer);reject(error)});child.stdout.once('data',()=>{clearTimeout(timer);resolve()})});
+  const session=await (await fetch(base+'/api/session')).json(),snapshot=await (await fetch(base+'/api/local')).json();
+  const indexPath='src/data/editor-images.json';
+  const asset='public/media/editor/0adc064c3fdb59f8495ef65898e7ac5f7e9939b53a1b52205aceb73eae2c96f0.webp';
+  const bytes='UklGRjwAAABXRUJQVlA4IDAAAAAQAgCdASoQAAwAAQAcJaACdLoB+AH4AAPIAP7svY/9g6m3r35MX/00UYUx9aAAAAA=';
+  const id='image-12345678-1234-4234-8234-123456789abc';
+  const old=snapshot.files[docs].content;
+  const article=old.replace("import KnowledgeVisual from '../../../components/KnowledgeVisual.astro';","import KnowledgeImage from '../../../components/KnowledgeImage.astro';\n\nimport KnowledgeVisual from '../../../components/KnowledgeVisual.astro';").replace('## Chữ cái cơ bản','<KnowledgeImage id="'+id+'" />\n\n## Chữ cái cơ bản');
+  expect(article).not.toBe(old);
+  const index=JSON.parse(snapshot.files[indexPath].content),record=index['ngon-ngu/hangul']??{images:[]};
+  record.images.push({id,src:asset.slice(6),width:16,height:12,alt:'Ảnh preview thực tế',caption:'Fixture chỉ tồn tại trong preview'});index['ngon-ngu/hangul']=record;
+  const changes=[{path:docs,before:snapshot.files[docs].hash,content:article},{path:indexPath,before:snapshot.files[indexPath].hash,content:JSON.stringify(index,null,2)+'\n'},{path:asset,before:snapshot.files[asset]?.hash??null,content:bytes}];
+  const response=await fetch(base+'/api/preview',{method:'POST',headers:{Origin:base,'Content-Type':'application/json','X-Editor-Nonce':session.nonce},body:JSON.stringify({base:snapshot.sha,route:'ngon-ngu/hangul/',changes}),signal:AbortSignal.timeout(180000)});
+  const preview=await response.json();expect(response.status,JSON.stringify(preview)).toBe(200);
+  await page.goto(preview.url);
+  const image=page.getByRole('img',{name:'Ảnh preview thực tế'});
+  await expect(image).toBeVisible();await expect(image).toHaveAttribute('width','16');
+  await expect(image).toHaveJSProperty('naturalWidth',16);
+  await expect(page.locator('[data-knowledge-visual="hangul-basic-letters"]')).toBeVisible();
+  const order=await page.evaluate(()=>{const image=document.querySelector('[data-editor-image]'),heading=[...document.querySelectorAll('h2')].find(h=>h.textContent?.includes('Chữ cái cơ bản'));return !!image&&!!heading&&!!(image.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING)});
+  expect(order).toBe(true);
+  const unchanged=await (await fetch(base+'/api/local')).json();expect(unchanged.files[docs].hash).toBe(snapshot.files[docs].hash);
+ }finally{await new Promise<void>(resolve=>{if(child.exitCode!==null||child.signalCode!==null)return resolve();child.once('exit',()=>resolve());child.kill()})}
+});

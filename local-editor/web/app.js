@@ -62,7 +62,7 @@ function renderHistory(){
 }
 function dirtyArticle(){return !!active&&(postIndex>=0?$('editor').value!==JSON.stringify(postList[postIndex],null,2):active.startsWith('src/content/docs/')&&$('editor').value!==(get(active)||''))}
 function flushArticle(){clearTimeout(autoTimer);autoTimer=0;if(dirtyArticle())saveFile()}
-function scheduleAutosave(){clearTimeout(autoTimer);$('autosave-state').textContent='Đang soạn…';autoTimer=setTimeout(()=>{try{flushArticle()}catch(e){$('autosave-state').textContent='Chưa lưu';status(e.message)}},800)}
+function scheduleAutosave(){$('preview-result').replaceChildren();clearTimeout(autoTimer);$('autosave-state').textContent='Đang soạn…';autoTimer=setTimeout(()=>{try{flushArticle()}catch(e){$('autosave-state').textContent='Chưa lưu';status(e.message)}},800)}
 function applyHistory(target){
  try{
   flushArticle();if(conflicts.length||history.base!==snapshot.sha||!Number.isInteger(target)||target<0||target>history.entries.length)return;
@@ -80,7 +80,7 @@ function stageMany(changes){
  const next={...drafts};
  for(const [p,content] of changes){const base=snapshot.files[p];if(content===(base?.content??null))delete next[p];else next[p]={before:Object.hasOwn(next,p)?next[p].before:base?.hash??null,content};}
  try{localStorage.setItem(KEY,JSON.stringify(next))}catch{throw Error('Bộ nhớ nháp local đã đầy. Sync/Pull hoặc bỏ bản nháp không cần thiết trước khi chèn ảnh.')}
- const before=drafts;drafts=next;recordHistory(before,next);renderFiles();state();
+ const before=drafts;drafts=next;if(JSON.stringify(before)!==JSON.stringify(next))$('preview-result').replaceChildren();recordHistory(before,next);renderFiles();state();
 }
 function stage(p,content){stageMany([[p,content]])}
 function state(){
@@ -124,7 +124,7 @@ function select(p){
 function renderPosts(){
  const el=$('post-select');el.replaceChildren();if(!postList.length)el.add(new Option('Chưa có bài viết','-1'));for(let i=0;i<postList.length;i++)el.add(new Option(postList[i].title||postList[i].slug,String(i)));el.value=String(postIndex);
 }
-$('post-select').onchange=()=>{if(!keepCurrent()){$('post-select').value=String(postIndex);return}postIndex=Number($('post-select').value);$('editor').value=postIndex<0?JSON.stringify(postList,null,2):JSON.stringify(postList[postIndex],null,2);renderVisual()};
+$('post-select').onchange=()=>{$('preview-result').replaceChildren();if(!keepCurrent()){$('post-select').value=String(postIndex);return}postIndex=Number($('post-select').value);$('editor').value=postIndex<0?JSON.stringify(postList,null,2):JSON.stringify(postList[postIndex],null,2);renderVisual()};
 function saveFile(){
  if(postIndex>=0){const p=JSON.parse($('editor').value),next=postList.slice();next[postIndex]=p;stage(POSTS,JSON.stringify(next,null,2)+'\n');postList=next;renderPosts();$('editor').value=JSON.stringify(p,null,2);}
  else{if(!active.startsWith('src/content/docs/'))throw Error('Nội dung này chưa hỗ trợ biên tập trực quan.');stage(active,$('editor').value);}
