@@ -11,7 +11,7 @@ Khám phá lịch sử theo từng thời kỳ, phân biệt tư liệu lịch s
 
 Từ các vương quốc cổ đến thời hiện đại. Đây là trang tổng quan của chuyên mục; các bài chuyên sâu sẽ được bổ sung và liên kết tại đây.
 
-- [Triều đại Joseon](/lich-su/joseon/)
+- [Triều đại Joseon](/khoahoctienghan/lich-su/joseon/)
 
 ## Nguồn tra cứu
 

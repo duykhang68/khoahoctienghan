@@ -3,7 +3,8 @@ import starlight from '@astrojs/starlight';
 
 export default defineConfig({
   output: 'static',
-  ...(process.env.SITE_URL ? { site: process.env.SITE_URL } : {}),
+  site: process.env.SITE_URL || 'https://duykhang68.github.io',
+  base: process.env.SITE_BASE || '/khoahoctienghan',
   integrations: [starlight({
     title: 'Tri thức Hàn Quốc',
     description: 'Kho tri thức Hàn Quốc bằng tiếng Việt: ngôn ngữ, lịch sử, văn hóa và đời sống.',
@@ -15,7 +16,8 @@ export default defineConfig({
     },
     tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
     sidebar: [
-      { label: 'Khám phá', link: '/' },
+      { label: 'Tech Blog', link: '/khoahoctienghan/techblog/' },
+      { label: 'Khám phá', link: '/khoahoctienghan/' },
       { label: "Ngôn ngữ Hàn Quốc", collapsed: true, items: [{ autogenerate: { directory: 'ngon-ngu' } }] },
       { label: "Lịch sử Hàn Quốc", collapsed: true, items: [{ autogenerate: { directory: 'lich-su' } }] },
       { label: "Văn hóa và xã hội", collapsed: true, items: [{ autogenerate: { directory: 'van-hoa' } }] },

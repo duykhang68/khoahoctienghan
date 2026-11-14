@@ -63,5 +63,5 @@ const topics = [
 ];
 ---
 <div class="knowledge-grid">
-  {topics.map(topic => <a class="knowledge-card" href={`/${topic.id}/`}><span class="mark" aria-hidden="true">{topic.mark}</span><strong>{topic.title}</strong><small>{topic.desc}</small><span class="more">Khám phá →</span></a>)}
+  {topics.map(topic => <a class="knowledge-card" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${topic.id}/`}><span class="mark" aria-hidden="true">{topic.mark}</span><strong>{topic.title}</strong><small>{topic.desc}</small><span class="more">Khám phá →</span></a>)}
 </div>

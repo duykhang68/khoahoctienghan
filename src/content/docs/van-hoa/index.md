@@ -11,7 +11,7 @@ Tìm hiểu cách chào hỏi, văn hóa gia đình, trang phục và lễ hội
 
 Phong tục, lễ hội và giao tiếp. Đây là trang tổng quan của chuyên mục; các bài chuyên sâu sẽ được bổ sung và liên kết tại đây.
 
-- [Văn hóa chào hỏi](/van-hoa/chao-hoi/)
+- [Văn hóa chào hỏi](/khoahoctienghan/van-hoa/chao-hoi/)
 
 ## Nguồn tra cứu
 

@@ -1,0 +1,32 @@
+name: Engineering · Learn and Reconcile
+on:
+  workflow_run:
+    workflows: ['P0 · Knowledge Base CI','CD · Public Knowledge Base']
+    types: [completed]
+  schedule:
+    - cron: '17,32,47 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+concurrency:
+  group: engineering-reconciliation
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.repository == 'duykhang68/khoahoctienghan' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/engineering-controller.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}

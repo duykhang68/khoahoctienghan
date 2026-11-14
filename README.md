@@ -1,28 +1,11 @@
 # Tri thức Hàn Quốc
 
-P0.01 — nền tảng Knowledge Base công khai (Astro + Starlight). Tên thương hiệu tạm thời.
+Astro + Starlight. P0: public Knowledge Base, 10 topic pages, static search and Engineering Blog. Light mode, Vietnamese. No LMS, auth or payment.
 
-- Starlight cung cấp sidebar, mục lục, tìm kiếm Pagefind và Markdown/MDX.
-- Knowledge Core là nguồn cảm hứng cho trang tổng quan theo chủ đề và tổ chức component; không sao chép mã nguồn.
-- Giao diện sáng, tiếng Việt, có nội dung tiếng Hàn.
-- Không LMS, paywall, tài khoản hay thanh toán ở P0.
+## Development
 
-## Phát triển
+Node 24. `npm install`, `npm run check`, `npm run build`, `npm run dev`. Open /khoahoctienghan/ at the URL printed by Astro. Preview is `npm run preview`.
 
-```sh
-npm install
-npm run dev
-npm run check
-npm run build
-npm run preview
-```
+## Engineering
 
-Node 24. Mở địa chỉ localhost do Astro in ra. Tìm kiếm Pagefind hoạt động trên bản build/preview.
-
-## Xuất bản
-
-Cloudflare Workers static assets: thư mục đầu ra `dist`. Đặt `SITE_URL` thành URL production đầy đủ khi cấu hình hosting để tạo canonical và sitemap. Chưa định danh domain/deploy ở bước này. Không commit secrets.
-
-## Phạm vi và quy tắc
-
-PR vào main; chỉ merge sau CI xanh. Đây là bước P0.01, chưa phải toàn bộ P0. Các việc tiếp theo: khóa dependency bằng package-lock, kiểm thử UI, archive/pagination, metadata ngày giờ và breadcrumb, audit SEO, triển khai Cloudflare và xác minh production. Giai đoạn này chỉ nội dung miễn phí.
+Read [AGENTS.md](AGENTS.md) and [deployment culture](engineering/DEPLOYMENT.md). GitHub Pages for public informational content only. Source must be GitHub Actions. Private commercial features will need separate hosting. This is the bootstrap PR; runtime CI, Pages configuration, package lock and browser QA still need verification.

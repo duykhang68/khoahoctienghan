@@ -18,6 +18,6 @@ Các cung điện, tài liệu triều đình và chữ viết Hangul là nhữn
 
 ## Đọc thêm
 
-- [Hangul và cấu trúc âm tiết](/ngon-ngu/hangul/)
+- [Hangul và cấu trúc âm tiết](/khoahoctienghan/ngon-ngu/hangul/)
 - [Korea.net – thông tin về Hàn Quốc](https://www.korea.net/)
 - [Encyclopedia of Korean Culture](https://encykorea.aks.ac.kr/)

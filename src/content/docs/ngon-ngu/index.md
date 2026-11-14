@@ -11,7 +11,7 @@ Bắt đầu với bảng chữ cái, sau đó học cách ghép âm tiết, ph�
 
 Hangul, ngữ pháp, từ vựng và TOPIK. Đây là trang tổng quan của chuyên mục; các bài chuyên sâu sẽ được bổ sung và liên kết tại đây.
 
-- [Hangul và cấu trúc âm tiết](/ngon-ngu/hangul/)
+- [Hangul và cấu trúc âm tiết](/khoahoctienghan/ngon-ngu/hangul/)
 
 ## Nguồn tra cứu
 

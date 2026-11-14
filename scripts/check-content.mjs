@@ -8,7 +8,7 @@ for(const p of paths){
  const s=await readFile(root+'/'+p,'utf8');
  assert(/^---\n[\s\S]*?\ntitle: .+/m.test(s)||/^---\ntitle: .+/.test(s),p+' missing title');
  assert(/^description: .+/m.test(s),p+' missing description');
- for(const m of s.matchAll(/\]\((\/[^)#\s]*)\)/g)) assert(routes.has(m[1]),p+' broken link '+m[1]);
+ for(const m of s.matchAll(/\]\((\/[^)#\s]*)\)/g)) assert(routes.has(m[1].replace(/^\/khoahoctienghan(?=\/)/, '')),p+' broken link '+m[1]);
 }
 console.log('Validated '+paths.length+' content files');
 

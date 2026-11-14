@@ -1,0 +1,10 @@
+---
+import TechBlog from '../../layouts/TechBlog.astro';
+import posts from '../../data/techblog/posts.json';
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const ordered=[...posts].sort((a:any,b:any)=>Date.parse(b.date)-Date.parse(a.date));
+---
+<TechBlog title="Tech Blog">
+  <p class="eyebrow">ENGINEERING CULTURE</p><h1>Engineering Blog</h1><p class="lead">Những bài học thực tế về kiến trúc, chất lượng phần mềm và cách chúng tôi xây dựng một kho tri thức đáng tin cậy.</p>
+  {ordered.length ? ordered.map((post:any)=><article class="post"><time datetime={post.date}>{new Intl.DateTimeFormat('vi-VN',{dateStyle:'long',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(post.date))}</time><h2><a href={base+'/techblog/'+post.slug+'/'}>{post.title}</a></h2><p>{post.summary}</p><a href={base+'/techblog/'+post.slug+'/'}>Đọc tiếp →</a></article>):<div class="empty"><h2>Nhật ký đang được xây dựng</h2><p>Mỗi nhóm năm sự cố kỹ thuật đã xác minh sẽ được xem xét để tổng hợp thành một bài viết. Chưa có bài hồi cứu được phê duyệt.</p><a href="https://github.com/duykhang68/khoahoctienghan/issues">Xem các issue kỹ thuật →</a></div>}
+</TechBlog>
