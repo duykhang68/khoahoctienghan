@@ -10,6 +10,21 @@ const home=base+(knowledgeHome?'/':'/techblog/');
     <nav class="engineering-nav engineering-nav-minimal" aria-label="Điều hướng Engineering">
       <a class="engineering-brand" href={home} aria-current={indexPage?'page':undefined}>{brand}</a>
     </nav>
+    <script>
+  const menu=document.querySelector<HTMLDetailsElement>('.edition-menu');
+  document.addEventListener('click',event=>{if(menu?.open&&!menu.contains(event.target as Node))menu.open=false;});
+  menu?.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary')?.focus();}});
+  for(const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-permalink]')){
+    button.addEventListener('click',async()=>{
+      const status=button.parentElement?.querySelector<HTMLElement>('.share-status');
+      const path=button.dataset.copyPermalink;
+      if(!path)return;
+      const url=new URL(path,location.origin).href;
+      try{await navigator.clipboard.writeText(url);if(status)status.textContent='Đã sao chép liên kết';}
+      catch{if(status)status.textContent='Dùng liên kết Permalink để chia sẻ.';}
+    });
+  }
+</script>
   </header>
   <div class="blog-navigation blog-navigation-minimal">
     <nav class="blog-nav-inner" aria-label={knowledgeHome?'Chuyên mục tri thức':'Chuyên mục Blog'}>
@@ -32,18 +47,3 @@ const home=base+(knowledgeHome?'/':'/techblog/');
     {article?<a href={home}>{brand}</a>:<span aria-current="page">{brand}</span>}
     {article&&<><span class="crumb-divider" aria-hidden="true">›</span><span class="current-crumb" aria-current="page">{title}</span></>}
   </nav></div>
-<script>
-  const menu=document.querySelector<HTMLDetailsElement>('.edition-menu');
-  document.addEventListener('click',event=>{if(menu?.open&&!menu.contains(event.target as Node))menu.open=false;});
-  menu?.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary')?.focus();}});
-  for(const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-permalink]')){
-    button.addEventListener('click',async()=>{
-      const status=button.parentElement?.querySelector<HTMLElement>('.share-status');
-      const path=button.dataset.copyPermalink;
-      if(!path)return;
-      const url=new URL(path,location.origin).href;
-      try{await navigator.clipboard.writeText(url);if(status)status.textContent='Đã sao chép liên kết';}
-      catch{if(status)status.textContent='Dùng liên kết Permalink để chia sẻ.';}
-    });
-  }
-</script>
