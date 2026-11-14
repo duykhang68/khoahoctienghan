@@ -606,5 +606,426 @@
         "color": "#737F8C"
       }
     ]
+  },
+  "north-south-overview": {
+    "kind": "table",
+    "title": "Hai chuẩn, một nền tảng chung",
+    "caption": "So sánh thuật ngữ và chuẩn ngôn ngữ; nguồn: Bộ Thống nhất Hàn Quốc và KBS World.",
+    "columns": [
+      "Đặc điểm",
+      "Nam Hàn",
+      "Bắc Triều Tiên"
+    ],
+    "rows": [
+      [
+        "Tên ngôn ngữ",
+        "한국어 / 한국말",
+        "조선어 / 조선말"
+      ],
+      [
+        "Hệ chữ",
+        "한글 (Hangeul)",
+        "조선글 (Chosŏn'gŭl)"
+      ],
+      [
+        "Chuẩn ngôn ngữ",
+        "표준어",
+        "문화어"
+      ],
+      [
+        "Trung tâm chuẩn hóa",
+        "Seoul (서울)",
+        "Bình Nhưỡng (평양)"
+      ],
+      [
+        "Nền tảng",
+        "Ngữ pháp, âm tiết và từ vựng cốt lõi chung",
+        "Ngữ pháp, âm tiết và từ vựng cốt lõi chung"
+      ]
+    ]
+  },
+  "north-south-timeline": {
+    "kind": "flow",
+    "title": "Từ một nền tảng đến hai chuẩn",
+    "caption": "Các mốc lịch sử chọn lọc; không biểu thị tốc độ biến đổi ngôn ngữ.",
+    "items": [
+      {
+        "label": "1446",
+        "detail": "Hunminjeongeum được công bố: nguồn gốc hệ chữ dùng chung."
+      },
+      {
+        "label": "1945",
+        "detail": "Bán đảo được giải phóng khỏi ách cai trị Nhật Bản và bị chia cắt."
+      },
+      {
+        "label": "1948",
+        "detail": "Hai chính thể được thành lập; chính sách chữ viết đi theo các lộ trình riêng."
+      },
+      {
+        "label": "1964–1966",
+        "detail": "Bắc Triều Tiên triển khai chỉnh lý từ ngữ, phát triển chuẩn 문화어."
+      },
+      {
+        "label": "2026",
+        "detail": "Khoảng 81 năm kể từ mốc 1945; hai chuẩn vẫn có nền tảng ngôn ngữ chung."
+      }
+    ]
+  },
+  "north-south-alphabet": {
+    "kind": "table",
+    "title": "19 phụ âm đầu: cùng ký tự, khác thứ tự",
+    "caption": "Đọc mỗi cột từ trên xuống; các vị trí 2, 5, 9, 11, 14 ở miền Nam và 14–18 ở miền Bắc là phụ âm căng. Nguồn: Kỷ yếu Viện Quốc ngữ 2015, mục 자모 배열 순서.",
+    "columns": [
+      "Vị trí",
+      "Nam Hàn · 한글",
+      "Bắc Triều Tiên · 조선글"
+    ],
+    "rows": [
+      [
+        "1",
+        "ㄱ",
+        "ㄱ"
+      ],
+      [
+        "2",
+        "ㄲ",
+        "ㄴ"
+      ],
+      [
+        "3",
+        "ㄴ",
+        "ㄷ"
+      ],
+      [
+        "4",
+        "ㄷ",
+        "ㄹ"
+      ],
+      [
+        "5",
+        "ㄸ",
+        "ㅁ"
+      ],
+      [
+        "6",
+        "ㄹ",
+        "ㅂ"
+      ],
+      [
+        "7",
+        "ㅁ",
+        "ㅅ"
+      ],
+      [
+        "8",
+        "ㅂ",
+        "ㅈ"
+      ],
+      [
+        "9",
+        "ㅃ",
+        "ㅊ"
+      ],
+      [
+        "10",
+        "ㅅ",
+        "ㅋ"
+      ],
+      [
+        "11",
+        "ㅆ",
+        "ㅌ"
+      ],
+      [
+        "12",
+        "ㅇ",
+        "ㅍ"
+      ],
+      [
+        "13",
+        "ㅈ",
+        "ㅎ"
+      ],
+      [
+        "14",
+        "ㅉ",
+        "ㄲ"
+      ],
+      [
+        "15",
+        "ㅊ",
+        "ㄸ"
+      ],
+      [
+        "16",
+        "ㅋ",
+        "ㅃ"
+      ],
+      [
+        "17",
+        "ㅌ",
+        "ㅆ"
+      ],
+      [
+        "18",
+        "ㅍ",
+        "ㅉ"
+      ],
+      [
+        "19",
+        "ㅎ",
+        "ㅇ"
+      ]
+    ]
+  },
+  "north-south-letter-names": {
+    "kind": "type",
+    "title": "Cùng chữ cái, tên gọi khác nhau",
+    "caption": "Tên chữ theo quy ước từng miền; nguồn: kỷ yếu ngôn ngữ chung của Viện Quốc ngữ Hàn Quốc (2015).",
+    "items": [
+      {
+        "label": "ㄱ",
+        "value": "ㄱ",
+        "size": 56,
+        "weight": 700,
+        "detail": "Nam: 기역 · Bắc: 기윽"
+      },
+      {
+        "label": "ㄷ",
+        "value": "ㄷ",
+        "size": 56,
+        "weight": 700,
+        "detail": "Nam: 디귿 · Bắc: 디은"
+      },
+      {
+        "label": "ㅅ",
+        "value": "ㅅ",
+        "size": 56,
+        "weight": 700,
+        "detail": "Nam: 시옷 · Bắc: 시읏"
+      },
+      {
+        "label": "ㄲ",
+        "value": "ㄲ",
+        "size": 56,
+        "weight": 700,
+        "detail": "Nam: 쌍기역 · Bắc: 된기윽"
+      }
+    ]
+  },
+  "north-south-hanja": {
+    "kind": "table",
+    "title": "Chữ viết không đồng nghĩa nguồn gốc từ vựng",
+    "caption": "Ví dụ từ Hán–Hàn dùng được ở cả hai chuẩn; không sử dụng Hanja trong văn bản vẫn có thể giữ từ gốc Hán.",
+    "columns": [
+      "Chữ Hán",
+      "Hangeul / Chosŏn'gŭl",
+      "Nghĩa"
+    ],
+    "rows": [
+      [
+        "學校",
+        "학교",
+        "Trường học"
+      ],
+      [
+        "文化",
+        "문화",
+        "Văn hóa"
+      ],
+      [
+        "國家",
+        "국가",
+        "Quốc gia"
+      ],
+      [
+        "法律",
+        "법률 (Nam), 법률 (Bắc)",
+        "Pháp luật"
+      ]
+    ]
+  },
+  "north-south-vocabulary": {
+    "kind": "table",
+    "title": "Từ vựng đời sống: Nam – Bắc",
+    "caption": "Ví dụ từ các tài liệu đối chiếu của Viện Quốc ngữ và Sở Giáo dục Incheon; không ngụ ý chỉ tồn tại một cách gọi.",
+    "columns": [
+      "Nghĩa",
+      "Nam Hàn",
+      "Bắc Triều Tiên"
+    ],
+    "rows": [
+      [
+        "Rau",
+        "채소",
+        "남새"
+      ],
+      [
+        "Ngỗng",
+        "거위",
+        "게사니"
+      ],
+      [
+        "Trứng gà",
+        "달걀",
+        "닭알"
+      ],
+      [
+        "Bánh donut",
+        "도넛",
+        "가락지빵"
+      ],
+      [
+        "Nước trái cây",
+        "주스",
+        "단물"
+      ],
+      [
+        "Máy tính",
+        "컴퓨터",
+        "콤퓨터"
+      ],
+      [
+        "Robot",
+        "로봇",
+        "로보트"
+      ],
+      [
+        "Cốc",
+        "컵",
+        "고뿌"
+      ]
+    ]
+  },
+  "north-south-loanwords": {
+    "kind": "type",
+    "title": "Từ mượn không biến mất",
+    "caption": "Cách gọi kem đối chiếu nghiên cứu Kwon Jae-il, Seo Jeong-mok (2015); máy tính theo tài liệu Incheon. Các cách phát âm/ghi từ mượn không phải quy tắc sản sinh cho mọi từ.",
+    "items": [
+      {
+        "label": "Kem · Nam Hàn",
+        "value": "아이스크림",
+        "size": 35,
+        "weight": 700,
+        "detail": "Từ mượn tiếng Anh."
+      },
+      {
+        "label": "Kem · Bắc Triều Tiên",
+        "value": "아이스크림 / 에스키모",
+        "size": 28,
+        "weight": 700,
+        "detail": "얼음보숭이 là đề xuất chỉnh lý lịch sử, không nên coi là cách gọi phổ biến."
+      },
+      {
+        "label": "Máy tính · Nam Hàn",
+        "value": "컴퓨터",
+        "size": 42,
+        "weight": 700,
+        "detail": "Cách ghi theo chuẩn Nam Hàn."
+      },
+      {
+        "label": "Máy tính · Bắc Triều Tiên",
+        "value": "콤퓨터",
+        "size": 42,
+        "weight": 700,
+        "detail": "Một cách ghi từ mượn theo chuẩn miền Bắc."
+      }
+    ]
+  },
+  "north-south-initial-rule": {
+    "kind": "flow",
+    "title": "Nhận diện quy tắc đầu âm 두음법칙",
+    "caption": "Mô hình học tập cho nhiều từ Hán–Hàn; có ngoại lệ, không áp dụng máy móc cho mọi từ.",
+    "items": [
+      {
+        "label": "Xác định từ Hán–Hàn",
+        "detail": "Ví dụ: 女性, 勞動, 歷史."
+      },
+      {
+        "label": "Kiểm tra vị trí âm tiết",
+        "detail": "Ở đầu từ hay bên trong từ?"
+      },
+      {
+        "label": "Chuẩn Nam Hàn",
+        "detail": "녀 → 여, 력 → 역, 로 → 노 trong các điều kiện phù hợp."
+      },
+      {
+        "label": "Chuẩn Bắc Triều Tiên",
+        "detail": "Thông thường giữ dạng đầu âm: 녀, 력, 로."
+      },
+      {
+        "label": "So sánh ngữ cảnh",
+        "detail": "남녀 ở Nam Hàn vẫn có 녀 vì đứng ở giữa từ."
+      }
+    ]
+  },
+  "north-south-initial-examples": {
+    "kind": "table",
+    "title": "Cặp chữ dễ nhận ra trong văn bản Nam – Bắc",
+    "caption": "Ví dụ theo quy tắc đầu âm, không bao quát tất cả khác biệt phát âm và chính tả.",
+    "columns": [
+      "Nghĩa",
+      "Nam Hàn",
+      "Bắc Triều Tiên"
+    ],
+    "rows": [
+      [
+        "Phụ nữ",
+        "여성",
+        "녀성"
+      ],
+      [
+        "Phụ nữ / con gái",
+        "여자",
+        "녀자"
+      ],
+      [
+        "Lao động",
+        "노동",
+        "로동"
+      ],
+      [
+        "Lịch sử",
+        "역사",
+        "력사"
+      ],
+      [
+        "Lý luận",
+        "이론",
+        "리론"
+      ],
+      [
+        "Nam nữ",
+        "남녀",
+        "남녀"
+      ]
+    ]
+  },
+  "north-south-context": {
+    "kind": "table",
+    "title": "Ngữ điệu và ngữ cảnh giao tiếp",
+    "caption": "Bảng khái niệm; không phải số liệu đo cao độ hoặc nhận định về tính cách người dân.",
+    "columns": [
+      "Ngữ cảnh",
+      "Điều cần chú ý"
+    ],
+    "rows": [
+      [
+        "Hội thoại đời thường",
+        "Tuổi, quan hệ, phương ngữ địa phương và mục đích câu nói."
+      ],
+      [
+        "Bản tin chính thức",
+        "Phong cách phát thanh, cách nhấn giọng và quy ước nghề nghiệp."
+      ],
+      [
+        "Phát biểu nghi lễ",
+        "Nhịp điệu trang trọng, nhấn mạnh thông điệp."
+      ],
+      [
+        "Học ngoại ngữ",
+        "Chọn chuẩn học phù hợp, không coi chuẩn còn lại là phát âm sai."
+      ]
+    ]
   }
 }
