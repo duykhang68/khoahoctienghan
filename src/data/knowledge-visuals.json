@@ -327,5 +327,284 @@
         "detail": "Bạn đang đi đâu vậy?"
       }
     ]
+  },
+  "satoori-regions": {
+    "kind": "swatches",
+    "title": "Sáu vùng ngôn ngữ của Hàn Quốc",
+    "caption": "Chú giải màu theo vị trí địa lý, không phải bản đồ ranh giới chính xác. Nguồn phân vùng: National Atlas of Korea.",
+    "items": [
+      {
+        "label": "경기 · Gyeonggi",
+        "color": "#B5D3FF",
+        "detail": "Tây Bắc · Seoul, Incheon, Gyeonggi"
+      },
+      {
+        "label": "강원 · Gangwon",
+        "color": "#A9DEC5",
+        "detail": "Đông Bắc · Chuncheon, Gangneung"
+      },
+      {
+        "label": "충청 · Chungcheong",
+        "color": "#FFDE9D",
+        "detail": "Miền Trung · Daejeon, Sejong"
+      },
+      {
+        "label": "경상 · Gyeongsang",
+        "color": "#CBB9F2",
+        "detail": "Đông Nam · Busan, Daegu, Ulsan"
+      },
+      {
+        "label": "전라 · Jeolla",
+        "color": "#F5B7C8",
+        "detail": "Tây Nam · Gwangju, Jeonju"
+      },
+      {
+        "label": "제주 · Jeju",
+        "color": "#B1E5EB",
+        "detail": "Đảo phía nam · Jejueo"
+      }
+    ]
+  },
+  "satoori-comparison": {
+    "kind": "table",
+    "title": "So sánh sáu vùng trong một bảng",
+    "caption": "Đặc điểm truyền thống, có thể thay đổi theo thế hệ, địa phương và tình huống; Jejueo có cơ sở được xem là ngôn ngữ riêng.",
+    "columns": [
+      "Vùng",
+      "Địa bàn tiêu biểu",
+      "Đặc điểm ngôn ngữ",
+      "Dấu hiệu"
+    ],
+    "rows": [
+      [
+        "Gyeonggi (경기)",
+        "Seoul, Incheon",
+        "Cơ sở tiếng chuẩn; không có cao độ từ vựng kiểu Gyeongsang",
+        "-요 / -습니다"
+      ],
+      [
+        "Gyeongsang (경상)",
+        "Busan, Daegu, Ulsan",
+        "Cao độ phân biệt từ ở nhiều biến thể",
+        "뭐 하노? / 밥 묵었나?"
+      ],
+      [
+        "Jeolla (전라)",
+        "Gwangju, Jeonju",
+        "Đuôi câu và nhịp vùng Tây Nam",
+        "-잉 / -지라"
+      ],
+      [
+        "Chungcheong (충청)",
+        "Daejeon, Sejong",
+        "Có các đuôi kéo dài, biến đổi nguyên âm",
+        "그래유"
+      ],
+      [
+        "Gangwon (강원)",
+        "Chuncheon, Gangneung",
+        "Phân hóa đông–tây qua Taebaek",
+        "-드래요 (minh họa)"
+      ],
+      [
+        "Jeju (제주)",
+        "Đảo Jeju",
+        "Araea và nhiều cấu trúc, từ vựng riêng",
+        "혼저 옵서예"
+      ]
+    ]
+  },
+  "satoori-gangwon": {
+    "kind": "table",
+    "title": "Taebaek và hai vùng Gangwon",
+    "caption": "Phân vùng khái quát theo Atlas quốc gia Hàn Quốc; đặc điểm không phải ranh giới tuyệt đối.",
+    "columns": [
+      "Yeongseo (phía tây)",
+      "Taebaek (태백산맥)",
+      "Yeongdong (phía đông)"
+    ],
+    "rows": [
+      [
+        "Chuncheon · 춘천",
+        "Trục núi và mạng lưới giao tiếp",
+        "Gangneung · 강릉"
+      ],
+      [
+        "Nhiều nét gần vùng trung tâm",
+        "Không phải hàng rào ngôn ngữ tuyệt đối",
+        "Nhiều nét gần Đông Nam"
+      ]
+    ]
+  },
+  "satoori-prosody": {
+    "kind": "table",
+    "title": "Cao độ, độ dài và ngữ điệu không giống nhau",
+    "caption": "Ví dụ khái niệm, không phải đường F0 đo bằng thực nghiệm; không gán cao độ cố định cho toàn vùng.",
+    "columns": [
+      "Hiện tượng",
+      "Ví dụ",
+      "Chức năng"
+    ],
+    "rows": [
+      [
+        "Độ dài nguyên âm truyền thống ở Seoul",
+        "눈 (mắt) / 눈ː (tuyết)",
+        "Có thể phân biệt nghĩa bằng thời lượng; suy giảm ở nhiều người trẻ"
+      ],
+      [
+        "Cao độ từ vựng Gyeongsang",
+        "이 (2) / E (tên chữ cái)",
+        "Cao độ có thể phân biệt các từ có chuỗi âm gần giống nhau"
+      ],
+      [
+        "Ngữ điệu cấp câu",
+        "그래요. / 그래요?",
+        "Biểu thị cấu trúc câu, thái độ và câu hỏi; không nhất thiết phân biệt từ"
+      ]
+    ]
+  },
+  "satoori-sounds": {
+    "kind": "type",
+    "title": "Hai cặp âm dễ gặp khi học phương ngữ",
+    "caption": "Đặc điểm một số biến thể truyền thống, không phải lỗi phát âm; nghiên cứu âm học năm 2016 và 2024 cho thấy sự thay đổi qua thế hệ.",
+    "items": [
+      {
+        "label": "Nguyên âm · ㅓ và ㅡ",
+        "value": "ㅓ ㅡ",
+        "size": 56,
+        "weight": 700,
+        "detail": "음악 (âm nhạc) có thể nghe gần 엄악 ở một số người nói."
+      },
+      {
+        "label": "Phụ âm · ㅅ và ㅆ",
+        "value": "ㅅ ㅆ",
+        "size": 56,
+        "weight": 700,
+        "detail": "쌀 (gạo) có thể nghe gần 살 (thịt) ở một số địa phương."
+      },
+      {
+        "label": "Dấu tích Araea ở Jejueo",
+        "value": "ㆍ",
+        "size": 68,
+        "weight": 700,
+        "detail": "Nguyên âm cổ được giữ lại trong Jejueo truyền thống."
+      }
+    ]
+  },
+  "satoori-endings": {
+    "kind": "table",
+    "title": "Thử nhận diện vùng qua lời nói",
+    "caption": "Các biểu thức minh họa; mức lịch sự và sắc thái không hoàn toàn giống nhau.",
+    "columns": [
+      "Vùng",
+      "Biểu thức",
+      "Tiếng chuẩn",
+      "Tiếng Việt"
+    ],
+    "rows": [
+      [
+        "Seoul",
+        "그래요",
+        "그래요",
+        "Vâng, đúng vậy"
+      ],
+      [
+        "Gyeongsang",
+        "뭐 하노?",
+        "뭐 하니?",
+        "Đang làm gì vậy?"
+      ],
+      [
+        "Jeolla",
+        "밥 먹었어잉?",
+        "밥 먹었어?",
+        "Ăn cơm chưa đó?"
+      ],
+      [
+        "Chungcheong",
+        "그래유",
+        "그래요",
+        "Vâng, đúng vậy"
+      ],
+      [
+        "Gangwon",
+        "그랬드래요",
+        "그랬다고 해요",
+        "Nghe nói đã như vậy (tùy ngữ cảnh)"
+      ],
+      [
+        "Jeju",
+        "혼저 옵서예",
+        "어서 오세요",
+        "Xin mời vào / chào mừng"
+      ]
+    ]
+  },
+  "satoori-question": {
+    "kind": "flow",
+    "title": "Chọn đuôi câu Gyeongsang theo mục đích hỏi",
+    "caption": "Mô hình minh họa hai kiểu câu thường gặp; câu hỏi tu từ và câu vọng có thể có quy luật bổ sung.",
+    "items": [
+      {
+        "label": "Xác định điều cần hỏi",
+        "detail": "Cần biết nội dung hay chỉ xác nhận có/không?"
+      },
+      {
+        "label": "Hỏi thông tin → -노",
+        "detail": "뭐 하노? · Bạn đang làm gì?"
+      },
+      {
+        "label": "Hỏi xác nhận → -나",
+        "detail": "밥 묵었나? · Ăn cơm chưa?"
+      },
+      {
+        "label": "Chọn mức độ lịch sự",
+        "detail": "Ví dụ ở trên là cách nói thân mật; điều chỉnh theo người đối thoại."
+      }
+    ]
+  },
+  "satoori-survey-2015": {
+    "kind": "bars",
+    "title": "Ngôn ngữ tự nhận sử dụng tại Hàn Quốc (2015)",
+    "caption": "Tỷ lệ người trả lời tự nhận sử dụng từng cách nói trong khảo sát năm 2015; không phải tỷ lệ thành thạo và không phải số liệu 2026.",
+    "unit": "%",
+    "source": "National Atlas of Korea, Regional Dialects; National Institute of Korean Language, khảo sát nhận thức sử dụng ngôn ngữ 2015.",
+    "items": [
+      {
+        "label": "Tiếng chuẩn",
+        "value": "54.5",
+        "color": "#4B85C9"
+      },
+      {
+        "label": "Gyeongsang",
+        "value": "26.4",
+        "color": "#8B6CC1"
+      },
+      {
+        "label": "Jeolla",
+        "value": "9.7",
+        "color": "#CD688D"
+      },
+      {
+        "label": "Chungcheong",
+        "value": "5.8",
+        "color": "#C68B28"
+      },
+      {
+        "label": "Gangwon",
+        "value": "2.2",
+        "color": "#41906B"
+      },
+      {
+        "label": "Jeju",
+        "value": "1.3",
+        "color": "#288A99"
+      },
+      {
+        "label": "Phương ngữ Bắc Triều Tiên",
+        "value": "0.1",
+        "color": "#737F8C"
+      }
+    ]
   }
 }
