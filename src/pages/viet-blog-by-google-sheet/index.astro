@@ -1,0 +1,21 @@
+---
+import TechBlog from '../../layouts/TechBlog.astro';
+import {topics} from '../../lib/knowledge-topics';
+import '../../styles/sheet-blog.css';
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const clientId=import.meta.env.PUBLIC_GOOGLE_SHEETS_CLIENT_ID||'';
+---
+<TechBlog title="Viết blog by Google sheet" description="Chọn bài tiếng Việt từ Google Sheet và gửi vào hàng đợi xuất bản." knowledgeHome={true} article={true}>
+ <section class="sheet-blog" data-sheet-blog data-base={base} data-client-id={clientId} data-topics={JSON.stringify(topics.map(({id,title})=>({id,title})))}>
+  <header class="sb-header"><div><span class="sb-kicker">EDITORIAL STUDIO / GOOGLE SHEETS</span><h1>Viết blog by Google sheet</h1><p>Chọn bài từ tab VN và gửi vào hàng đợi xuất bản.</p></div><a class="sb-source" href="https://docs.google.com/spreadsheets/d/1VjRyBhkVTkTg5G8ZoLXTkEio-YbWYU5G5dLgfGjN1j4/edit#gid=0" target="_blank" rel="noopener noreferrer">Mở Google Sheet</a></header>
+  <div class="sb-steps"><div><strong>01 · Google</strong><span data-google-state>Chưa kết nối</span></div><div><strong>02 · GitHub</strong><span data-github-state>Chưa kết nối</span></div><div><strong>03 · FIFO</strong><a href="https://github.com/duykhang68/khoahoctienghan/issues?q=is%3Aissue+%22Editor+V2%22+in%3Atitle" target="_blank" rel="noopener noreferrer">Xem hàng đợi Issue</a></div></div>
+  <div class="sb-auth"><div><h2>Google Sheet · VN</h2><label data-client-label>OAuth Web Client ID<input data-client placeholder="…apps.googleusercontent.com" autocomplete="off"/></label><button type="button" data-google-login disabled>Đăng nhập Google</button><button type="button" data-google-logout hidden>Ngắt Google</button><small>Chỉ đọc Sheet bằng tài khoản được cấp quyền.</small></div><div><h2>GitHub · Chủ blog</h2><label>Fine-grained token<input data-gh-token type="password" autocomplete="off" spellcheck="false"/></label><button type="button" data-gh-connect>Kết nối GitHub</button><button type="button" data-gh-logout hidden>Ngắt GitHub</button><small>Contents: Read and write, chỉ repo khoahoctienghan. Token không lưu.</small></div></div>
+  <p data-status role="status" class="sb-status">Đang khởi tạo đăng nhập Google…</p>
+  <section class="sb-library"><div class="sb-library-head"><div><span class="sb-kicker">THƯ VIỆN BÀI VIẾT</span><h2 data-count>Chưa tải danh sách</h2></div><button type="button" data-refresh disabled>Tải lại</button></div><label>Tìm tiêu đề<input type="search" data-search disabled placeholder="Nhập tiêu đề bài viết"/></label><div data-rows class="sb-rows"><p>Đăng nhập Google để xem danh sách bài.</p></div><nav data-pages hidden aria-label="Phân trang bài viết"><button type="button" data-prev>Trang trước</button><span data-page></span><button type="button" data-next>Trang sau</button></nav></section>
+  <dialog data-confirm-dialog aria-label="Xác nhận bài từ Google Sheet"><div class="sb-dialog-head"><h2 data-preview-title></h2><button type="button" data-close>Đóng</button></div><p data-preview-meta></p><div data-preview class="sb-preview"></div><label>Nơi xuất bản<select data-kind><option value="">Chọn nơi xuất bản</option><option value="knowledge">Tri thức Hàn Quốc</option><option value="tech">Tech Blog</option></select></label><label data-category-label>Chuyên mục<select data-category><option value="">Chọn chuyên mục</option>{topics.map(t=><option value={t.id}>{t.title}</option>)}</select></label><p data-route class="sb-route"></p><label class="sb-check"><input data-consent type="checkbox"/> Tôi đồng ý đưa nội dung bài đã chọn vào repository công khai và hàng đợi FIFO.</label><button type="button" data-submit disabled>Viết bài · Gửi hàng đợi</button><p data-dialog-status role="status"></p></dialog>
+ </section>
+ <script>
+  import {mountSheetBlog} from '../../lib/sheet-blog/browser.mjs';
+  mountSheetBlog(document.querySelector('[data-sheet-blog]'));
+ </script>
+</TechBlog>
