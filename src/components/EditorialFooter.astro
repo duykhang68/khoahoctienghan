@@ -1,0 +1,9 @@
+---
+const {knowledgeHome=false}=Astro.props;
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const brand=knowledgeHome?'Tri thức Hàn Quốc':'Engineering Blog';
+const home=base+(knowledgeHome?'/':'/techblog/');
+---
+<footer class="engineering-footer"><div class="footer-inner">
+    <section class="footer-intro"><a class="footer-brand" href={home}>{brand}</a><p>{knowledgeHome?'Kho tri thức mở về Hàn Quốc bằng tiếng Việt. Miễn phí, không cần tài khoản.':'Ghi lại những điều học được khi xây dựng phần mềm.'}</p><a class="aws-button footer-cta" href={base+(knowledgeHome?'/techblog/':'/')}>{knowledgeHome?'Engineering Blog':'Về kho tri thức Hàn Quốc'}</a></section>
+  </div><div class="footer-bottom"><div>{knowledgeHome?'Tri thức Hàn Quốc':'Tri thức Hàn Quốc · Engineering'}</div></div></footer>

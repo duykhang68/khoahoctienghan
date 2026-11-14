@@ -1,153 +1,35 @@
-@import './editorial-tokens.css';
-
-/* Starlight UI skin only. Do not import Tech Blog's global reset or change document layout. */
-:root, :root[data-theme='light'] {
-  color-scheme:light;
-  --sl-color-white:var(--ink);
-  --sl-color-gray-1:#333;
-  --sl-color-gray-2:var(--muted);
-  --sl-color-gray-3:var(--muted);
-  --sl-color-gray-4:#999;
-  --sl-color-gray-5:var(--line);
-  --sl-color-gray-6:var(--soft);
-  --sl-color-gray-7:var(--surface);
-  --sl-color-black:var(--surface);
-  --sl-color-accent-low:var(--soft);
-  --sl-color-accent:var(--button);
-  --sl-color-accent-high:var(--ink);
-  --sl-color-text:var(--ink);
-  --sl-color-text-accent:var(--link);
-  --sl-color-text-invert:var(--surface);
-  --sl-color-bg:var(--surface);
-  --sl-color-bg-nav:var(--navy-deep);
-  --sl-color-bg-sidebar:var(--surface);
-  --sl-color-bg-inline-code:var(--soft);
-  --sl-color-hairline:var(--line);
-  --sl-color-hairline-light:var(--line);
-  --sl-color-hairline-shade:var(--line);
-  --sl-content-width:55rem;
-  --sl-sidebar-width:17rem;
-  --sl-font:var(--sans);
-  --sl-font-mono:var(--mono);
-  --sl-text-base:var(--type-body);
-  --sl-text-sm:var(--type-small);
-  --sl-line-height:var(--type-leading);
+/* One public editorial design system. Starlight remains a content/MDX
+   engine, not a separate public UI. Share the actual Tech Blog styles. */
+@import './techblog.css';
+@import './techblog-index.css';
+@import './techblog-article.css';
+:root,:root[data-theme='light']{
+ color-scheme:light;
+ --sl-color-white:var(--ink);--sl-color-black:var(--surface);
+ --sl-color-text:var(--ink);--sl-color-text-accent:var(--link);
+ --sl-color-text-invert:var(--surface);--sl-color-bg:var(--surface);
+ --sl-color-accent:var(--ink);--sl-color-accent-high:var(--ink);--sl-color-accent-low:var(--soft);
+ --sl-color-gray-1:#333;--sl-color-gray-2:var(--muted);--sl-color-gray-3:var(--muted);
+ --sl-color-gray-4:#999;--sl-color-gray-5:var(--line);--sl-color-gray-6:var(--soft);--sl-color-gray-7:var(--surface);
+ --sl-font:var(--sans);--sl-font-mono:var(--mono);
+ --sl-line-height:var(--type-leading);--sl-mobile-toc-height:0rem;--sl-nav-height:0rem;
 }
-body{font-family:var(--sans);color:var(--ink);background:var(--surface);line-height:var(--type-leading);overflow-wrap:anywhere}
-header.header{background:var(--navy-deep);color:var(--surface);border-color:var(--navy-deep)}
-header.header .site-title{color:var(--surface);font-family:var(--display);font-size:22px;font-weight:700;line-height:1.3;letter-spacing:0}
-header.header .site-title:hover{text-decoration:underline;text-underline-offset:4px}
-header.header site-search button[data-open-modal]{background:transparent;color:var(--surface);border:1px solid #6b6b6b;border-radius:8px;font-family:var(--sans)}
-header.header site-search button[data-open-modal] :is(kbd,span){color:inherit}
-starlight-menu-button button{background:var(--navy-deep);color:var(--surface);border-color:#6b6b6b}
-.sidebar-pane,.sidebar-content,.right-sidebar,.mobile-starlight-toc{background:var(--surface);color:var(--ink);border-color:var(--line)}
-.sidebar-content a,.right-sidebar a,.mobile-starlight-toc a{color:var(--muted)}
-.sidebar-content a:hover,.right-sidebar a:hover,.mobile-starlight-toc a:hover{color:var(--ink)}
-.sidebar-content a[aria-current='page']{background:var(--button);color:var(--surface);border-radius:8px;font-weight:600}
-.right-sidebar a[aria-current='true'],.mobile-starlight-toc a[aria-current='true']{color:var(--ink);font-weight:700}
-.sidebar-content summary,.sidebar-content .group-label{font-family:var(--sans);font-weight:600}
-.content-panel{border-color:var(--line)}
-main h1,.sl-markdown-content :is(h2,h3,h4,h5,h6){font-family:var(--display);font-weight:700;color:var(--ink);letter-spacing:0;overflow-wrap:break-word}
-main h1{font-size:var(--type-h1);line-height:1.18}
-.sl-markdown-content h2{font-size:var(--type-h2);line-height:1.3}
-.sl-markdown-content h3{font-size:var(--type-h3);line-height:1.35}
-.sl-markdown-content{font-family:var(--sans);font-size:var(--type-body);line-height:var(--type-leading)}
-.sl-markdown-content p{text-align:justify;text-align-last:start;overflow-wrap:break-word;word-break:normal;hyphens:none}
-.sl-markdown-content strong{font-weight:600}
-.sl-markdown-content a:not([class]){color:var(--link);text-decoration:underline;text-underline-offset:3px}
-.sl-markdown-content a:not([class]):hover{color:var(--link-hover)}
-.sl-markdown-content :is(pre,table){max-width:100%;overflow-x:auto}
-.sl-markdown-content :is(code,pre,kbd,samp){font-family:var(--mono)}
-.sl-markdown-content :not(pre)>code{background:var(--soft);color:var(--ink)}
-.sl-markdown-content :is(th,td){border-color:var(--line)}
-.sl-markdown-content th{background:var(--soft);color:var(--ink)}
-.sl-markdown-content blockquote{border-inline-start-color:var(--ink);background:var(--soft)}
-.pagination-links a{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);box-shadow:none}
-.pagination-links a:hover{background:var(--soft);border-color:var(--muted)}
-.pagination-links a .link-title{color:var(--ink);font-family:var(--display);font-weight:700}
-main footer{border-color:var(--line);color:var(--muted)}
-:where(a,button,input,summary):focus-visible{outline:2px solid var(--focus);outline-offset:3px}
-.hero h1{letter-spacing:0}
-.hero .tagline{max-width:46rem;text-wrap:pretty}
-/* Existing legacy topic component retains its grid and navigation. */
-.knowledge-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-block:1.5rem 2rem}
-.knowledge-card{display:block;padding:1.4rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--ink);text-decoration:none!important;min-width:0;transition:border-color .2s}
-.knowledge-card:hover,.knowledge-card:focus-visible{border-color:var(--ink)}
-.knowledge-card .mark{display:grid;place-items:center;width:2.8rem;height:2.8rem;background:#e3ecdd;color:var(--ink);border-radius:0;font-size:1.4rem;font-weight:700;margin-bottom:.75rem}
-.knowledge-card:nth-child(3n+2) .mark{background:#eee5f5}
-.knowledge-card:nth-child(3n+3) .mark{background:#f5e8d4}
-.knowledge-card strong{display:block;font-size:1.12rem}
-.knowledge-card small{display:block;color:var(--muted);margin-top:.35rem;line-height:1.5}
-.knowledge-card .more{display:block;margin-top:1rem;font-size:.82rem;font-weight:700}
-@media(max-width:640px){
- .sl-markdown-content{font-size:16px;line-height:1.75}
- .knowledge-grid{grid-template-columns:1fr}
- .knowledge-card{padding:1rem}
-}
-@media(max-width:480px){header.header .site-title{font-size:20px}}
-@media(prefers-reduced-motion:reduce){.knowledge-card{transition:none}}
-
-
-/* Advanced Astro Docs UX. Keep shared editorial tokens; no changes to Tech Blog.
-   Reference layout: 20rem navigation, 75ch reading measure, 18rem TOC,
-   desktop header in flow, mobile menu and in-article contents. */
-:root,:root[data-theme='light']{--sl-content-width:75ch;--sl-sidebar-width:20rem;--sl-mobile-toc-height:0rem}
-html{scroll-padding-top:calc(var(--sl-nav-height) + 1rem)}
-header.header{border:0}
-header.header .header{max-width:82rem;margin-inline:auto}
-button[popovertarget="starlight__sidebar"]{background:var(--surface);color:var(--ink);box-shadow:none;inset-inline-start:var(--sl-nav-pad-x);inset-inline-end:auto}
-html[data-has-sidebar] header.header{padding-inline-start:calc(var(--sl-nav-pad-x) + var(--sl-menu-button-size) + var(--sl-nav-gap));padding-inline-end:var(--sl-nav-pad-x)}
-.knowledge-nav-groups,.knowledge-nav-groups ul{list-style:none;padding:0;margin:0}
-.knowledge-nav-groups>li+li.knowledge-nav-group{margin-top:2rem}
-.knowledge-nav-groups>li.knowledge-nav-direct+li.knowledge-nav-direct{margin-top:.25rem}
-.knowledge-nav-groups h2,.knowledge-nav-groups h3{font-family:var(--display);font-size:1rem;font-weight:700;margin:0 0 .5rem;padding:.1rem 1rem;color:var(--ink)}
-.knowledge-nav-groups h3{font-size:.9rem;margin-top:.75rem}
-.knowledge-nav-groups a{display:block;padding:.3rem 1rem;margin:1px;text-decoration:none;color:var(--ink);font-size:1rem;line-height:1.5;overflow-wrap:break-word}
-.knowledge-nav-groups a:hover,.knowledge-nav-groups a:focus-visible{background:var(--soft)}
-.knowledge-nav-groups a[aria-current='page']{background:var(--soft);color:var(--ink);font-weight:600;border-radius:0}
-.knowledge-nav-groups ul ul{padding-inline-start:.75rem}
-.content-panel{padding-block-start:1.5rem}
-.content-panel+.content-panel{border-block-start:0;padding-block-start:0}
-.content-panel .sl-container{width:100%;max-width:75ch;margin-inline:auto}
-.right-sidebar{border-inline-start:0}
-.right-sidebar starlight-toc a{font-size:var(--type-small);color:var(--muted);line-height:1.5;text-decoration:none}
-.right-sidebar starlight-toc a[aria-current='true']{color:var(--ink);font-weight:700;text-decoration:underline;text-underline-offset:4px}
-.knowledge-inline-toc{margin-block:1.5rem;padding:0;font-family:var(--sans)}
-.knowledge-inline-toc h2{font-size:1rem;font-weight:700;margin:0 0 .5rem}
-.knowledge-inline-toc ul{list-style:none;margin:0;padding:0}
-.knowledge-inline-toc ul ul{padding-inline-start:1rem}
-.knowledge-inline-toc a{display:block;padding:.2rem 0;color:var(--muted);font-size:var(--type-small);text-decoration:none}
-.knowledge-inline-toc a:hover,.knowledge-inline-toc a:focus-visible{color:var(--ink);text-decoration:underline}
-mobile-starlight-toc{display:none}
-.knowledge-topic-list .knowledge-card{display:inline;padding:0;border:0;border-radius:0;background:none;font-weight:600;text-decoration:underline!important;text-underline-offset:3px}
-.knowledge-topic-list li+li{margin-top:.45rem}
-site-search dialog{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px}
-site-search .pagefind-ui__search-input{background:var(--soft);color:var(--ink)}
-@media(max-width:49.999rem){
- .content-panel{padding-inline:1rem}
- .main-frame{padding-top:var(--sl-nav-height)}
-}
-@media(min-width:50rem){
- html{scroll-padding-top:1rem}
- .page.sl-flex{display:grid;grid-template-columns:20rem minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;max-width:100%;gap:0}
- header.header{position:static;grid-column:1/-1;height:6rem;padding:1rem var(--pad)!important}
- html[data-has-sidebar] header.header{padding-inline:var(--pad)!important}
- header.header .header{display:flex;justify-content:space-between}
- .sidebar{grid-column:1;position:sticky;top:0;min-width:0;height:100vh}
- .sidebar-pane{position:static;inset:auto;width:100%;height:100%;border:0;overflow:auto}
- .sidebar-content{padding:2rem 1rem 2rem 2rem;min-height:100%;height:auto}
- .main-frame{grid-column:2;padding:0;min-width:0}
- html:not([data-has-sidebar]) .main-frame{grid-column:1/-1}
- .main-pane{min-width:0}
- .content-panel{padding-inline:1rem}
-}
-@media(min-width:72rem){
- .page.sl-flex{grid-template-columns:20rem minmax(0,1fr)}
- .main-frame>div{display:grid;grid-template-columns:minmax(0,1fr) 18rem;align-items:start}
- .main-frame>div:not(:has(.right-sidebar-container)){grid-template-columns:minmax(0,1fr)}
- .main-frame .main-pane{grid-column:1;grid-row:1;width:100%!important;min-width:0;order:initial}
- .right-sidebar-container{grid-column:2;grid-row:1;position:sticky;top:0;width:100%;height:100vh;margin:0;order:initial}
- .right-sidebar{position:static;width:100%;height:100%;padding:2rem 0;overflow-y:auto}
- .right-sidebar-panel .sl-container{width:100%;max-width:none}
- .knowledge-inline-toc{display:none}
-}
+html{scroll-padding-top:1rem}
+.knowledge-editorial-shell main{padding:0;min-width:0}
+.knowledge-editorial-shell .content-panel{border:0;padding:0;min-width:0}
+.knowledge-editorial-shell .content-panel .sl-container{max-width:none;width:100%;margin:0}
+.knowledge-editorial-shell .content-panel .sl-container:empty{display:none}
+.knowledge-editorial-shell .sl-markdown-content{min-width:0}
+.knowledge-editorial-shell .article-body .sl-markdown-content p{margin-bottom:1.15em}
+.knowledge-editorial-shell .article-body .sl-markdown-content>p:first-child{margin-top:0}
+.knowledge-editorial-shell .article-body .sl-markdown-content table{display:block;max-width:100%;overflow:auto}
+.knowledge-editorial-shell .engineering-index .sl-markdown-content>h2{font-family:var(--display);font-size:var(--type-h2);font-weight:700;margin-top:36px}
+.knowledge-editorial-shell .engineering-index .sl-markdown-content>.index-archive{margin:0}
+.knowledge-editorial-shell .engineering-index .sl-markdown-content>p{font-family:var(--sans);font-size:var(--type-body);line-height:var(--type-leading);text-align:justify}
+.knowledge-editorial-shell .engineering-index .sl-markdown-content>ul{padding-inline-start:1.4rem}
+.knowledge-editorial-shell .engineering-index .index-card .post-summary{text-align:start}
+.knowledge-editorial-shell .engineering-index .index-card h3 a{text-decoration:none}
+.knowledge-editorial-shell .engineering-index .index-card h3 a:hover{text-decoration:underline}
+.knowledge-editorial-shell .article-body .sl-markdown-content :is(pre,code,samp,kbd){font-family:var(--mono)}
+.knowledge-editorial-shell .article-body .sl-markdown-content>:first-child{margin-top:0}
+.knowledge-editorial-shell .article-body .sl-markdown-content .sl-anchor-link{color:var(--muted)}

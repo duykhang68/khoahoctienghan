@@ -15,6 +15,9 @@ export default defineConfig({
       ThemeSelect: './src/components/NoThemeSelect.astro',
       Sidebar: './src/components/KnowledgeSidebar.astro',
       PageTitle: './src/components/KnowledgePageTitle.astro',
+      PageFrame: './src/components/KnowledgeEditorialFrame.astro',
+      TwoColumnContent: './src/components/KnowledgeSingleContent.astro',
+      Footer: './src/components/KnowledgeArticleFooter.astro',
     },
     tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
     sidebar: [

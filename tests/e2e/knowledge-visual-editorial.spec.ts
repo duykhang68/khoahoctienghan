@@ -17,7 +17,10 @@ test('Knowledge Base uses shared Visual Editorial 2.0 inside lessons',async({pag
  await expect(cycle.locator('svg text').filter({hasText:'Luyện tập'})).toHaveCount(1);
  await expect(cycle.locator('.tv-cycle-key li')).toHaveCount(5);
  await expect(page.locator('.sl-markdown-content table')).toBeVisible();
- await expect(page.locator('#starlight__sidebar')).toBeAttached();
+ await expect(page.locator('.engineering-header')).toBeVisible();
+ await expect(page.locator('.engineering-footer')).toBeVisible();
+ await expect(page.locator('.sidebar-pane,.right-sidebar')).toHaveCount(0);
+ await expect(page.locator('.article-body .knowledge-visual figure.tv')).toHaveCount(3);
  for(const width of [375,1280]){
   await page.setViewportSize({width,height:900});
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);

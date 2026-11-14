@@ -1,0 +1,35 @@
+---
+import EditorialHeader from './EditorialHeader.astro';
+import EditorialFooter from './EditorialFooter.astro';
+import TechCover from './TechCover.astro';
+import {topics} from '../lib/knowledge-topics';
+const {entry}=Astro.locals.starlightRoute;
+const {title}=entry.data;
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const path=Astro.url.pathname.slice(base.length).replace(/^\/|\/$/g,'');
+const isHome=!path;
+const topic=topics.find(t=>t.id===path.split('/')[0]);
+const permalink=base+'/'+(path?path+'/':'');
+---
+<EditorialHeader {title} knowledgeHome={true} indexPage={isHome} article={!isHome}/>
+{isHome?<div class="knowledge-editorial-shell engineering-index-page">
+ <div id="content"><div class="engineering-index"><slot/></div></div>
+</div>:<div class="knowledge-editorial-shell research-article-page">
+ <div id="content"><div class="research-article-shell"><article class="article research-article">
+  <header class="article-heading research-heading"><h1 id="_top">{title}</h1></header>
+  <figure class="research-hero" data-cover-kind="decorative"><div aria-hidden="true"><TechCover slug={path} eager={true}/></div></figure>
+  <div class="research-reading-grid">
+   <aside class="research-meta" aria-label="Thông tin bài viết">
+    <dl class="post-meta"><div><dt>Nhóm</dt><dd><a href={base+'/'}>Tri thức Hàn Quốc</a></dd></div>
+     {topic&&<div><dt>Chủ đề</dt><dd><a class="topic-link" href={base+'/'+topic.id+'/'}>{topic.title}</a></dd></div>}
+    </dl>
+    <div class="research-share"><a href={permalink}>Permalink</a>
+     <button class="share-link" type="button" data-copy-permalink={permalink}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg> Sao chép liên kết</button>
+     <span class="share-status" role="status" aria-live="polite"></span>
+    </div>
+   </aside>
+   <div class="article-body"><slot/></div>
+  </div>
+ </article></div></div>
+</div>}
+<EditorialFooter knowledgeHome={true}/>

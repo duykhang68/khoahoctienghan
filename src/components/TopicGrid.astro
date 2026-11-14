@@ -1,7 +1,26 @@
 ---
 import {topics} from '../lib/knowledge-topics';
+import TechCover from './TechCover.astro';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
-<ul class="knowledge-topic-list">
- {topics.map(topic=><li><a class="knowledge-card" href={base+'/'+topic.id+'/'}>{topic.title}</a><span> — {topic.desc}</span></li>)}
-</ul>
+<div class="not-content index-archive" aria-label="Các chuyên mục tri thức">
+ <div class="index-grid feed-list" id="tech-post-list" data-layout="grid">
+ {topics.map(topic=><article class="index-card feed-post" data-knowledge-topic>
+  <a class="index-card-visual" href={base+'/'+topic.id+'/'} tabindex="-1" aria-hidden="true"><TechCover slug={topic.id}/></a>
+  <div class="index-card-copy"><div class="post-meta">Tri thức Hàn Quốc</div><h3><a class="knowledge-card" href={base+'/'+topic.id+'/'}>{topic.title}</a></h3><p class="post-summary">{topic.desc}</p></div>
+ </article>)}
+ </div>
+ <nav id="index-pagination" class="index-pagination" aria-label="Phân trang chuyên mục" hidden></nav>
+</div>
+<script>
+ import {pageWindow,pageNumbers} from '../lib/tech-pagination.mjs';
+ const cards=[...document.querySelectorAll<HTMLElement>('[data-knowledge-topic]')];
+ const params=new URLSearchParams(location.search);
+ const {page,pages,start,end}=pageWindow(cards.length,params.get('page'));
+ cards.forEach((card,i)=>card.hidden=i<start||i>=end);
+ const pager=document.getElementById('index-pagination');
+ const href=(n:number)=>n===1?location.pathname:location.pathname+'?page='+n;
+ if(params.has('page')&&(page===1||params.get('page')!==String(page)))history.replaceState(null,'',href(page));
+ function link(n:number,text:string,label:string){const a=document.createElement('a');a.href=href(n);a.textContent=text;a.setAttribute('aria-label',label);if(n===page&&text===String(n))a.setAttribute('aria-current','page');return a;}
+ if(pager&&pages>1){if(page>1)pager.append(link(page-1,'‹','Trang trước'));for(const n of pageNumbers(page,pages))pager.append(link(n,String(n),'Trang '+n));if(page<pages)pager.append(link(page+1,'›','Trang sau'));pager.hidden=false;}
+</script>

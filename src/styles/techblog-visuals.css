@@ -25,7 +25,7 @@
 :is(.article-body,.knowledge-visual) .tv-flow li{display:flex;flex-direction:column;align-items:center;width:min(100%,300px);padding:0;border:0;background:none;list-style:none}
 .tv-flow-node{display:flex;align-items:center;gap:12px;width:100%;padding:13px 16px;border:1px solid #dedede;border-radius:10px;background:#fff}
 .tv-flow-node>svg{flex:none;color:#343434}.tv-flow-node strong{display:block;font-size:14px}.tv-flow-node small{font-size:12px;margin-top:2px}.tv-flow-arrow{margin:5px auto;color:#888;flex:none}
-.tv-cycle svg{display:block;width:100%;max-width:400px;height:auto;margin:auto}:is(.article-body,.knowledge-visual) .tv-cycle-key{display:grid;gap:4px;margin:12px 0 0;padding-left:20px}:is(.article-body,.knowledge-visual) .tv-cycle-key li{font-size:12px;line-height:1.5;text-align:start;color:#666}
+.tv-cycle svg{display:block;width:100%;max-width:none;height:auto;margin:auto}:is(.article-body,.knowledge-visual) .tv-cycle-key{display:grid;gap:4px;margin:12px 0 0;padding-left:20px}:is(.article-body,.knowledge-visual) .tv-cycle-key li{font-size:12px;line-height:1.5;text-align:start;color:#666}
 .tv-swatches{gap:16px}.tv-swatch{border:0;border-radius:8px;padding:0;gap:5px;background:transparent}.tv-swatch:hover .tv-color{outline:2px solid #888;outline-offset:2px}.tv-color{height:64px;border-radius:8px}.tv-swatch strong{font-size:13px}.tv-swatch small{font-size:11px}
 .tv-buttons{gap:18px}.tv-buttons>div{padding:12px;border:1px solid #e2e2e2;border-radius:10px}.tv-demo{font-weight:600;min-height:48px}
 .tv-type{border:0;padding:0}.tv-type>div{padding:12px 0}.tv-type>div+div{margin-top:0}.tv-specimen{line-height:1.25;letter-spacing:-.02em}
