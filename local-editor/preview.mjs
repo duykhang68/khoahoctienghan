@@ -76,7 +76,9 @@ export async function createPreview(root,snapshot,changes,route){
    res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'");
    try{
-    const address=server.address();if(req.headers.host!=='127.0.0.1:'+address.port||!['GET','HEAD'].includes(req.method)){res.writeHead(403);return res.end()}
+    // The temporary server variable is cleared when ownership transfers to active.
+    // The accepted socket retains the listening port throughout the request.
+    const port=req.socket.localPort;if(req.headers.host!=='127.0.0.1:'+port||!['GET','HEAD'].includes(req.method)){res.writeHead(403);return res.end()}
     const pathname=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname);if(!pathname.startsWith(BASE))throw Error('Invalid path');
     const relative=pathname.slice(BASE.length),file=await realpath(resolve(dist,relative+(pathname.endsWith('/')?'index.html':'')));
     if(!file.startsWith(dist+sep)||!(await stat(file)).isFile())throw Error('Invalid file');

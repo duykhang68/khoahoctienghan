@@ -46,3 +46,5 @@ Actual browser editing without source code; local crop/contain and upload/insert
 - Added a desktop integration regression which runs the real localhost service, builds a temporary Astro preview with a valid WebP and inline KnowledgeImage before a heading, checks rendered DOM order/intrinsic dimensions/legacy visual, and confirms the original checkout hash is unchanged. The normal two-project canvas tests remain intact. Await native CI for this exact HEAD.
 
 - Preview isolation recovery candidate after run 43598286778: replace shared node_modules symlink with private installed dependency copy excluding mutable caches, explicit Astro root and bounded opt-in fixture diagnostics. Real preview regression remains mandatory; no gate changes. See engineering/lessons/editor-preview-isolation.md.
+
+- Follow-up to preview run 43598629674: downloaded Playwright trace confirms HTTP 404 at the generated preview route after successful build. Fixed mutable server closure after ownership transfer; added document and binary asset HTTP status assertions without relaxing the existing DOM/order checks. Native CI pending.

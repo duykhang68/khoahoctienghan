@@ -142,10 +142,15 @@ test('actual Astro draft preview renders placed Knowledge image and existing vis
   const changes=[{path:docs,before:snapshot.files[docs].hash,content:article},{path:indexPath,before:snapshot.files[indexPath].hash,content:JSON.stringify(index,null,2)+'\n'},{path:asset,before:snapshot.files[asset]?.hash??null,content:bytes}];
   const response=await fetch(base+'/api/preview',{method:'POST',headers:{Origin:base,'Content-Type':'application/json','X-Editor-Nonce':session.nonce},body:JSON.stringify({base:snapshot.sha,route:'ngon-ngu/hangul/',changes}),signal:AbortSignal.timeout(180000)});
   const preview=await response.json();expect(response.status,JSON.stringify(preview)+'\n'+diagnostic).toBe(200);
-  await page.goto(preview.url);
+  const navigation=await page.goto(preview.url);
+  expect(navigation?.status(),'Preview HTML HTTP status').toBe(200);
   const image=page.getByRole('img',{name:'Ảnh preview thực tế'});
   await expect(image).toBeVisible();await expect(image).toHaveAttribute('width','16');
+  await image.scrollIntoViewIfNeeded();
   await expect(image).toHaveJSProperty('naturalWidth',16);
+  const assetResponse=await page.request.get(new URL(asset.slice(6).replace(/^\//,'/khoahoctienghan/'),preview.url).href);
+  expect(assetResponse.status(),'Preview WebP HTTP status').toBe(200);
+  expect((await assetResponse.body()).toString('base64')).toBe(bytes);
   await expect(page.locator('[data-knowledge-visual="hangul-basic-letters"]')).toBeVisible();
   const order=await page.evaluate(()=>{const image=document.querySelector('[data-editor-image]'),heading=[...document.querySelectorAll('h2')].find(h=>h.textContent?.includes('Chữ cái cơ bản'));return !!image&&!!heading&&!!(image.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING)});
   expect(order).toBe(true);
