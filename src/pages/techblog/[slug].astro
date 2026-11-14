@@ -1,6 +1,9 @@
 ---
 import TechBlog from '../../layouts/TechBlog.astro';
 import TechSidebar from '../../components/TechSidebar.astro';
+import TechParagraph from '../../components/TechParagraph.astro';
+import TechReferences from '../../components/TechReferences.astro';
+import {isReferenceHeading} from '../../lib/tech-links.mjs';
 import {posts,dateLabel,readingMinutes,coverURL,inferCategory,type TechPost} from '../../lib/techblog';
 export function getStaticPaths(){return posts.map(post=>({params:{slug:post.slug},props:{post}}))}
 const {post}=Astro.props as {post:TechPost};
@@ -21,7 +24,7 @@ const category=inferCategory(post);
       <div class="editorial-grid article-grid">
         <div class="article-body">
           <p class="article-lead">{post.summary}</p>
-          {post.sections.map((section,i)=><section aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{section.paragraphs.map(p=><p>{p}</p>)}</section>)}
+          {post.sections.map((section,i)=><section class:list={[isReferenceHeading(section.heading)&&'article-references']} aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{isReferenceHeading(section.heading)?<TechReferences paragraphs={section.paragraphs}/>:section.paragraphs.map(p=><TechParagraph value={p}/>)}</section>)}
           {post.issues.length>0&&<section><h2>Issue tham khảo</h2><ul>{post.issues.map(number=><li><a href={'https://github.com/duykhang68/khoahoctienghan/issues/'+number}>Issue #{number}</a></li>)}</ul></section>}
           <div class="article-end"><a class="read-link" href={base+'/techblog/'}>← Quay lại Engineering Blog</a></div>
         </div>

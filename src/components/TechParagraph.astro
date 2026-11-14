@@ -1,0 +1,5 @@
+---
+import {linkParts} from '../lib/tech-links.mjs';
+const {value}=Astro.props;
+---
+<p>{linkParts(value).map(part=>part.href?<a href={part.href} title={part.href} class="inline-source-link">{part.text}</a>:part.text)}</p>

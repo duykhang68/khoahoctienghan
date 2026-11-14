@@ -18,3 +18,14 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 
 .topic-link{color:var(--accent);font-size:.9em;font-weight:750;letter-spacing:.01em;text-decoration:none}.topic-link:hover{text-decoration:underline}.topic-list a[aria-current=true]{color:var(--accent);font-weight:750;text-decoration:underline;text-underline-offset:3px}.topic-list li{text-align:left}
+
+/* References are navigation, not prose. Avoid spreading a few words across a full line. */
+.article-body .article-references,.article-body .reference-list,.article-body .reference-list li,.article-body .reference-list p{text-align:start;text-align-last:auto;text-justify:auto;word-spacing:normal}
+.article-body .reference-list{list-style:none;padding:0;margin:0 0 1.4rem}
+.article-body .reference-list li{padding:.85rem 0;border-bottom:1px solid var(--line)}
+.article-body .reference-list li:first-child{border-top:1px solid var(--line)}
+.article-body .reference-link{display:block;overflow-wrap:anywhere;word-break:normal;line-height:1.5;text-decoration:none}
+.article-body .reference-link span{text-decoration:underline;text-underline-offset:3px}
+.article-body .reference-link small{display:block;color:var(--muted);font-size:.8em;line-height:1.5;margin-top:.2rem}
+.article-body .reference-list p{margin:0}
+.article-body .inline-source-link{overflow-wrap:anywhere;word-break:normal}

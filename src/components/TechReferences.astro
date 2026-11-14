@@ -1,0 +1,11 @@
+---
+import {referenceEntry} from '../lib/tech-links.mjs';
+import TechParagraph from './TechParagraph.astro';
+const {paragraphs}=Astro.props as {paragraphs:string[]};
+---
+<ul class="reference-list">
+ {paragraphs.map(value=>{
+   const ref=referenceEntry(value);
+   return <li>{ref?<a class="reference-link" href={ref.href} title={ref.href}><span>{ref.label}</span><small>{ref.host}</small></a>:<TechParagraph value={value}/>}</li>
+ })}
+</ul>
