@@ -27,3 +27,5 @@ test('Google claims and signature are verified',async()=>{
  for(const c of [{aud:'wrong'},{nonce:'wrong'},{email:'other@gmail.com'},{email_verified:false},{exp:now-1},{iss:'fake'}])await assert.rejects(verifyGoogle(await token(c),'nonce',env,keys));
  const signed=await token();const parts=signed.split('.');parts[1]=encode({...claims,sub:'forged'});await assert.rejects(verifyGoogle(parts.join('.'),'nonce',env,keys));
 });
+
+ test('Google sign-in and logout documents preserve HTTPS origin',async()=>{const res=await worker.fetch(req('/auth/login'),env);assert.equal(res.headers.get('referrer-policy'),'strict-origin-when-cross-origin');assert.equal(res.headers.get('cross-origin-opener-policy'),'same-origin-allow-popups');});
