@@ -7,7 +7,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "node scripts/check-content.mjs"
+    "check": "node scripts/check-content.mjs",
+    "test:engineering": "node --test tests/engineering.test.mjs",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": ">=24"
@@ -15,5 +17,8 @@
   "dependencies": {
     "astro": "7.2.10",
     "@astrojs/starlight": "0.42.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
   }
 }

@@ -1,34 +1,66 @@
 name: CD · Public Knowledge Base
 on:
-  push:
+  workflow_run:
+    workflows: ['P0 · Knowledge Base CI']
     branches: [main]
+    types: [completed]
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: knowledge-base-production
   cancel-in-progress: false
 jobs:
-  build:
-    if: github.ref == 'refs/heads/main'
+  prepare:
+    if: github.repository == 'duykhang68/khoahoctienghan' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main' && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')))
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
+    outputs:
+      ready: ${{ steps.select.outputs.ready }}
+      sha: ${{ steps.select.outputs.sha }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Select latest verified main CI
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&head_sha=$sha&per_page=30" --jq '[.workflow_runs[] | select(.head_repository.full_name == "'"$GITHUB_REPOSITORY"'" and (.event == "push" or .event == "workflow_dispatch"))] | sort_by(.id) | last // {}')
+          id=$(jq -r '.id // empty' <<< "$run")
+          if [[ -z "$id" || $(jq -r '.conclusion' <<< "$run") != success ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo 'DEFERRED: current main does not have successful CI yet' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" --jq '.jobs' | jq -e 'length>0 and all(.[]; .conclusion=="success") and any(.[]; .name=="Content and Astro build")' >/dev/null
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "run=$id" >> "$GITHUB_OUTPUT"
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        if: steps.select.outputs.ready == 'true'
         with:
-          persist-credentials: false
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          package-manager-cache: false
-      - run: if test -f package-lock.json; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
-      - run: node scripts/security-check.mjs && npm run check && npm run build && node scripts/verify-build.mjs
-      - run: node -e 'require("fs").writeFileSync("dist/release-sha.json",JSON.stringify({sha:process.env.GITHUB_SHA}))'
-      - uses: actions/upload-pages-artifact@v5
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.select.outputs.run }}
+          name: knowledge-base-release
+          path: dist
+      - name: Check exact artifact provenance
+        if: steps.select.outputs.ready == 'true'
+        env:
+          EXPECTED_SHA: ${{ steps.select.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(jq -r .sha dist/release-sha.json)" = "$EXPECTED_SHA"
+          test -f dist/index.html && test -f dist/techblog/index.html
+          test -z "$(find dist -type l -print -quit)"
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        if: steps.select.outputs.ready == 'true'
         with:
           path: dist
   deploy:
-    needs: build
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -38,29 +70,45 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      deployed: ${{ steps.fresh.outputs.eligible }}
     steps:
-      - name: Reject stale release
+      - name: Check release is still current
+        id: fresh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: test "$(gh api repos/$GITHUB_REPOSITORY/git/ref/heads/main --jq .object.sha)" = "$GITHUB_SHA"
+          EXPECTED_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          set -euo pipefail
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [[ "$current" != "$EXPECTED_SHA" ]]; then
+            echo 'eligible=false' >> "$GITHUB_OUTPUT"
+            echo "SUPERSEDED: $EXPECTED_SHA replaced by $current" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'eligible=true' >> "$GITHUB_OUTPUT"
+          fi
       - id: deployment
-        uses: actions/deploy-pages@v5
+        if: steps.fresh.outputs.eligible == 'true'
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
   verify:
-    needs: deploy
+    needs: [prepare, deploy]
+    if: needs.deploy.outputs.deployed == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - name: Verify public exact SHA and routes
+        env:
+          EXPECTED_SHA: ${{ needs.prepare.outputs.sha }}
         run: |
-          set -eu
+          set -euo pipefail
           base=https://duykhang68.github.io/khoahoctienghan
           for attempt in $(seq 1 12); do
-            marker=$(curl -fsS --max-time 15 "$base/release-sha.json?v=$GITHUB_SHA-$attempt" || true)
-            if test "$(printf '%s' "$marker" | jq -r '.sha' 2>/dev/null || true)" = "$GITHUB_SHA"; then
+            marker=$(curl -fsS --max-time 10 "$base/release-sha.json?v=$EXPECTED_SHA-$attempt" || true)
+            if test "$(printf '%s' "$marker" | jq -r '.sha' 2>/dev/null || true)" = "$EXPECTED_SHA"; then
               curl -fsS --max-time 15 "$base/" >/dev/null
               curl -fsS --max-time 15 "$base/ngon-ngu/hangul/" >/dev/null
               curl -fsS --max-time 15 "$base/techblog/" >/dev/null
-              echo "VERIFIED $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+              echo "VERIFIED $EXPECTED_SHA" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             sleep 5
