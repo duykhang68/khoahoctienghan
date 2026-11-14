@@ -1,5 +1,6 @@
 ---
 import StudioDocument from '../../components/StudioDocument.astro';
+import StudioMetadata from '../../components/StudioMetadata.astro';
 import TechBlog from '../../layouts/TechBlog.astro';
 import TechCover from '../../components/TechCover.astro';
 import '../../styles/techblog-article.css';
@@ -42,6 +43,7 @@ const category=inferCategory(post);
         </aside>
         <div class="article-body">
           <p class="article-lead">{post.summary}</p>
+          <StudioMetadata metadata={post} destination="tech" current={post.slug}/>
           {post.studioBody?<StudioDocument body={post.studioBody}/>:post.sections.map((section,i)=>isReferenceHeading(section.heading)?
             <details class="article-disclosure article-references">
               <summary><h2 id={'section-'+i}>{section.heading}</h2><span class="disclosure-count">{section.paragraphs.length}</span><svg class="disclosure-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary>

@@ -20,8 +20,7 @@ export function GithubPublish({title,labels,series,editor,mode,busy}){
   setSending(true);setError('');setResult(null);
   try{
    if(mode!=='compose')throw Error('Quay về Soạn thảo để dùng nội dung TipTap hiện tại.');
-   if(labels.length||series.enabled)throw Error('Nhãn và Series chưa được chuyển đổi sang Astro; giữ bản nháp local để tránh mất metadata.');
-   const draft={kind,category,title,summary,body:editor.getJSON()};
+   const draft={kind,category,title,summary,labels,series:series.enabled?{...series,part:Number(series.part),total_parts:Number(series.total_parts)}:null,body:editor.getJSON()};
    const value=await request('/api/github-editor/draft',{method:'POST',headers:{'Content-Type':'application/json','X-Editor-Nonce':session.nonce},body:JSON.stringify({confirm:true,draft})});setResult(value);setConfirmed(false);
   }catch(e){setError(e.message)}finally{setSending(false)}
  }
@@ -34,5 +33,5 @@ export function GithubPublish({title,labels,series,editor,mode,busy}){
  <label><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> Tôi xác nhận nội dung sẽ được gửi lên repository công khai.</label>
  <button className="save full" disabled={!session?.connected||!confirmed||sending||busy||!title.trim()||mode!=='compose'} onClick={submit}>{sending?'Đang tạo Draft PR…':'Gửi bài mới → Draft PR'}</button>
  {error&&<p role="alert">{error}</p>}{result&&<p role="status"><a target="_blank" rel="noreferrer" href={result.url}>Draft PR #{result.number}</a> · chưa xuất bản</p>}
- <small>Chỉ bài mới ở bản tích hợp này. Kiểm tra PR trước khi xuất bản. Ảnh URL, series và nhãn chưa được adapter hỗ trợ; dữ liệu không hợp lệ sẽ bị chặn. Blogger/Drive bên dưới vẫn là dịch vụ riêng.</small></div></section>
+ <small>Chỉ bài mới ở bản tích hợp này. Kiểm tra PR trước khi xuất bản. Nhãn và Series được lưu cùng bài viết. Ảnh URL chưa được adapter hỗ trợ; dữ liệu không hợp lệ sẽ bị chặn. Blogger/Drive bên dưới vẫn là dịch vụ riêng.</small></div></section>
 }

@@ -25,13 +25,13 @@ export async function createDraftPR(draft){
  const main=await gh(repo+'/git/ref/heads/main'),sha=main.object.sha,commit=await gh(repo+'/git/commits/'+sha);
  const tree=await gh(repo+'/git/trees/'+commit.tree.sha+'?recursive=1');assert(!tree.truncated,'Repository tree incomplete');
  const paths=tree.tree.filter(f=>f.type==='blob').map(f=>f.path);
- assert(paths.includes('src/data/studio-documents.json')&&paths.includes('src/components/StudioDocument.astro'),'Migration chưa merge vào main. Chỉ lưu local lúc này.');
+ assert(paths.includes('src/data/studio-documents.json')&&paths.includes('src/data/studio-metadata.json')&&paths.includes('src/components/StudioDocument.astro'),'Migration chưa merge vào main. Chỉ lưu local lúc này.');
  const content=async path=>{const result=await gh(repo+'/contents/'+path+'?ref='+sha);assert(result.encoding==='base64','Invalid file');return Buffer.from(result.content,'base64').toString('utf8')};
  // Validate destination before interpolating any path.
  const validCats=['ngon-ngu','lich-su','van-hoa','am-thuc','dia-ly-du-lich','kinh-te-cong-nghe','giao-duc-du-hoc','hallyu','doi-song','the-che'];
  if(draft.kind==='knowledge')assert(validCats.includes(draft.category),'Invalid category');
- const [posts,documents,categorySource]=await Promise.all([content('src/data/techblog/posts.json').then(JSON.parse),content('src/data/studio-documents.json').then(JSON.parse),draft.kind==='knowledge'?content('src/content/docs/'+draft.category+'/index.md'):null]);
- const prepared=prepareArticle(draft,{paths,posts,documents,categorySource});const entries=[];
+ const [posts,documents,categorySource,metadata]=await Promise.all([content('src/data/techblog/posts.json').then(JSON.parse),content('src/data/studio-documents.json').then(JSON.parse),draft.kind==='knowledge'?content('src/content/docs/'+draft.category+'/index.md'):null,content('src/data/studio-metadata.json').then(JSON.parse)]);
+ const prepared=prepareArticle(draft,{paths,posts,documents,categorySource,metadata});const entries=[];
  for(const [path,value] of prepared.changes){if(value.binary){const b=await gh(repo+'/git/blobs','POST',{content:value.binary.toString('base64'),encoding:'base64'});entries.push({path,mode:'100644',type:'blob',sha:b.sha})}else entries.push({path,mode:'100644',type:'blob',content:value.text})}
  const nextTree=await gh(repo+'/git/trees','POST',{base_tree:commit.tree.sha,tree:entries});const next=await gh(repo+'/git/commits','POST',{message:'content: add article from Editorial Studio',tree:nextTree.sha,parents:[sha]});
  assert((await gh(repo+'/git/ref/heads/main')).object.sha===sha,'Main đã thay đổi. Thử lại.');

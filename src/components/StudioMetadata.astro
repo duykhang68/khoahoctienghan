@@ -1,0 +1,26 @@
+---
+import {normalizeMetadata} from '../lib/studio-metadata.mjs';
+import kb from '../data/studio-metadata.json';
+import tech from '../data/techblog/posts.json';
+const {metadata={},destination,current}=Astro.props;
+const value=normalizeMetadata(metadata);
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const candidates=destination==='tech'
+ ? tech.map((p:any)=>({id:p.slug,title:p.title,route:base+'/techblog/'+p.slug+'/',metadata:p}))
+ : Object.entries(kb).map(([id,metadata])=>({id,title:'Tập '+(metadata as any).series?.part,route:base+'/'+id.replace('--','/')+'/',metadata}));
+const related=value.series?candidates.filter(p=>p.id!==current&&normalizeMetadata(p.metadata).series?.name===value.series.name)
+ .map(p=>({...p,part:normalizeMetadata(p.metadata).series.part})).sort((a,b)=>a.part-b.part):[];
+---
+{(value.labels.length>0||value.series)&&<section class="studio-metadata" aria-label="Nhãn và Series">
+ {value.labels.length>0&&<div class="studio-label-row"><strong>Nhãn</strong><ul aria-label="Nhãn bài viết">{value.labels.map(label=><li>{label}</li>)}</ul></div>}
+ {value.series&&<div class="studio-series"><strong>{value.series.name}</strong><p>Tập {value.series.part} / {value.series.total_parts}{value.series.target_date&&' · Dự kiến hoàn tất: '+value.series.target_date}</p>
+ <progress aria-label="Vị trí tập trong Series" value={value.series.part} max={value.series.total_parts}/>
+ {related.length>0&&<ol aria-label="Các tập khác">{related.map(p=><li><a href={p.route}>Tập {p.part}{destination==='tech'?' · '+p.title:''}</a></li>)}</ol>}</div>}
+</section>}
+<style>
+.studio-metadata{display:grid;gap:12px;margin:1.2rem 0;padding:16px;border:1px solid #dce3eb;border-radius:10px;background:#f7f9fc;color:#24364d;overflow-wrap:anywhere;font-size:.9rem}
+.studio-label-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.studio-label-row ul{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.studio-label-row li{background:#e5edf8;padding:3px 9px;border-radius:20px}
+.studio-series p{margin:.35rem 0}.studio-series progress{width:100%;accent-color:#3679ad}.studio-series ol{margin:.5rem 0 0;padding-left:1.4rem}
+</style>
