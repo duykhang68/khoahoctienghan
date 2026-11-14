@@ -20,12 +20,11 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(menu.locator('.edition-panel')).toBeHidden();
  await expect(page.locator('.search-submit')).toHaveCSS('background-color','rgb(9, 114, 211)');
  const footer=page.locator('.engineering-footer');
- await expect(footer.getByRole('link',{name:'Mã nguồn GitHub',exact:true})).toHaveCount(1);
- await expect(footer.getByRole('link',{name:'Issues',exact:true})).toHaveCount(1);
- await expect(footer.getByRole('link',{name:'Tìm kiếm',exact:true})).toHaveCount(1);
- await expect(footer.getByRole('link',{name:'Chuyên mục',exact:true})).toHaveCount(1);
- await expect(footer.getByRole('link',{name:'Chuyên mục',exact:true})).toHaveAttribute('href',/\/techblog\/#categories$/);
- await expect(footer.getByRole('link',{name:'Trang chủ',exact:true})).toHaveAttribute('href',/\/techblog\/$/);
+ await expect(footer.locator('section')).toHaveCount(1);
+ await expect(footer.getByRole('link')).toHaveCount(2);
+ await expect(footer.getByRole('heading',{name:'Khám phá',exact:true})).toHaveCount(0);
+ await expect(footer.getByRole('heading',{name:'Tài nguyên',exact:true})).toHaveCount(0);
+ await expect(footer.locator('.footer-brand')).toHaveText('Engineering Blog');
  const kbHref=(await footer.locator('.footer-cta').getAttribute('href'))!;
  expect(kbHref).toMatch(/\/khoahoctienghan\/$/);
  await expect(footer.locator('a[href="'+kbHref+'"]')).toHaveCount(1);
@@ -47,6 +46,8 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(page.locator('.research-meta')).toBeVisible();
  await expect(page.locator('.tech-sidebar')).toHaveCount(0);
  await expect(page.locator('.footer-cta')).toBeVisible();
+ await expect(footer.locator('section')).toHaveCount(1);
+ await expect(footer.getByRole('link')).toHaveCount(2);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
  await page.setViewportSize({width:375,height:812});
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
