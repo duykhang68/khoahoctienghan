@@ -67,7 +67,7 @@ export function mountSheetBlog(root){
   }catch(e){set(e.message)}finally{loading=false;update()}
  }
  clientInput.addEventListener('input',update);
- const gis=document.createElement('script');gis.src='https://accounts.google.com/gsi/client';gis.async=true;gis.referrerPolicy='no-referrer';
+ const gis=document.createElement('script');gis.src='https://accounts.google.com/gsi/client';gis.async=true;gis.referrerPolicy='strict-origin-when-cross-origin';
  gis.onload=()=>{gisReady=!!window.google?.accounts?.oauth2;set(gisReady?'Sẵn sàng đăng nhập Google.':'Không khởi tạo được Google OAuth.');update()};
  gis.onerror=()=>set('Không tải được Google Identity Services. Kiểm tra mạng rồi tải lại trang.');document.head.append(gis);
  login.addEventListener('click',()=>{
@@ -110,7 +110,7 @@ export function mountSheetBlog(root){
    draft.sheetSource=await sheetSource(item.row,fresh);
    await buildDocument(draft.blocks);
    const route=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+slugify(draft.title)+'/';
-   const check=await fetch(route,{cache:'no-store',redirect:'error'});
+   const check=await fetch('/admin/article-check'+route.slice(base.length),{cache:'no-store',redirect:'error'});
    if(check.ok)throw Error('URL bài đã tồn tại. Không gửi bài trùng.');
    if(check.status!==404)throw Error('Chưa kiểm tra được URL bài. Thử lại.');
    const result=await github.publish(draft,topics.map(t=>t.id),s=>msg.textContent=s);
