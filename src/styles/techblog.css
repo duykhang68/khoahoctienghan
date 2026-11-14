@@ -121,3 +121,10 @@ h1,h2,h3,.blog-name{font-family:var(--sans);letter-spacing:0;font-weight:600}
  .nav-links .nav-cta{font-size:var(--type-button)}
  .blog-name{overflow-wrap:anywhere}
 }
+
+/* Minimal shared Tech Blog header: one home link, no secondary navigation. */
+.engineering-nav.engineering-nav-minimal{display:flex;align-items:center;justify-content:flex-start;min-height:56px;padding:12px var(--pad)}
+.engineering-nav-minimal .engineering-brand{font-family:var(--sans);font-size:22px;font-weight:600;line-height:1.3;letter-spacing:0;white-space:normal;border:0;padding:0;color:#fff;text-decoration:none}
+.engineering-nav-minimal .engineering-brand:hover{text-decoration:underline;text-underline-offset:4px}
+.engineering-index #categories{scroll-margin-top:16px}
+@media(max-width:480px){.engineering-nav.engineering-nav-minimal{min-height:52px}.engineering-nav-minimal .engineering-brand{font-size:20px}}

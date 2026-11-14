@@ -1,19 +1,24 @@
 import {test,expect} from '@playwright/test';
-test('blog chrome and AWS-style controls have functional navigation and accessible mobile layout',async({page})=>{
+test('single-link header, footer destinations and accessible mobile layout',async({page})=>{
  await page.goto('./techblog/');
- await expect(page.locator('.utility-band')).toBeVisible();
- await expect(page.locator('.blog-tabs a[aria-current=true]')).toHaveText('Blogs');
- const menu=page.locator('.edition-menu');
- await menu.locator('summary').click();
- await expect(menu).toHaveAttribute('open','');
- await expect(menu.locator('.edition-panel a').first()).toHaveText('Tất cả bài viết');
- await menu.locator('summary').press('Escape');
- await expect(menu).not.toHaveAttribute('open','');
+ const header=page.locator('.engineering-header');
+ await expect(header.getByRole('link')).toHaveCount(1);
+ await expect(header.getByRole('link')).toHaveText('Engineering Blog');
+ await expect(header.getByRole('link')).toHaveAttribute('href',/\/techblog\/$/);
+ await expect(page.locator('.utility-band,.blog-navigation,.edition-menu,.nav-cta')).toHaveCount(0);
  await expect(page.locator('.search-submit')).toHaveCSS('background-color','rgb(9, 114, 211)');
- await expect(page.locator('.nav-cta')).toHaveAttribute('href',/\/$/);
+ const footer=page.locator('.engineering-footer');
+ await expect(footer.getByRole('link',{name:'Mã nguồn GitHub',exact:true})).toHaveCount(1);
+ await expect(footer.getByRole('link',{name:'Issues',exact:true})).toHaveCount(1);
+ await expect(footer.getByRole('link',{name:'Tìm kiếm',exact:true})).toHaveCount(1);
+ await expect(footer.getByRole('link',{name:'Chuyên mục',exact:true})).toHaveCount(1);
+ await expect(footer.getByRole('link',{name:'Chuyên mục',exact:true})).toHaveAttribute('href',/\/techblog\/#categories$/);
+ await expect(page.locator('#categories')).toBeVisible();
  const first=page.locator('[data-tech-post]').first();
  const title=(await first.locator('h3').innerText()).trim();
  await first.locator('h3 a').click();
+ await expect(header.getByRole('link')).toHaveCount(1);
+ await expect(header.getByRole('link')).toHaveText('Engineering Blog');
  await expect(page.locator('.current-crumb')).toHaveText(title);
  await expect(page.locator('.article-heading h1')).toHaveText(title);
  await expect(page.locator('.research-meta .post-meta')).toBeVisible();

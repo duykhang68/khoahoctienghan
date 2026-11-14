@@ -31,7 +31,7 @@ const featureHref=latest?base+'/techblog/'+latest.slug+'/':'';
           <input id="tech-query" name="q" type="search" placeholder="Tìm bài viết..."/>
           <button class="aws-button search-submit" type="submit" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
         </form>
-        <nav class="index-categories" aria-label="Lọc chuyên mục"><a href={base+'/techblog/'} data-all-categories>Tất cả</a>{categories.map(c=><a data-category-filter={c.id} href={base+'/techblog/?category='+c.id}>{c.label}</a>)}</nav>
+        <nav id="categories" class="index-categories" aria-label="Lọc chuyên mục"><a href={base+'/techblog/'} data-all-categories>Tất cả</a>{categories.map(c=><a data-category-filter={c.id} href={base+'/techblog/?category='+c.id}>{c.label}</a>)}</nav>
         <form class="index-year-form" method="get" action={base+'/techblog/'}><label class="sr-only" for="archive-year">Năm lưu trữ</label><select id="archive-year" name="year"><option value="">Tất cả năm</option>{archiveYears.map(y=><option value={y}>{y}</option>)}</select><button type="submit" class="index-year-submit">Lọc</button></form>
         <a id="clear-filters" href={base+'/techblog/'} hidden>Xóa bộ lọc</a>
       </div>

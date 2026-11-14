@@ -1,6 +1,5 @@
 ---
 import '../styles/techblog.css';
-import {categories} from '../lib/techblog';
 const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false,indexPage=false}=Astro.props;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const canonical=new URL(Astro.url.pathname,Astro.site);
@@ -23,26 +22,10 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
 <body class:list={[indexPage&&'engineering-index-page',article&&'research-article-page']}>
   <a class="skip" href="#content">Bỏ qua điều hướng</a>
   <header class="engineering-header">
-    <div class="utility-band"><div class="utility-inner"><span>Tri thức Hàn Quốc</span><nav aria-label="Liên kết hỗ trợ"><a href="https://github.com/duykhang68/khoahoctienghan">GitHub</a><a href="https://github.com/duykhang68/khoahoctienghan/issues">Issues</a></nav></div></div>
-    <nav class="engineering-nav" aria-label="Điều hướng Engineering">
-      <a class="engineering-brand" href={base+'/'}>Tri thức Hàn Quốc</a>
-      <div class="nav-links">
-        <a href={base+'/'}>Trang chủ</a>
-        <a href={base+'/techblog/'} aria-current="true">Engineering Blog</a>
-        <a class="nav-search" href={base+'/techblog/#search'} aria-label="Tìm kiếm bài viết"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><span>Tìm kiếm</span></a>
-        <a class="aws-button nav-cta" href={base+'/'}>Kho tri thức</a>
-      </div>
+    <nav class="engineering-nav engineering-nav-minimal" aria-label="Điều hướng Engineering">
+      <a class="engineering-brand" href={base+'/techblog/'} aria-current={indexPage?'page':undefined}>Engineering Blog</a>
     </nav>
   </header>
-  <div class="blog-navigation"><div class="blog-nav-inner">
-    <a class="blog-channel" href={base+'/techblog/'}>Blogs</a>
-    <nav class="blog-tabs" aria-label="Điều hướng Blog">
-      <a href={base+'/'}>Trang chủ</a>
-      <a href={base+'/techblog/'} aria-current="true">Blogs</a>
-      <details class="edition-menu"><summary>Chuyên mục <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></summary><div class="edition-panel"><a href={base+'/techblog/'}>Tất cả bài viết</a>{categories.map(c=><a href={base+'/techblog/?category='+c.id}>{c.label}</a>)}</div></details>
-    </nav>
-    <a class="blog-edition" href={base+'/techblog/#search'}>Tìm kiếm bài viết</a>
-  </div></div>
   <div class="breadcrumb-band"><nav class="blog-breadcrumb" aria-label="Đường dẫn">
     <a href={base+'/'}>Trang chủ</a><span class="crumb-divider" aria-hidden="true">›</span>
     {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">Engineering Blog</span>}
@@ -52,16 +35,13 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   <main id="content"><slot/></main>
   <footer class="engineering-footer"><div class="footer-inner">
     <section class="footer-intro"><a class="footer-brand" href={base+'/techblog/'}>Engineering Blog</a><p>Ghi lại những điều học được khi xây dựng phần mềm.</p><a class="aws-button footer-cta" href={base+'/'}>Khám phá kho tri thức</a></section>
-    <section><h2>Khám phá</h2><ul><li><a href={base+'/'}>Trang chủ</a></li><li><a href={base+'/techblog/'}>Bài viết mới</a></li><li><a href={base+'/techblog/#search'}>Tìm kiếm</a></li></ul></section>
+    <section><h2>Khám phá</h2><ul><li><a href={base+'/'}>Trang chủ</a></li><li><a href={base+'/techblog/'}>Bài viết mới</a></li><li><a href={base+'/techblog/#search'}>Tìm kiếm</a></li><li><a href={base+'/techblog/#categories'}>Chuyên mục</a></li></ul></section>
     <section><h2>Tài nguyên</h2><ul><li><a href="https://github.com/duykhang68/khoahoctienghan">Mã nguồn GitHub</a></li><li><a href="https://github.com/duykhang68/khoahoctienghan/issues">Issues</a></li><li><a href="#content">Về đầu trang ↑</a></li></ul></section>
   </div><div class="footer-bottom"><div>Tri thức Hàn Quốc · Engineering</div></div></footer>
 </body>
 </html>
 
 <script>
-  const menu=document.querySelector<HTMLDetailsElement>('.edition-menu');
-  document.addEventListener('click',event=>{if(menu?.open&&!menu.contains(event.target as Node))menu.open=false;});
-  menu?.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary')?.focus();}});
   for(const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-permalink]')){
     button.addEventListener('click',async()=>{
       const status=button.parentElement?.querySelector<HTMLElement>('.share-status');
