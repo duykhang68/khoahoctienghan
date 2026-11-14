@@ -24,7 +24,7 @@ test('all knowledge pages navigate to the canonical Tech Blog URL',async({page})
  await expect(page).toHaveURL(/\/khoahoctienghan\/techblog\/$/);
  await expect(page.locator('.engineering-brand')).toHaveText('Engineering Blog');
  await page.goto('./');
- await page.locator('.edition-menu summary').click();
- await expect(page.locator('.edition-panel a').filter({hasText:/^Engineering Blog$/})).toHaveAttribute('href',expected);
- await expect(page.locator('.footer-cta')).toHaveAttribute('href',expected);
+ const homeMenu=page.locator('button[popovertarget="starlight__sidebar"]');
+ if(await homeMenu.isVisible())await homeMenu.click();
+ await expect(page.locator('.knowledge-nav-groups a[href$="/techblog/"]')).toHaveAttribute('href',expected);
 });

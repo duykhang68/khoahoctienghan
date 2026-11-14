@@ -1,6 +1,7 @@
 ---
 import {topics} from '../lib/knowledge-topics';
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
-<div class="knowledge-grid">
-  {topics.map(topic => <a class="knowledge-card" href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${topic.id}/`}><span class="mark" aria-hidden="true">{topic.mark}</span><strong>{topic.title}</strong><small>{topic.desc}</small><span class="more">Khám phá →</span></a>)}
-</div>
+<ul class="knowledge-topic-list">
+ {topics.map(topic=><li><a class="knowledge-card" href={base+'/'+topic.id+'/'}>{topic.title}</a><span> — {topic.desc}</span></li>)}
+</ul>

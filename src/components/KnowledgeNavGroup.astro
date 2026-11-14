@@ -1,0 +1,6 @@
+---
+type Entry=typeof Astro.locals.starlightRoute.sidebar[number];
+const {entries,label}=Astro.props as {entries:Entry[],label:string};
+---
+<h3>{label}</h3>
+<ul>{entries.map(entry=>entry.type==='link'?<li><a href={entry.href} aria-current={entry.isCurrent?'page':undefined}>{entry.label}</a></li>:<li><Astro.self entries={entry.entries} label={entry.label}/></li>)}</ul>

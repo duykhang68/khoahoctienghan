@@ -1,0 +1,10 @@
+---
+import KnowledgeNavGroup from './KnowledgeNavGroup.astro';
+const {sidebar}=Astro.locals.starlightRoute;
+---
+<ul class="knowledge-nav-groups top-level" aria-label="Các chuyên mục tri thức">
+ {sidebar.map(entry=>entry.type==='link'?<li class="knowledge-nav-direct"><a href={entry.href} aria-current={entry.isCurrent?'page':undefined}>{entry.label}</a></li>:<li class="knowledge-nav-group">
+  <h2>{entry.label}</h2>
+  <ul>{entry.entries.map(child=>child.type==='link'?<li><a href={child.href} aria-current={child.isCurrent?'page':undefined}>{child.label}</a></li>:<li><KnowledgeNavGroup entries={child.entries} label={child.label}/></li>)}</ul>
+ </li>)}
+</ul>

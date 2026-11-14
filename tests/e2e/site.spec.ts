@@ -50,20 +50,18 @@ test('inferred categories on both feed and detail, filter works',async({page})=>
  await expect(page.locator('#no-results')).toBeVisible();
 });
 
-test('knowledge homepage reuses tech blog editorial shell and compact grid',async({page})=>{
- const metrics=()=>page.evaluate(()=>{const h=document.querySelector('.engineering-header')!;const grid=document.querySelector('#tech-post-list')!;const cover=grid.querySelector('.editorial-cover')!;return {header:getComputedStyle(h).backgroundColor,font:getComputedStyle(h).fontFamily,headerHeight:h.getBoundingClientRect().height,columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,coverHeight:cover.getBoundingClientRect().height,footer:getComputedStyle(document.querySelector('.engineering-footer')!).backgroundColor};});
- await page.goto('./techblog/');const blog=await metrics();
- await page.goto('./');await expect(page.locator('.engineering-brand')).toHaveText('Tri thức Hàn Quốc');
- await expect(page.locator('.blog-breadcrumb')).toHaveText('Tri thức Hàn Quốc');
- await expect(page.locator('[data-knowledge-topic]:visible')).toHaveCount(6);
- expect(await metrics()).toEqual(blog);
- await expect(page.locator('.compact-fallback').first()).toBeVisible();
- await page.locator('.edition-menu summary').click();
- await expect(page.locator('.edition-panel a[href$="/the-che/"]')).toBeVisible();
- await page.locator('.edition-menu summary').press('Escape');
- await page.locator('#index-pagination a[aria-label="Trang 2"]').click();
- await expect(page.locator('[data-knowledge-topic]:visible')).toHaveCount(4);
+test('knowledge homepage uses the same document shell as its subpages',async({page})=>{
+ await page.goto('./');
+ await expect(page.locator('h1')).toHaveText('Tri thức Hàn Quốc');
+ await expect(page.locator('header.header')).toBeVisible();
+ await expect(page.locator('.knowledge-topic-list .knowledge-card')).toHaveCount(10);
  await expect(page.locator('.knowledge-card[href$="/the-che/"]')).toBeVisible();
- await expect(page.locator('.footer-cta')).toHaveAttribute('href',/\/techblog\/$/);
+ await expect(page.locator('.knowledge-nav-groups')).toBeAttached();
+ const menu=page.locator('button[popovertarget="starlight__sidebar"]');
+ if(await menu.isVisible())await menu.click();
+ await expect(page.locator('.knowledge-nav-groups a[href$="/techblog/"]')).toBeVisible();
+ await page.goto('./ngon-ngu/');
+ await expect(page.locator('.knowledge-nav-groups')).toBeAttached();
+ await expect(page.locator('h1')).toContainText('Ngôn ngữ Hàn Quốc');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
 });
