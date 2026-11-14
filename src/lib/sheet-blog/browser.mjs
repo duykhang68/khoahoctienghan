@@ -1,5 +1,6 @@
 import {sheetsClient,scope,rowDraft,recommendDestination} from './model.mjs';
 import {githubClient} from '../editor-v2/github.mjs';
+import {mountQueueProgress} from './progress-browser.mjs';
 import {slugify,buildDocument} from '../editor-v2/model.mjs';
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 export function mountSheetBlog(root){
@@ -8,6 +9,7 @@ export function mountSheetBlog(root){
  const status=$('[data-status]'),clientInput=$('[data-client]'),login=$('[data-google-login]'),dialog=$('[data-confirm-dialog]');
  let google=null,github=null,rows=[],selected=null,selectedRow=null,loading=false,sending=false,oauthPending=false,googleEpoch=0,page=1,gisReady=false;
  const submitted=new Map();
+ const queueProgress=mountQueueProgress($('[data-queue-progress]'));
  clientInput.value=root.dataset.clientId||'';
  try{if(!clientInput.value)clientInput.value=localStorage.getItem('kb.sheet-blog.public-client-id')||''}catch{}
  if(root.dataset.clientId)$('[data-client-label]').hidden=true;
@@ -110,7 +112,7 @@ export function mountSheetBlog(root){
    if(check.ok)throw Error('URL bài đã tồn tại. Không gửi bài trùng.');
    if(check.status!==404)throw Error('Chưa kiểm tra được URL bài. Thử lại.');
    const result=await github.publish(draft,topics.map(t=>t.id),s=>msg.textContent=s);
-   submitted.set(item.row,result);dialog.close();render();set('Đã gửi commit '+result.sha.slice(0,7)+' · GitHub sẽ tiếp nhận Issue FIFO; chưa xuất bản.');
+   submitted.set(item.row,result);queueProgress.record(result,item.title);dialog.close();render();set('Đã gửi commit '+result.sha.slice(0,7)+' · GitHub sẽ tiếp nhận Issue FIFO; chưa xuất bản.');
   }catch(e){msg.textContent=e.message}finally{sending=false;update()}
  });
  update();render();

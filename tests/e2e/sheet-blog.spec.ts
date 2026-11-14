@@ -17,6 +17,7 @@ test('VN mapping preserves title and body, stable retry payload, and fails close
  expect(()=>rowDraft({...selected,id:'a'.repeat(40)},['a'.repeat(40),...row.slice(1)],topics,'knowledge','ngon-ngu')).toThrow(/Content ID/);
 });
 test('Google OAuth fixture lists only VN titles, previews exact chosen content and gates GitHub writes',async({page})=>{
+ await page.route('https://api.github.com/repos/duykhang68/khoahoctienghan/issues?**',route=>route.fulfill({json:[]}));
  await page.route('https://accounts.google.com/gsi/client',route=>route.fulfill({contentType:'application/javascript',body:'window.google={accounts:{oauth2:{hasGrantedAllScopes:()=>true,initTokenClient:c=>({requestAccessToken:()=>c.callback({access_token:"fixture-google"})})}}};'}));
  let bodyRead=0;
  await page.route('https://sheets.googleapis.com/**',route=>{
