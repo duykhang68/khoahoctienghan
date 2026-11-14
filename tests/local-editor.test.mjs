@@ -85,3 +85,14 @@ test('Markdown to MDX keeps route and protected links when migrated atomically',
  const result=applyChanges(base,[{path:from,before:digest(content),content:null},{path:to,before:null,content}]);assert.ok(!result.has(from)&&result.has(to));assert.ok(routesFromPaths(result.keys()).has('/ngon-ngu/hangul/'));
  assert.throws(()=>applyChanges(base,[{path:from,before:digest(content),content:null}]),/Protected/);
 });
+
+import {assertPreviewSource,validPreviewRoute} from '../local-editor/preview.mjs';
+test('production preview compiles only approved local MDX syntax and safe routes',()=>{
+ const doc='src/content/docs/ngon-ngu/test.mdx',front='---\ntitle: Test\ndescription: Test article\n---\n';
+ assert.ok(validPreviewRoute('ngon-ngu/test/'));assert.ok(!validPreviewRoute('../etc/'));assert.ok(!validPreviewRoute('https://example.com/'));
+ assert.doesNotThrow(()=>assertPreviewSource(doc,front+"import KnowledgeImage from '../../../components/KnowledgeImage.astro';\n\n<KnowledgeImage id=\"image-test\" />\n\nBody",null));
+ assert.throws(()=>assertPreviewSource(doc,front+"import Evil from 'node:fs';\n\n<Evil />",null),/arbitrary/);
+ assert.throws(()=>assertPreviewSource(doc,front+'{process.env.SECRET}',null),/arbitrary/);
+ assert.throws(()=>assertPreviewSource(doc,front+"import KnowledgeImage from 'https://example.com/KnowledgeImage.astro';",null),/arbitrary/);
+ assert.throws(()=>assertPreviewSource(doc,front.replace('description: Test article','description: Test article\ncustom: true')+'Body',null),/metadata/);
+});

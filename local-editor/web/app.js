@@ -87,6 +87,7 @@ function state(){
  $('auth-state').textContent=login?'Connected · '+login:'Offline';
  $('draft-count').textContent=Object.keys(drafts).length+' thay đổi local'+(conflicts.length?' · '+conflicts.length+' xung đột':'');
  $('connect').disabled=busy||!!login;$('disconnect').disabled=busy||!login;$('pull').disabled=busy||!login;$('sync').disabled=busy||!login||!Object.keys(drafts).length||!!conflicts.length;
+ $('article-preview').disabled=busy||!!conflicts.length||!active||(active===POSTS?postIndex<0:!active.startsWith('src/content/docs/'));
  $('discard').disabled=!active||!drafts[active];$('save').disabled=!active||get(active)===null;
  $('duplicate-article').disabled=busy||!active||(active===POSTS?postIndex<0:!active.startsWith('src/content/docs/'));
  $('delete-article').disabled=$('duplicate-article').disabled||(active!==POSTS&&!canDeleteDoc(active));renderHistory();renderPublishing();
@@ -114,7 +115,7 @@ function renderFiles(){
 }
 function keepCurrent(){try{flushArticle();return true}catch(e){status(e.message);return confirm('Không lưu được bản nháp. Bỏ phần chưa lưu?')}}
 function select(p){
- clearTimeout(autoTimer);autoTimer=0;active=p;postIndex=-1;postList=null;$('file-title').textContent=name(p,get(p));$('file-path').textContent=p;
+ $('preview-result').replaceChildren();clearTimeout(autoTimer);autoTimer=0;active=p;postIndex=-1;postList=null;$('file-title').textContent=name(p,get(p));$('file-path').textContent=p;
  $('editor').disabled=false;$('editor').value=get(p)||'';$('preview').textContent=$('editor').value;
  $('post-tools').hidden=p!==POSTS;
  if(p===POSTS){try{postList=JSON.parse(get(p));postIndex=postList.length?0:-1;renderPosts();if(postIndex>=0)$('editor').value=JSON.stringify(postList[postIndex],null,2)}catch{status('Không đọc được dữ liệu bài viết; nội dung gốc vẫn nguyên vẹn.');}}
@@ -200,6 +201,17 @@ $('save-menu').onclick=()=>{stage(MENU,JSON.stringify(menu,null,2)+'\n');status(
 $('connect').onclick=()=>action(async()=>{const value=$('token').value.trim();$('token').value='';const r=await request('connect',{token:value});login=r.login;status('Đã kết nối. Nhấn Pull GitHub để tải bản online.')});
 $('disconnect').onclick=()=>action(async()=>{await request('disconnect',{});login=null;status('Đã ngắt kết nối, bản nháp vẫn được giữ.')});
 function unsaved(){return dirtyArticle()||JSON.stringify(menu,null,2)+'\n'!==get(MENU)}
+$('article-preview').onclick=()=>action(async()=>{
+ flushArticle();if(!active||conflicts.length)throw Error('Chọn bài không xung đột trước khi xem preview.');
+ const route=active===POSTS&&postIndex>=0?'techblog/'+JSON.parse($('editor').value).slug+'/':active.startsWith('src/content/docs/')?(routeForDoc(active)?routeForDoc(active)+'/':''):null;
+ if(route===null)throw Error('Chọn bài viết.');
+ const refs=(get(POSTS)||'')+'\n'+(get(MEDIA_INDEX)||'');
+ const changes=Object.entries(drafts).filter(([path])=>!assetPath(path)||refs.includes(path.slice('public'.length))).map(([path,value])=>({path,...value}));
+ const output=$('preview-result');output.replaceChildren();status('Đang dựng Astro preview từ bản nháp local.');
+ const result=await request('preview',{base:snapshot.sha,route,changes});
+ const link=el('a','Mở bản xem trước Astro');link.href=result.url;link.target='_blank';link.rel='noopener noreferrer';output.append(link,el('small','Snapshot '+result.base.slice(0,12)+' · '+new Date(result.generatedAt).toLocaleString('vi-VN')+' · chạy local, chưa xuất bản'));
+ status('Đã dựng bản xem trước bằng renderer production. Mở liên kết để xem.');
+});
 $('refresh-publishing').onclick=()=>action(refreshPublishing);
 $('pull').onclick=()=>action(async()=>{flushArticle();if(unsaved()&&!confirm('Thay đổi chưa lưu local sẽ bị bỏ. Tiếp tục Pull?'))return;const s=await request('pull',{});status('Đã tải GitHub, giữ các bản nháp không xung đột.');mergeSnapshot(s,'GitHub main')});
 $('sync').onclick=()=>action(async()=>{flushArticle();if(unsaved()){status('Hãy lưu nội dung/menu đang chỉnh trước khi Sync.');return}const refs=(get(POSTS)||'')+'\n'+(get(MEDIA_INDEX)||'');const changes=Object.entries(drafts).filter(([path])=>!assetPath(path)||refs.includes(path.slice('public'.length))).map(([path,d])=>({path,...d}));if(!changes.length){status('Không có thay đổi nội dung hoặc ảnh đã chèn để Sync.');return}if(!confirm('Tạo PR với '+changes.length+' tệp? Không ghi trực tiếp main.'))return;const items=publishItems(changes);const p=await request('sync',{changes});publishingQueue=[{number:p.number,sha:p.sha,items,createdAt:new Date().toISOString()},...publishingQueue.filter(q=>q.number!==p.number)].slice(0,25);persistQueue();renderPublishing();const link=el('a','PR #'+p.number+' · '+p.sha.slice(0,12));link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';$('pr').replaceChildren(link,document.createTextNode(' — Đã gửi, chờ CI/merge/production. Bản nháp giữ đến khi Pull thấy nội dung đã merge.'));$('pr').hidden=false;status('Đã tạo PR #'+p.number+'; không phải đã triển khai.')});

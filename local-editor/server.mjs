@@ -5,6 +5,7 @@ import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {allowed,digest,applyChanges} from './core.mjs';
 import {selectNativeCI,publishPhase,validSha} from './publishing.mjs';
+import {createPreview,disposePreview} from './preview.mjs';
 import {mediaPath} from '../src/lib/editor-media.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const REPO='duykhang68/khoahoctienghan', API='https://api.github.com', prefix='/repos/'+REPO;
@@ -101,6 +102,12 @@ const server=http.createServer(async(req,res)=>{
    token=data.token;login=u.login;return json(200,{login});
   }
   if(path==='/api/disconnect'){token=null;login=null;return json(200,{login:null});}
+  if(path==='/api/preview'){
+   const snap=local();if(data.base!==snap.sha)throw Error('Preview cần checkout cùng SHA với bản nháp. Cập nhật Git local, mở lại Editor và Pull.');
+   if(!Array.isArray(data.changes))throw Error('Invalid preview changes');
+   try{return json(200,await createPreview(ROOT,snap,data.changes,data.route))}
+   catch(e){throw Error('Không dựng được preview Astro: '+(e.code?'build không thành công; kiểm tra checkout/npm ci và nội dung.':e.message))}
+  }
   if(path==='/api/pull')return json(200,await remote());
   if(path==='/api/publishing'){if(!token)return json(401,{error:'Kết nối GitHub trước'});return json(200,await publishingStatus(data.numbers));}
   if(path==='/api/sync'){
@@ -135,4 +142,5 @@ const server=http.createServer(async(req,res)=>{
   return json(404,{error:'Không tìm thấy'});
  }catch(e){return json(400,{error:e instanceof Error?e.message:'Không thể xử lý yêu cầu'});}
 });
+for(const signal of ['SIGINT','SIGTERM'])process.once(signal,async()=>{await disposePreview();server.close(()=>process.exit(0))});
 server.listen(PORT,'127.0.0.1',()=>console.log('Trithuchanquoc Editor: http://127.0.0.1:'+PORT));
