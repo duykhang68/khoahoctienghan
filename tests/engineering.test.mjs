@@ -31,3 +31,22 @@ import './incident-publication.test.mjs';
 import './branch-auth.test.mjs';
 
 import './security-check.test.mjs';
+
+// Keep runner admission, native CI recovery and serial merge guards intact.
+test('engineering resource budget preserves essential triggers and avoids redundant runner work',()=>{
+ const workflow=readFileSync('.github/workflows/engineering.yml','utf8');
+ const controller=readFileSync('scripts/engineering-controller.mjs','utf8');
+ assert.match(workflow,/types: \[opened, reopened, ready_for_review\]/);
+ assert.match(workflow,/cron: '32 \*\/6 \* \* \*'/);
+ assert.match(workflow,/push:\s+branches: \[main\]/);
+ assert.match(workflow,/issues:\s+types: \[closed\]/);
+ assert.match(workflow,/workflow_dispatch:/);
+ assert.match(workflow,/github\.event\.workflow_run\.conclusion == 'failure'/);
+ assert.match(workflow,/github\.event\.workflow_run\.name == 'P0 · Knowledge Base CI' &&\s+github\.event\.workflow_run\.conclusion == 'success'/);
+ assert.match(workflow,/github\.event\.workflow_run\.head_repository\.full_name == github\.repository/);
+ assert.match(workflow,/    concurrency:\s+group: engineering-reconciliation\s+cancel-in-progress: false/);
+ assert.match(controller,/expected_head_sha:current\.head\.sha/);
+ assert.doesNotMatch(controller,/setTimeout\(resolve,2000\)/);
+ assert.match(controller,/selectPullRequestCI\(runs,current\.head\.sha,repo,current\.head\.ref\)/);
+ assert.match(controller,/if\(merged\.merged\)\{dispatch\('main'\)/);
+});
