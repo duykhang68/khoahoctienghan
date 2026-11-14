@@ -7,7 +7,7 @@ test('Advanced Docs navigation remains native and usable',async({page})=>{
  if(wide){
   const current=page.locator('.sidebar-pane a[aria-current="page"]').first();
   await expect(current).toBeVisible();
-  await expect(current).toHaveCSS('background-color','rgb(246, 246, 246)');
+  await expect(current).toHaveCSS('background-color','rgb(219, 234, 254)');
   const toc=page.locator('.right-sidebar starlight-toc a').filter({hasText:'Ghép âm tiết'}).first();
   await expect(toc).toBeVisible();
   await toc.click();
