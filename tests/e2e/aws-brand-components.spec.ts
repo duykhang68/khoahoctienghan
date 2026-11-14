@@ -18,7 +18,7 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(topic).toBeVisible();
  await menu.locator('summary').press('Escape');
  await expect(menu.locator('.edition-panel')).toBeHidden();
- await expect(page.locator('.search-submit')).toHaveCSS('background-color','rgb(9, 114, 211)');
+ await expect(page.locator('.search-submit')).toHaveCount(0);
  const footer=page.locator('.engineering-footer');
  await expect(footer.locator('section')).toHaveCount(1);
  await expect(footer.getByRole('link')).toHaveCount(2);
@@ -35,7 +35,7 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(footer.locator('a[href="'+kbHref+'"]')).toHaveCount(1);
  await expect(page.locator('a[href="'+kbHref+'"]')).toHaveCount(1);
  await expect(page.locator('.blog-breadcrumb')).toHaveText('Engineering Blog');
- await expect(page.locator('#categories')).toBeVisible();
+ await expect(page.locator('#categories')).toHaveCount(0);
  const first=page.locator('[data-tech-post]').first();
  const title=(await first.locator('h3').innerText()).trim();
  await first.locator('h3 a').click();

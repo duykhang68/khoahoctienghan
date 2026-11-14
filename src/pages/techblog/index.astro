@@ -3,27 +3,13 @@ import TechBlog from '../../layouts/TechBlog.astro';
 import TechCover from '../../components/TechCover.astro';
 import {isReferenceHeading} from '../../lib/tech-links.mjs';
 import '../../styles/techblog-index.css';
-import {posts,dateLabel,yearLabel,coverURL,inferCategory,categories,archiveYears} from '../../lib/techblog';
+import {posts,dateLabel,yearLabel,coverURL,inferCategory} from '../../lib/techblog';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
 <TechBlog title="Tech Blog" indexPage={true}>
   <div class="engineering-index">
     <section class="index-archive" aria-labelledby="feed-heading">
-      <div class="index-toolbar filter-line">
-        <div class="index-feed-title"><span class="article-count" id="article-count">{posts.length}</span><h1 id="feed-heading">BÀI MỚI NHẤT</h1></div>
-        <div class="index-view-tools"><span class="sort-label">Mới nhất</span><div class="view-switch" role="group" aria-label="Kiểu hiển thị"><button type="button" data-view="grid" aria-label="Dạng lưới" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx=".5"/><rect x="12" y="2" width="6" height="6" rx=".5"/><rect x="2" y="12" width="6" height="6" rx=".5"/><rect x="12" y="12" width="6" height="6" rx=".5"/></svg></button><button type="button" data-view="list" aria-label="Dạng danh sách" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h16M2 10h16M2 16h16"/></svg></button></div></div>
-      </div>
-      <div class="index-filters" id="search">
-        <form id="tech-search-form" class="search-box index-search" method="get" action={base+'/techblog/'}>
-          <label class="sr-only" for="tech-query">Tìm kiếm bài viết</label>
-          <input id="tech-query" name="q" type="search" placeholder="Tìm bài viết..."/>
-          <button class="aws-button search-submit" type="submit" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
-        </form>
-        <label class="search-scope"><span class="sr-only">Phạm vi tìm kiếm</span><select id="search-scope" name="scope" form="tech-search-form"><option value="all">Toàn văn</option><option value="title">Chỉ tiêu đề</option></select></label>
-        <nav id="categories" class="index-categories" aria-label="Lọc chuyên mục"><a href={base+'/techblog/'} data-all-categories>Tất cả</a>{categories.map(c=><a data-category-filter={c.id} href={base+'/techblog/?category='+c.id}>{c.label}</a>)}</nav>
-        <form class="index-year-form" method="get" action={base+'/techblog/'}><label class="sr-only" for="archive-year">Năm lưu trữ</label><select id="archive-year" name="year"><option value="">Tất cả năm</option>{archiveYears.map(y=><option value={y}>{y}</option>)}</select><button type="submit" class="index-year-submit">Lọc</button></form>
-        <a id="clear-filters" href={base+'/techblog/'} hidden>Xóa bộ lọc</a>
-      </div>
+      <h1 id="feed-heading" class="sr-only">BÀI MỚI NHẤT</h1>
       <div class="index-grid feed-list" id="tech-post-list" data-layout="grid">
         {posts.map(post=>{
           const cover=coverURL(post.cover,base);
@@ -53,13 +39,7 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
   const scope=params.get('scope')==='title'?'title':'all';
   const year=params.get('year')||'',category=params.get('category')||'';
   const active=Boolean(query||year||category);
-  const input=document.querySelector<HTMLInputElement>('#tech-query');
-  if(input)input.value=params.get('q')||'';
-  const select=document.querySelector<HTMLSelectElement>('#archive-year');
-  if(select)select.value=year;
   const cards=[...document.querySelectorAll<HTMLElement>('[data-tech-post]')];
-  const scopeSelect=document.querySelector<HTMLSelectElement>('#search-scope');
-  if(scopeSelect){scopeSelect.value=scope;scopeSelect.addEventListener('change',()=>{if(input?.value.trim())document.querySelector<HTMLFormElement>('#tech-search-form')?.requestSubmit();});}
   const candidates=cards.filter(card=>(!year||card.dataset.year===year)&&(!category||card.dataset.category===category));
   const labels={title:'Khớp tiêu đề',summary:'Khớp tóm tắt',heading:'Khớp đề mục',body:'Có nhắc trong nội dung',reference:'Có nhắc trong tài liệu tham khảo'} as const;
   const ranked=candidates.map(card=>({card,match:query?matchPost(JSON.parse(card.dataset.search||'[]'),query,scope):null})).filter(item=>!query||item.match);
@@ -79,21 +59,16 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
       snippet.replaceChildren(document.createTextNode(match.before),mark,document.createTextNode(match.after));
       evidence.hidden=false;
     }
-    const sortLabel=document.querySelector('.sort-label');
-    if(sortLabel)sortLabel.textContent='Liên quan nhất';
   }
   const matching=ranked.map(item=>item.card);
-  const filterLinks=[...document.querySelectorAll<HTMLElement>('[data-category-filter]')];
-  const activeCategory=filterLinks.find(a=>a.dataset.categoryFilter===category);
+  const filterLinks=[...document.querySelectorAll<HTMLAnchorElement>('.edition-panel a')];
+  const activeCategory=filterLinks.find(a=>new URL(a.href).searchParams.get('category')===category);
   if(activeCategory)activeCategory.setAttribute('aria-current','true');
-  else if(!category)document.querySelector('[data-all-categories]')?.setAttribute('aria-current','true');
+  else if(!category)filterLinks.find(a=>!new URL(a.href).searchParams.has('category'))?.setAttribute('aria-current','true');
   if(active){
     const heading=document.getElementById('feed-heading');
     if(heading)heading.textContent=query?'Kết quả tìm kiếm':category?'Chuyên mục: '+(activeCategory?.textContent?.trim()||'Không có'):'Lưu trữ '+year;
-    document.getElementById('clear-filters')?.removeAttribute('hidden');
   }
-  const count=document.getElementById('article-count');
-  if(count)count.textContent=String(matching.length);
   if(active&&!matching.length)document.getElementById('no-results')?.removeAttribute('hidden');
   const {pages,page,start,end}=pageWindow(matching.length,params.get('page'));
   const visible=new Set(matching.slice(start,end));
@@ -141,7 +116,4 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
       }
     }
   }
-  const grid=document.getElementById('tech-post-list');
-  const toggles=[...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
-  for(const toggle of toggles)toggle.addEventListener('click',()=>{const mode=toggle.dataset.view;if(!grid||!mode)return;grid.dataset.layout=mode;for(const item of toggles)item.setAttribute('aria-pressed',String(item===toggle));});
 </script>
