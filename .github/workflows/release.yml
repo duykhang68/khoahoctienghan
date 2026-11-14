@@ -5,6 +5,15 @@ on:
     branches: [main]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 'Optional exact current main SHA'
+        required: false
+        type: string
+      ci_run_id:
+        description: 'Optional exact main CI run ID'
+        required: false
+        type: string
 permissions:
   contents: read
   actions: read
@@ -13,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
-    if: github.repository == 'duykhang68/khoahoctienghan' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main' && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')))
+    if: github.repository == 'duykhang68/khoahoctienghan' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -24,17 +33,60 @@ jobs:
         id: select
         env:
           GH_TOKEN: ${{ github.token }}
+          REQUESTED_SHA: ${{ inputs.expected_sha }}
+          REQUESTED_RUN: ${{ inputs.ci_run_id }}
         run: |
           set -euo pipefail
           sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
-          run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&head_sha=$sha&per_page=30" --jq '[.workflow_runs[] | select(.head_repository.full_name == "'"$GITHUB_REPOSITORY"'" and (.event == "push" or .event == "workflow_dispatch"))] | sort_by(.id) | last // {}')
-          id=$(jq -r '.id // empty' <<< "$run")
-          if [[ -z "$id" || $(jq -r '.conclusion' <<< "$run") != success ]]; then
+          if [[ -n "$REQUESTED_SHA" && ! "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || [[ -n "$REQUESTED_RUN" && ! "$REQUESTED_RUN" =~ ^[0-9]+$ ]]; then
+            echo "Invalid release inputs" >&2; exit 1
+          fi
+          if [[ -n "$REQUESTED_SHA" && "$REQUESTED_SHA" != "$sha" ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo 'SUPERSEDED: requested SHA is no longer current' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # The handoff dispatch can arrive before its parent CI finishes.
+          # Bounded wait only for an explicit request, not a scheduled polling loop.
+          for attempt in $(seq 1 12); do
+            run=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&head_sha=$sha&per_page=30" --jq '[.workflow_runs[] | select(.head_repository.full_name == "'"$GITHUB_REPOSITORY"'" and (.event == "push" or .event == "workflow_dispatch"))] | sort_by(.id) | last // {}')
+            id=$(jq -r '.id // empty' <<< "$run")
+            if [[ -n "$REQUESTED_RUN" && "$id" != "$REQUESTED_RUN" ]]; then
+              echo 'ready=false' >> "$GITHUB_OUTPUT"
+              echo 'DEFERRED: requested CI is not the latest exact main CI' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if [[ -z "$REQUESTED_RUN" || $(jq -r '.status' <<< "$run") == completed ]]; then break; fi
+            sleep 5
+          done
+          if [[ -z "$id" || $(jq -r '.status' <<< "$run") != completed || $(jq -r '.conclusion' <<< "$run") != success ]]; then
+            if [[ -n "$REQUESTED_RUN" && $(jq -r '.status' <<< "$run") != completed ]]; then
+              echo 'Handoff CI did not finish within the bounded wait' >&2; exit 1
+            fi
             echo 'ready=false' >> "$GITHUB_OUTPUT"
             echo 'DEFERRED: current main does not have successful CI yet' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" --jq '.jobs' | jq -e 'length>0 and all(.[]; .conclusion=="success") and any(.[]; .name=="Content and Astro build")' >/dev/null
+          event=$(jq -r .event <<< "$run")
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" --jq '.jobs' |
+            jq -e --arg event "$event" 'length>0 and all(.[]; .conclusion=="success" or ($event!="workflow_dispatch" and .name=="Release handoff" and .conclusion=="skipped")) and any(.[]; .name=="Content and Astro build" and .conclusion=="success")' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts?per_page=100" --jq '.artifacts' |
+            jq -e 'any(.[]; .name=="knowledge-base-release" and .expired==false and .size_in_bytes>0)' >/dev/null
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [[ "$current" != "$sha" ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"; echo 'SUPERSEDED: main advanced' >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          # Deduplicate after acquiring the release concurrency group.
+          base=https://duykhang68.github.io/khoahoctienghan
+          marker=$(curl -fsS --max-time 10 "$base/release-sha.json?v=$GITHUB_RUN_ID" || true)
+          if [[ $(printf '%s' "$marker" | jq -r '.sha' 2>/dev/null || true) == "$sha" ]] &&
+             curl -fsS --max-time 10 "$base/" >/dev/null &&
+             curl -fsS --max-time 10 "$base/ngon-ngu/hangul/" >/dev/null &&
+             curl -fsS --max-time 10 "$base/techblog/" >/dev/null; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo "ALREADY_VERIFIED $sha" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "run=$id" >> "$GITHUB_OUTPUT"
           echo 'ready=true' >> "$GITHUB_OUTPUT"

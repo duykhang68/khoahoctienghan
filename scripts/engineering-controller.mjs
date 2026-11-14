@@ -1,5 +1,6 @@
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
+import {ciJobsPassed,releaseRecoveryDecision} from './release-recovery.mjs';
 import {selectPullRequestCI,branchToken} from './branch-auth.mjs';
 import {incidentPublication,hasVerifiedRun,alreadyPublished} from './incident-publication.mjs';
 import {labelDefinitions,labelEligible,inferPRLabels} from './pr-labels.mjs';
@@ -114,6 +115,22 @@ try{
 const mainRuns=api('actions/workflows/ci.yml/runs?branch=main&head_sha='+main+'&per_page=30').workflow_runs;
 const mainCI=latestRun(mainRuns,main,repo,['push','workflow_dispatch'],'main');
 if(!mainCI){dispatch('main');console.log('Dispatched missing current main CI');}
+else if(mainCI.status==='completed'&&mainCI.conclusion==='success'){
+ try{
+  const releases=api('actions/workflows/release.yml/runs?branch=main&head_sha='+main+'&per_page=100').workflow_runs;
+  const decision=releaseRecoveryDecision({main,repo,ci:mainCI,releases,now:Date.now()});
+  if(decision==='MISSING'){
+   const jobs=api('actions/runs/'+mainCI.id+'/jobs?per_page=100').jobs;
+   const artifacts=api('actions/runs/'+mainCI.id+'/artifacts?per_page=100').artifacts;
+   const fresh=api('actions/workflows/release.yml/runs?branch=main&head_sha='+main+'&per_page=100').workflow_runs;
+   if(ciJobsPassed(jobs,mainCI.event)&&artifacts.some(a=>a.name==='knowledge-base-release'&&!a.expired&&a.size_in_bytes>0)&&mainSHA()===main&&releaseRecoveryDecision({main,repo,ci:mainCI,releases:fresh,now:Date.now()})==='MISSING'){
+    api('actions/workflows/release.yml/dispatches','POST',{ref:'main',inputs:{expected_sha:main,ci_run_id:String(mainCI.id)}});
+    console.log('RELEASE_RECOVERY_REQUESTED '+main);
+   }else console.log('RELEASE_RECOVERY_DEFERRED '+main);
+  }else console.log('RELEASE_RECOVERY_'+decision+' '+main);
+ }catch{console.log('RELEASE_RECOVERY_DEFERRED '+main);}
+}
+
 // Synchronize independently of merge authorization. Only owner-created, same-repo PRs.
 const synchronized=[];
 for(const p of prs){
@@ -169,7 +186,7 @@ for(const {p,exact} of synchronized){
  if(branchSyncDecision(current,api('compare/'+main+'...'+current.head.sha))!=='CURRENT')continue;
  if(mergeReviewRequired(current,changed(current))){console.log('REVIEW_REQUIRED PR #'+p.number+' · protected paths or test-only change');continue;}
  const jobs=api('actions/runs/'+exact.id+'/jobs?per_page=100').jobs;
- if(!jobs.some(j=>j.name===checkName&&j.conclusion==='success')||jobs.some(j=>j.conclusion!=='success'))continue;
+ if(!ciJobsPassed(jobs,exact.event))continue;
  if(mainSHA()!==main)break;
  try{cli(['pr','merge',String(p.number),'--repo',repo,'--squash','--match-head-commit',p.head.sha]);}catch{console.log('Native merge requirements are not satisfied');continue}
  const merged=api('pulls/'+p.number);
