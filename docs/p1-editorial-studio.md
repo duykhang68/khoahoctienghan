@@ -1,6 +1,6 @@
 # P1 — Duy Nguyen Editorial Studio
 
-Status: planning only; implementation and release gated on verified P0.1. PRs #106 and #108 are merged, but this is not evidence of a protected production Worker. Do not ship more admin pages on GitHub Pages.
+Status: P0.1 accepted on 2026-11-15 (GMT+7); P1 implementation unlocked by owner acceptance. See [P0.1 acceptance evidence](p0-1-acceptance.md). Do not ship admin pages on GitHub Pages.
 
 One logical change = one PR, target main. Preserve existing public URLs and content contracts. Vietnamese, light mode, pastel, accessible responsive UI. No handwritten Markdown; use structured visual blocks and shared adapters for Knowledge Base and Tech Blog. Reuse Editor V2, Sheets publisher and FIFO; do not duplicate publishing engines. Preserve original editor submodule.
 
