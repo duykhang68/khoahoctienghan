@@ -2203,5 +2203,957 @@
         ]
       }
     ]
+  },
+  {
+    "slug": "ho-so-issue-75-astro-preview-http-400",
+    "title": "Hồ sơ #75: Vì sao bản nháp trực quan không dựng được Astro preview?",
+    "summary": "Tập 1 phân tích ranh giới giữa trình soạn thảo, workspace tạm và tiến trình Astro build: một HTTP 400 che khuất nguyên nhân bên dưới, cách cô lập môi trường và những gì có thể xác minh.",
+    "issues": [
+      75
+    ],
+    "labels": [
+      "Astro",
+      "Preview",
+      "CI/CD",
+      "Điều tra sự cố"
+    ],
+    "sections": [
+      {
+        "heading": "01 — Một bài chưa đăng vẫn cần đi qua trình dựng thật",
+        "paragraphs": [
+          "Editor local thử nghiệm trong PR #67 không chỉ cần trình bày bản nháp đẹp trên canvas. Người viết muốn kiểm tra bài học Knowledge Base bằng chính Astro, sao cho hình ảnh đã đặt và khối kiến thức có sẵn xuất hiện đúng vị trí mà không phải xuất bản. Để tránh ảnh hưởng đến checkout đang làm việc, bản thử tạo một workspace tạm, đưa nội dung dự kiến vào đó rồi yêu cầu Astro build.",
+          "Ngày 14/11/2026, run 43598286778 trên commit ee5e9e0f6c3c9c0726d4e4f5a772efbecfc6f0c1 thất bại ở kiểm thử E2E thật. Job 132457442084 kỳ vọng HTTP 200 từ API preview nhưng nhận 400. Issue #75 được mở để điều tra; tại thời điểm bài này biên soạn nó vẫn mở."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Đường đi của bản nháp",
+            "caption": "Sơ đồ khái niệm của preview thật; điểm đỏ được mô tả bằng chữ thay vì suy đoán từ log.",
+            "items": [
+              {
+                "label": "Bản nháp trực quan",
+                "detail": "Ảnh và nội dung chưa xuất bản",
+                "icon": "file"
+              },
+              {
+                "label": "Workspace tạm",
+                "detail": "Sao chép cấu hình và nội dung"
+              },
+              {
+                "label": "Astro build",
+                "detail": "Tiến trình dựng trang"
+              },
+              {
+                "label": "API preview",
+                "detail": "Thực tế: HTTP 400"
+              },
+              {
+                "label": "Trình duyệt",
+                "detail": "Chưa nhận trang để kiểm tra"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — HTTP 400 là triệu chứng, không phải kết luận nguyên nhân gốc",
+        "paragraphs": [
+          "Thông báo trả về chỉ cho biết không dựng được preview Astro. Log không giữ chẩn đoán chi tiết của subprocess. Vì vậy không thể chứng minh riêng cache, symlink, dependency hay mã nội dung là nguyên nhân duy nhất. Việc truy ngược phải tách ba biên: hợp lệ của dữ liệu đầu vào, khả năng thực thi công cụ trong workspace mới, và khả năng phục vụ kết quả sau khi build.",
+          "Một comment trên Issue #75 ghi nhận giả thuyết về sự cô lập dependency và cache. Nếu thư mục tạm có node_modules trỏ về workspace cha, resolution hoặc cache của công cụ có thể phụ thuộc môi trường mang tính ngẫu nhiên; đó là cơ chế rủi ro cần kiểm tra, chưa phải nguyên nhân đã chứng minh từ lần chạy lỗi."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Phân tầng điều tra",
+            "columns": [
+              "Lớp",
+              "Dấu hiệu",
+              "Bằng chứng cần có"
+            ],
+            "rows": [
+              [
+                "Dữ liệu",
+                "Schema hoặc file đầu vào sai",
+                "Validator và vị trí lỗi"
+              ],
+              [
+                "Build",
+                "Tiến trình trả mã khác 0",
+                "Exit code, chẩn đoán đã lọc"
+              ],
+              [
+                "HTTP",
+                "400 hoặc 404",
+                "Route, status và nội dung trả về"
+              ],
+              [
+                "Browser",
+                "Ảnh không hiện",
+                "DOM, network, kích thước thực"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Bản thử thay đổi điều gì?",
+        "paragraphs": [
+          "Commit 475ac76bda62f50f729cfa1ace6694ebd8557f55 thay cách dùng symlink node_modules bằng một bản sao dependency đã khóa, loại trừ cache sinh tự động và truyền root Astro rõ ràng. Một phép cô lập giúp phép thử đáng tin hơn nhưng không đảm bảo mọi nguồn lỗi đã biến mất. Mục đích là tạo lại điều kiện dựng có thể lặp và giữ checkout chính không bị sửa.",
+          "Ở run 43598629674 kế tiếp, build preview thành công theo hồ sơ điều tra, song kiểm thử ảnh vẫn thất bại. Chi tiết này rất quan trọng: một lỗi ở giai đoạn sau có thể xuất hiện khi giai đoạn trước đã vượt qua. Tập 2 sẽ xét riêng lỗi HTTP phục vụ trang, thay vì gộp hai vấn đề thành một."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Hai lần thử",
+            "caption": "Diễn biến quan sát được, không phải benchmark.",
+            "items": [
+              {
+                "label": "ee5e9e0 · FAIL",
+                "detail": "API trả 400"
+              },
+              {
+                "label": "475ac76 · ứng viên",
+                "detail": "Cô lập dependency và root"
+              },
+              {
+                "label": "Run 43598629674",
+                "detail": "Qua build, còn lỗi hiển thị"
+              },
+              {
+                "label": "Điều tra tiếp",
+                "detail": "Kiểm tra HTTP của preview"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Checklist kỹ thuật có thể tái sử dụng",
+        "paragraphs": [
+          "Một preview đáng tin cần có workspace độc lập hoặc cơ chế giải thích rõ phần được chia sẻ. Ghi nhận root của tiến trình, mã thoát và chẩn đoán đã loại bỏ dữ liệu nhạy cảm. Không cần công khai toàn bộ stdout/stderr; chỉ lấy thông tin đủ để phân biệt lỗi cấu hình, thiếu dependency và lỗi thực thi.",
+          "Giữ kiểm thử ban đầu: dựng bài thật, kiểm tra HTTP thành công, tải WebP, xác nhận alt, kích thước nội tại và thứ tự DOM. Không thay bài thử bằng kiểm tra trạng thái build đơn thuần. Bản đề xuất sau trong PR #67 đã có CI xanh tại 21540b12ba39dd605fd36ec4c0d57ea53db268d2, nhưng PR này đóng mà không merge vì chủ blog đổi hướng sang Reddit Editor. Không suy diễn thành sửa lỗi production."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Trạng thái chứng cứ",
+            "columns": [
+              "Sự kiện",
+              "Kết quả"
+            ],
+            "rows": [
+              [
+                "Run ban đầu",
+                "FAIL — HTTP 400"
+              ],
+              [
+                "Ứng viên cô lập",
+                "Build tiến triển; E2E còn lỗi"
+              ],
+              [
+                "CI của 21540b1",
+                "SUCCESS"
+              ],
+              [
+                "PR #67",
+                "Đóng, không merge"
+              ],
+              [
+                "Issue #75",
+                "Đang mở; nguyên nhân build ban đầu chưa chứng minh"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Issue #75 và các comment điều tra: https://github.com/duykhang68/khoahoctienghan/issues/75",
+          "PR #67: https://github.com/duykhang68/khoahoctienghan/pull/67",
+          "Run ban đầu: https://github.com/duykhang68/khoahoctienghan/actions/runs/43598286778/job/132457442084",
+          "Run kế tiếp: https://github.com/duykhang68/khoahoctienghan/actions/runs/43598629674",
+          "CI ứng viên cuối: https://github.com/duykhang68/khoahoctienghan/actions/runs/43599058620",
+          "Playwright — Locators: https://playwright.dev/docs/locators"
+        ]
+      }
+    ],
+    "date": "2026-11-14T22:43:01+07:00",
+    "series": {
+      "name": "Giải phẫu sự cố Editor: từ bản nháp đến production",
+      "part": 1,
+      "total_parts": 5,
+      "target_date": "",
+      "status": "in_progress"
+    }
+  },
+  {
+    "slug": "ho-so-issue-76-vong-doi-server-preview",
+    "title": "Hồ sơ #76: Astro đã build, nhưng vì sao ảnh trong preview vẫn biến mất?",
+    "summary": "Tập 2 lần theo lỗi vòng đời HTTP server: biến server bị chuyển quyền sở hữu rồi đặt null, làm request trang preview trả 404 dù tiến trình dựng đã xong.",
+    "issues": [
+      76
+    ],
+    "labels": [
+      "Node.js",
+      "HTTP Server",
+      "Astro",
+      "Playwright"
+    ],
+    "sections": [
+      {
+        "heading": "01 — Khi màu xanh của build chưa đủ",
+        "paragraphs": [
+          "Sau lần thay đổi cách cô lập preview tại PR #67, run 43598629674 trên commit 475ac76bda62f50f729cfa1ace6694ebd8557f55 tiến tới kiểm thử trình duyệt. Tại job 132458392653, Playwright không tìm thấy ảnh có alt 'Ảnh preview thực tế' sau khi điều hướng vào URL preview. Kiểm thử cũng yêu cầu naturalWidth và một visual Hangul hiện hữu, nhưng thất bại ngay ở kiểm tra ảnh đầu tiên.",
+          "Vì Issue #75 và #76 đánh dấu hai ranh giới khác nhau của cùng luồng preview, việc thấy một bản build thành công không cho phép kết luận UI đã đúng. Comment điều tra #75 ghi nhận trace của lần chạy thứ hai trả HTTP 404 cho trang preview. Bài này dựa vào bản ghi điều tra đó và patch của commit 21540b1, không tuyên bố đã trực tiếp tải lại trace."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Từ build đến phần tử ảnh",
+            "caption": "Một trang trả 404 có thể làm locator ảnh thất bại dù WebP đã được tạo.",
+            "items": [
+              {
+                "label": "Astro build",
+                "detail": "Tạo HTML và tài sản",
+                "icon": "file"
+              },
+              {
+                "label": "HTTP server",
+                "detail": "Phục vụ route tạm"
+              },
+              {
+                "label": "Request trang",
+                "detail": "404 theo hồ sơ trace"
+              },
+              {
+                "label": "DOM lỗi",
+                "detail": "Không có ảnh mong đợi"
+              },
+              {
+                "label": "E2E",
+                "detail": "FAIL ở kiểm tra visible",
+                "icon": "shield"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Closure và quyền sở hữu tài nguyên",
+        "paragraphs": [
+          "Bản sửa của PR #67 chỉ ra handler HTTP giữ tham chiếu đến biến server bên ngoài. Sau khi server được chuyển vào cấu trúc active để quản lý vòng đời, biến cục bộ server được đặt null. Closure JavaScript nhìn thấy giá trị mới của biến chứ không giữ nguyên đối tượng ở thời điểm hàm được tạo. Nếu request đến sau chuyển quyền, server.address() không còn khả dụng; ngoại lệ bị bắt và trả 404.",
+          "Đây là vấn đề vòng đời tài nguyên, không nhất thiết do ảnh chưa copy hoặc trình duyệt tải chậm. Tăng timeout không sửa được tham chiếu null. Điểm yếu nữa là một catch chung có thể biến lỗi nội bộ thành thông báo không tìm thấy file, khiến chẩn đoán lệch hướng."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "caption": "Mô hình tối giản của closure; không phải bản sao nguyên file.",
+            "language": "javascript",
+            "code": "let server = startServer((req, res) => {\n  const port = server.address().port; // tham chiếu có thể đổi\n  serve(req, res, port);\n});\nactive = server;\nserver = null; // handler vẫn đọc biến này khi có request"
+          },
+          {
+            "kind": "table",
+            "caption": "Trạng thái biến trong mô hình",
+            "columns": [
+              "Thời điểm",
+              "server",
+              "active"
+            ],
+            "rows": [
+              [
+                "Khởi tạo",
+                "HTTP server",
+                "Chưa gán"
+              ],
+              [
+                "Chuyển quyền",
+                "HTTP server",
+                "HTTP server"
+              ],
+              [
+                "Sau chuyển quyền",
+                "null",
+                "HTTP server"
+              ],
+              [
+                "Request mới",
+                "Không đọc được address()",
+                "Vẫn có socket hợp lệ"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Bản sửa nhỏ, giữ nguyên biên bảo mật",
+        "paragraphs": [
+          "Commit 21540b12ba39dd605fd36ec4c0d57ea53db268d2 dùng req.socket.localPort, tức cổng của kết nối mà request thực sự đến. Handler không cần đi qua con trỏ quản lý vòng đời đã bị xóa. Theo đoạn patch đã kiểm tra, Host vẫn phải khớp 127.0.0.1 và cổng, phương thức chỉ GET/HEAD. Kiểm tra containment đường dẫn không bị bỏ đi.",
+          "Quan trọng là sửa nguồn dữ liệu dùng để quyết định Host hợp lệ, không bỏ cả điều kiện bảo mật cho HTTP 200. Cùng bản sửa, test quan sát HTTP status của HTML/WebP và so sánh byte ảnh, bên cạnh các assertion DOM đang có."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "caption": "Điều kiện Host và phương thức từ bản sửa; trình bày rút gọn.",
+            "language": "javascript",
+            "code": "const port = req.socket.localPort;\nif (req.headers.host !== '127.0.0.1:' + port ||\n    !['GET', 'HEAD'].includes(req.method)) {\n  res.writeHead(403);\n  return res.end();\n}"
+          },
+          {
+            "kind": "flow",
+            "title": "Vòng đời sau bản sửa",
+            "caption": "Luồng không phụ thuộc biến server đã được bàn giao.",
+            "items": [
+              {
+                "label": "Socket nhận request",
+                "detail": "localPort"
+              },
+              {
+                "label": "Kiểm tra Host",
+                "detail": "So khớp cổng thực"
+              },
+              {
+                "label": "Kiểm tra path",
+                "detail": "Giữ biên thư mục"
+              },
+              {
+                "label": "Phục vụ HTML/WebP",
+                "detail": "Kiểm tra HTTP và bytes",
+                "icon": "check"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Kết quả và giới hạn",
+        "paragraphs": [
+          "Native PR CI 43599058620 thành công trên đúng 21540b1, bao gồm engineering tests, Astro smoke và E2E. Đây là bằng chứng kiểm thử cho ứng viên tại thời điểm đó, không phải xác nhận bản Editor này đang chạy trên site. PR #67 sau đó bị đóng không merge; phiên bản Reddit Editor thay thế là một hướng triển khai khác.",
+          "Bài học có thể áp dụng cho các preview server, port forwarding và worker tạm: dữ liệu gắn với request nên lấy từ ngữ cảnh request; dữ liệu quản lý vòng đời nên thuộc về đối tượng quản lý. Không để hai vai trò cùng dùng một biến mutable khi có bất đồng bộ. Issue #76 vẫn mở."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Phân biệt ba mức xác minh",
+            "columns": [
+              "Mức",
+              "Trạng thái"
+            ],
+            "rows": [
+              [
+                "Ứng viên sửa lỗi",
+                "CI xanh trên 21540b1"
+              ],
+              [
+                "Tích hợp main",
+                "Không — PR #67 hủy"
+              ],
+              [
+                "Production",
+                "Không xác minh bản này"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Issue #76: https://github.com/duykhang68/khoahoctienghan/issues/76",
+          "Hồ sơ trace và điều tra liên quan: https://github.com/duykhang68/khoahoctienghan/issues/75",
+          "CI lỗi: https://github.com/duykhang68/khoahoctienghan/actions/runs/43598629674/job/132458392653",
+          "Patch vòng đời: https://github.com/duykhang68/khoahoctienghan/commit/21540b12ba39dd605fd36ec4c0d57ea53db268d2",
+          "CI ứng viên: https://github.com/duykhang68/khoahoctienghan/actions/runs/43599058620",
+          "Node.js HTTP API: https://nodejs.org/api/http.html",
+          "Playwright — Locators: https://playwright.dev/docs/locators"
+        ]
+      }
+    ],
+    "date": "2026-11-14T22:43:02+07:00",
+    "series": {
+      "name": "Giải phẫu sự cố Editor: từ bản nháp đến production",
+      "part": 2,
+      "total_parts": 5,
+      "target_date": "",
+      "status": "in_progress"
+    }
+  },
+  {
+    "slug": "ho-so-issue-79-loopback-host-403",
+    "title": "Hồ sơ #79: HTTP 403 đúng thiết kế — khi kiểm thử Editor gửi sai Host",
+    "summary": "Tập 3 giải thích việc tách GitHub Authentication khỏi SSO cũ, kiểm tra Host trên localhost, sự khác biệt giữa fetch và node:http trong fixture và giới hạn của kiểm thử xác thực giả lập.",
+    "issues": [
+      79
+    ],
+    "labels": [
+      "Node.js",
+      "Bảo mật",
+      "Authentication",
+      "Regression Test"
+    ],
+    "sections": [
+      {
+        "heading": "01 — Tách trình soạn thảo khỏi lớp xác thực cũ",
+        "paragraphs": [
+          "Khi chuyển bộ Reddit Editor đầy đủ về dự án Tri thức Hàn Quốc, mục tiêu của PR #78 là giữ giao diện gốc nhưng không bị redirect vào Cashflow hay phụ thuộc phiên Blogger. Một lớp API localhost riêng xác thực chủ repo bằng GitHub CLI trên máy người dùng. Để tránh nhầm một trang local với một API công khai, server kiểm tra loopback, Host và Origin, có nonce cho thao tác ghi và phiên cookie riêng.",
+          "Run 43602630268 của commit 708491baca4b28228eac7cc3b4fa40fca14e4e16 thất bại trong integration test, không phải trong quá trình build Astro. Job 132470463375 kỳ vọng 200 nhưng nhận 403. Điều đó thoạt nhìn giống lỗi xác thực, song cần xem request thử nghiệm đã thực sự gửi gì trước khi nới lỏng policy."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Biên xác thực của Editor local",
+            "caption": "Mô hình luồng được bảo vệ trong PR #78.",
+            "items": [
+              {
+                "label": "Browser localhost:5173",
+                "detail": "Giao diện soạn thảo"
+              },
+              {
+                "label": "Host / loopback",
+                "detail": "Từ chối địa chỉ không hợp lệ",
+                "icon": "shield"
+              },
+              {
+                "label": "Origin + nonce",
+                "detail": "Chặn thao tác ghi ngoài phiên"
+              },
+              {
+                "label": "GitHub CLI",
+                "detail": "Xác minh chủ repo"
+              },
+              {
+                "label": "GitHub Draft PR",
+                "detail": "Chỉ khi xác nhận rõ ràng",
+                "icon": "pull"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Khi fixture không mô phỏng đúng request",
+        "paragraphs": [
+          "Integration test mở một server tại cổng ngẫu nhiên để tránh đụng cổng 5173 trên runner. URL kết nối thực là 127.0.0.1 với cổng động, trong khi chính sách bên ứng dụng yêu cầu Host localhost:5173. Fixture cũ gọi fetch với header Host mong muốn. Theo diff của commit sửa, Undici có thể dựng Host từ URL trong trường hợp này; request không giống request của Editor thật.",
+          "HTTP 403 là phản ứng fail-closed của gate trước request không khớp. Log chỉ xác nhận 403 thay vì 200; việc xác định mismatch Host đến từ đối chiếu fixture và patch. Không đánh đồng mọi 403 với token hết hạn hoặc thiếu quyền repo. Điều cần bảo tồn là chính sách local, đồng thời kiểm soát chính xác header trong test."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Hai đường đi cần phân biệt",
+            "columns": [
+              "Thuộc tính",
+              "Fixture cũ",
+              "Fixture sửa"
+            ],
+            "rows": [
+              [
+                "Cổng kết nối",
+                "Cổng động",
+                "Cổng động"
+              ],
+              [
+                "Thư viện gửi",
+                "fetch",
+                "node:http request"
+              ],
+              [
+                "Host mong muốn",
+                "localhost:5173",
+                "localhost:5173"
+              ],
+              [
+                "Kết quả ghi nhận",
+                "403",
+                "CI thành công"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Sửa công cụ kiểm thử, không sửa hàng rào",
+        "paragraphs": [
+          "Commit cc189bd9211e18efcf2a4e5541883e5979fcd23c chuyển helper sang request của node:http, truyền Host rõ ràng, đọc body và status từ phản hồi. Cách này vẫn gọi server HTTP thật với port động, không mock toàn bộ API. Ngoài cases 200 hợp lệ, integration test kiểm tra origin sai trả 403, chưa có phiên trả 401, thiếu xác nhận trả 400, và sau logout lại trả 401.",
+          "Một smoke test Chromium bổ sung kiểm tra Editor local mở được, không redirect Cashflow, có vùng nhập nội dung và nút xuất bản bị khóa khi chưa kết nối. Đây là hai tầng kiểm chứng khác nhau: fixture HTTP kiểm tra ứng xử của API; browser smoke kiểm tra wiring giao diện."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "caption": "Minh họa helper HTTP dùng Host tường minh (rút gọn).",
+            "language": "javascript",
+            "code": "import { request } from 'node:http';\nconst req = request(base + '/api/status', {\n  method: 'GET',\n  headers: { Host: 'localhost:5173' }\n}, res => {\n  // Kiểm tra statusCode và JSON response.\n});\nreq.end();"
+          },
+          {
+            "kind": "table",
+            "caption": "Ma trận quyền được giữ lại",
+            "columns": [
+              "Tình huống",
+              "Kỳ vọng"
+            ],
+            "rows": [
+              [
+                "GET status hợp lệ",
+                "200"
+              ],
+              [
+                "Origin ngoài whitelist",
+                "403"
+              ],
+              [
+                "Tạo draft chưa đăng nhập",
+                "401"
+              ],
+              [
+                "Có session nhưng thiếu confirm",
+                "400"
+              ],
+              [
+                "Có session và confirm",
+                "201 (publish giả lập)"
+              ],
+              [
+                "Đã logout",
+                "401"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — CI xanh, merge xanh: xác thực thật vẫn là bài kiểm tra khác",
+        "paragraphs": [
+          "Run 43602687264 thành công trên đúng cc189bd; job Content and Astro build ghi nhận integration tests, bản build overlay và browser smoke đều pass. PR #78 đã merge thành 9f2ecb23ffd87a802286f6e5d07880fc40e425a6. Release 43603271065 có prepare, deploy, verify thành công, xác nhận bản public tương ứng. Local Editor không được deploy dưới dạng một dịch vụ public qua release đó.",
+          "Function verify/publish trong test được tiêm bằng mock; response 201 không phải một pull request tạo bằng tài khoản thật. Vì thế kết luận là hồi quy đã vượt CI và mã sửa được merge, không phải xác nhận đăng nhập trên mọi máy hay xuất bản thật. Hồ sơ Issue #79 vẫn chưa đóng vào thời điểm soạn."
+        ],
+        "visuals": [
+          {
+            "kind": "swatches",
+            "caption": "Các trạng thái được phân biệt theo ý nghĩa",
+            "items": [
+              {
+                "label": "Từ chối đúng",
+                "color": "#B45309",
+                "detail": "Gate bảo vệ đúng request sai"
+              },
+              {
+                "label": "CI xác minh",
+                "color": "#21804B",
+                "detail": "Kiểm thử trên cc189bd"
+              },
+              {
+                "label": "Chưa kiểm thử thật",
+                "color": "#536B91",
+                "detail": "GitHub CLI với tài khoản thực"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Issue #79: https://github.com/duykhang68/khoahoctienghan/issues/79",
+          "PR #78: https://github.com/duykhang68/khoahoctienghan/pull/78",
+          "CI lỗi: https://github.com/duykhang68/khoahoctienghan/actions/runs/43602630268/job/132470463375",
+          "Bản sửa: https://github.com/duykhang68/khoahoctienghan/commit/cc189bd9211e18efcf2a4e5541883e5979fcd23c",
+          "CI bản sửa: https://github.com/duykhang68/khoahoctienghan/actions/runs/43602687264",
+          "Release public: https://github.com/duykhang68/khoahoctienghan/actions/runs/43603271065",
+          "Node.js — HTTP: https://nodejs.org/api/http.html"
+        ]
+      }
+    ],
+    "date": "2026-11-14T22:43:03+07:00",
+    "series": {
+      "name": "Giải phẫu sự cố Editor: từ bản nháp đến production",
+      "part": 3,
+      "total_parts": 5,
+      "target_date": "",
+      "status": "in_progress"
+    }
+  },
+  {
+    "slug": "ho-so-issue-83-playwright-chuyen-muc",
+    "title": "Hồ sơ #83: Từ một ô Chuyên mục khó nhận diện đến một hợp đồng UX có thể kiểm thử",
+    "summary": "Tập 4 lần theo timeout của Playwright trong phiên bản online Editor V2, lý giải accessible name và sự kiện đổi lựa chọn, rồi đối chiếu bản sửa với CI sau cùng.",
+    "issues": [
+      83
+    ],
+    "labels": [
+      "Playwright",
+      "Accessibility",
+      "UX",
+      "Editor V2"
+    ],
+    "sections": [
+      {
+        "heading": "01 — Người dùng thấy trường, nhưng bộ kiểm thử không tìm thấy",
+        "paragraphs": [
+          "Editor V2 online ban đầu có một trường Nơi xuất bản cho phép chuyển giữa Tech Blog và Knowledge Base; lựa chọn Knowledge Base mới hiện trường Chuyên mục. Đây không chỉ là UI: loại bài quyết định đường dẫn và cấu trúc nội dung mà adapter Astro sẽ tạo. Nếu chọn sai chuyên mục, bài viết có thể mang metadata sai ngay từ đầu.",
+          "Run 43606415742 trên commit 4e7aec788ebe9f9fe8a55eb8d95dc10b3ba38031 lỗi ở job 132481909749. Playwright đã thử chuyển nơi xuất bản rồi chờ locator getByLabel('Chuyên mục', { exact: true }) để chọn ngon-ngu. Hết 30 giây vẫn không hoàn tất. Issue #83 lưu lại lần chạy này."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Hợp đồng UX của biểu mẫu",
+            "caption": "Sơ đồ luồng kiểm thử trước khi V2 được tách thành hai workspace.",
+            "items": [
+              {
+                "label": "Chọn nơi xuất bản",
+                "detail": "Knowledge Base"
+              },
+              {
+                "label": "Hiện trường chuyên mục",
+                "detail": "Trạng thái UI có điều kiện"
+              },
+              {
+                "label": "Locator theo nhãn",
+                "detail": "Chuyên mục (exact)"
+              },
+              {
+                "label": "Chọn ngon-ngu",
+                "detail": "Cập nhật route"
+              },
+              {
+                "label": "Timeout quan sát",
+                "detail": "Dừng CI trước bước publish"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Accessible name và event là hai điều kiện riêng",
+        "paragraphs": [
+          "Playwright hỗ trợ tìm điều khiển bằng nhãn liên kết hoặc aria-label. Một trường select nằm trong label chứa cả nội dung option có thể khiến tên nhận diện chính xác khác điều mong đợi; điều đó cần xem lại markup thật thay vì đoán bằng selector CSS. Mặt khác, trường chuyên mục có thể đang ẩn nếu trạng thái từ bộ chọn đích chưa được cập nhật đúng thời điểm.",
+          "Diff 0041af73a78be014035cbe9e41a8ff4155fe9ae5 xử lý cả hai điểm: đặt aria-label rõ ràng cho hai select và lắng nghe change bên cạnh input đối với select. Không có trace chi tiết chứng minh riêng yếu tố nào đủ gây timeout, nên bài viết xem đây là bản sửa kết hợp, không quy lỗi duy nhất cho Playwright."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Hai hợp đồng cần đồng thời đúng",
+            "columns": [
+              "Hợp đồng",
+              "Triệu chứng nếu sai",
+              "Thay đổi"
+            ],
+            "rows": [
+              [
+                "Tên truy cập",
+                "Locator exact không khớp",
+                "aria-label rõ ràng"
+              ],
+              [
+                "Trạng thái giao diện",
+                "Trường phụ vẫn ẩn",
+                "Đăng ký change cho select"
+              ],
+              [
+                "Dữ liệu xuất bản",
+                "URL sai chuyên mục",
+                "Giữ assertion route và metadata"
+              ]
+            ]
+          },
+          {
+            "kind": "code",
+            "caption": "Trích ý chính từ patch giao diện.",
+            "language": "html",
+            "code": "<select data-field=\"kind\" aria-label=\"Nơi xuất bản\">…</select>\n<select data-field=\"category\" aria-label=\"Chuyên mục\">…</select>"
+          }
+        ]
+      },
+      {
+        "heading": "03 — Vì sao không nên tăng timeout hoặc dùng CSS để né lỗi?",
+        "paragraphs": [
+          "Longer timeout chỉ có ích khi hệ thống quả thật sẽ tiến triển và chậm hơn dự kiến. Nếu tên điều khiển không đúng hoặc logic không hiển thị trường, chờ thêm không giải quyết vấn đề. Chuyển sang querySelector có thể lấy được một phần tử ẩn, nhưng lại bỏ qua yêu cầu accessibility mà người dùng bàn phím và trình đọc màn hình cần.",
+          "Tốt hơn là kiểm tra theo trình tự: tìm điều khiển có tên đúng, chọn đích, xác nhận trường phụ hiện, chọn giá trị rồi xác nhận URL và metadata. Giữ các điều kiện hiển thị như một phần hành vi chứ không chỉ là thẩm mỹ."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "caption": "Mẫu regression phân lớp được đề xuất.",
+            "language": "typescript",
+            "code": "await page.getByLabel('Nơi xuất bản').selectOption('knowledge');\nconst category = page.getByLabel('Chuyên mục', { exact: true });\nawait expect(category).toBeVisible();\nawait category.selectOption('ngon-ngu');\nawait expect(page.locator('[data-route]')).toContainText('/ngon-ngu/');"
+          }
+        ]
+      },
+      {
+        "heading": "04 — Bằng chứng sau khi sửa và sự tiến hóa của V2",
+        "paragraphs": [
+          "Commit 0041af7 vẫn đỏ do một assertion khác trong engineering test, được phân tích ở tập kế tiếp. Không dùng màu đỏ này để kết luận bản sửa UX thất bại, cũng không coi nó đã pass khi browser E2E chưa được chạy. Commit 030c3e75eca016dd3371fb09f37c88f21cc22df7 tiếp theo vượt native CI 43606792120, gồm cả E2E; PR #82 merge thành 7686e3083c39fadae83342c4591b5bb612c04039. CD 43607221759 có prepare, deploy và verify thành công.",
+          "Từ kiến trúc đó, hai workspace sau này khóa đích xuất bản theo từng loại blog. Mặc dù giao diện thay đổi, nguyên tắc đặt tên điều khiển rõ ràng và thử end-to-end vẫn giữ giá trị. Issue #83 hiện vẫn mở; bài này ghi nhận sự cố, bản sửa và bằng chứng chứ không tự đóng hồ sơ."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Từ lỗi đến chứng cứ",
+            "caption": "Các mốc có thật của PR #82.",
+            "items": [
+              {
+                "label": "4e7aec7",
+                "detail": "E2E timeout"
+              },
+              {
+                "label": "0041af7",
+                "detail": "Sửa nhãn + sự kiện; CI còn lỗi khác"
+              },
+              {
+                "label": "030c3e7",
+                "detail": "Native CI success",
+                "icon": "check"
+              },
+              {
+                "label": "7686e30",
+                "detail": "Merge PR #82",
+                "icon": "merge"
+              },
+              {
+                "label": "CD 43607221759",
+                "detail": "Prepare / deploy / verify success",
+                "icon": "cloud"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Issue #83: https://github.com/duykhang68/khoahoctienghan/issues/83",
+          "CI lỗi: https://github.com/duykhang68/khoahoctienghan/actions/runs/43606415742/job/132481909749",
+          "Patch UX: https://github.com/duykhang68/khoahoctienghan/commit/0041af73a78be014035cbe9e41a8ff4155fe9ae5",
+          "PR #82: https://github.com/duykhang68/khoahoctienghan/pull/82",
+          "CI xanh: https://github.com/duykhang68/khoahoctienghan/actions/runs/43606792120",
+          "CD: https://github.com/duykhang68/khoahoctienghan/actions/runs/43607221759",
+          "Playwright — Locators: https://playwright.dev/docs/locators",
+          "Playwright — Locator API: https://playwright.dev/docs/api/class-locator"
+        ]
+      }
+    ],
+    "date": "2026-11-14T22:43:04+07:00",
+    "series": {
+      "name": "Giải phẫu sự cố Editor: từ bản nháp đến production",
+      "part": 4,
+      "total_parts": 5,
+      "target_date": "",
+      "status": "in_progress"
+    }
+  },
+  {
+    "slug": "ho-so-issue-84-85-slug-danh-rieng",
+    "title": "Hồ sơ #84–85: Hai lần CI đỏ vì một giả định sai về slug Editor V2",
+    "summary": "Tập 5 giải phẫu cùng một lỗi dự đoán kết quả trong regression test, phân biệt editor-v2 và editorv2, và cách bảo vệ route hệ thống ở cả adapter lẫn content gate.",
+    "issues": [
+      84,
+      85
+    ],
+    "labels": [
+      "FIFO",
+      "Slug",
+      "Astro",
+      "Regression Test"
+    ],
+    "sections": [
+      {
+        "heading": "01 — Hai Issue cùng dẫn đến một câu hỏi",
+        "paragraphs": [
+          "Khi PR #82 bổ sung FIFO publishing, nội dung gửi từ trình duyệt được lưu riêng rồi chuyển thành dữ liệu Astro lúc đến lượt. Mỗi bài Tech Blog mang slug từ tiêu đề. Trang công cụ /techblog/editorv2/ là đường dẫn tĩnh dành riêng, nên nội dung mới không được chiếm đường dẫn này.",
+          "Hai incident #84 và #85 ghi nhận run 43606628149 (a50e0f8a470bb800daa0d2dc5fc25c0aabd8c6b0) và 43606731582 (0041af73a78be014035cbe9e41a8ff4155fe9ae5). Cả hai thất bại tại engineering tests với cùng assertion 'Missing expected rejection'. Đây là hai lần báo cùng một loại lỗi, không phải hai bug độc lập đã được xác minh. Vì vậy tập cuối phân tích chung, tránh lặp lại nội dung."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Bằng chứng hai lần chạy",
+            "columns": [
+              "Issue",
+              "Run",
+              "Kết quả"
+            ],
+            "rows": [
+              [
+                "#84",
+                "43606628149",
+                "FAIL — expected rejection"
+              ],
+              [
+                "#85",
+                "43606731582",
+                "FAIL — expected rejection"
+              ],
+              [
+                "HEAD sửa",
+                "43606792120",
+                "SUCCESS"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Hai tiêu đề gần giống nhau, hai URL khác nhau",
+        "paragraphs": [
+          "Hàm slugify của Editor V2 chuẩn hóa Unicode, bỏ dấu, chuyển chữ thường và đổi cụm ký tự không phải chữ số/chữ Latin thành dấu gạch nối. Do đó tiêu đề 'Editor V2' tạo editor-v2, còn 'EditorV2' tạo editorv2. Reserved route của Astro là editorv2 chứ không phải editor-v2.",
+          "Test ban đầu yêu cầu prepareQueued(draft có title Editor V2) phải reject vì trùng route. Adapter lại trả một kết quả hợp lệ với slug editor-v2. Node assert.rejects kiểm tra Promise có bị reject hay không; khi nó hoàn tất bình thường, test báo thiếu rejection. Vấn đề nằm ở dữ liệu kiểm thử chưa thật sự chạm nhánh cấm, không phải bằng chứng validation route bị vô hiệu."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Đối chiếu giá trị theo thuật toán hiện có",
+            "columns": [
+              "Đầu vào",
+              "Slug",
+              "Kết quả mong đợi"
+            ],
+            "rows": [
+              [
+                "Editor V2",
+                "editor-v2",
+                "Cho phép nếu chưa tồn tại"
+              ],
+              [
+                "EditorV2",
+                "editorv2",
+                "Từ chối — route hệ thống"
+              ],
+              [
+                "Editorv2",
+                "editorv2",
+                "Từ chối — route hệ thống"
+              ],
+              [
+                "Bài thử kỹ thuật",
+                "bai-thu-ky-thuat",
+                "Cho phép nếu chưa tồn tại"
+              ]
+            ]
+          },
+          {
+            "kind": "flow",
+            "title": "Hai lớp định tuyến",
+            "caption": "Luồng khái niệm, không phải dữ liệu benchmark.",
+            "items": [
+              {
+                "label": "Tiêu đề",
+                "detail": "Editor V2 hoặc EditorV2"
+              },
+              {
+                "label": "slugify",
+                "detail": "Chuỗi chuẩn hóa"
+              },
+              {
+                "label": "Reserved slug guard",
+                "detail": "So khớp chính xác editorv2",
+                "icon": "shield"
+              },
+              {
+                "label": "Content projection",
+                "detail": "Chỉ tạo record nếu hợp lệ"
+              },
+              {
+                "label": "Astro build",
+                "detail": "Route tĩnh không bị chiếm"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Sửa testcase và thêm phòng vệ cho dữ liệu repo",
+        "paragraphs": [
+          "Commit 030c3e75eca016dd3371fb09f37c88f21cc22df7 thay input thành EditorV2 tại assertion reject. Đồng thời scripts/check-content.mjs chặn bất kỳ Tech Blog record nào có slug editorv2. Lớp adapter kiểm soát dữ liệu qua Editor, lớp content gate kiểm soát dữ liệu từ các con đường khác như PR thủ công. Đây là phòng vệ nhiều lớp, không cần đổi đường dẫn công cụ.",
+          "Không nên chữa một expectation sai bằng cách cho phép loại bỏ bảng reserved route hoặc đổi test thành luôn pass. Kiểm thử nên có cả dữ liệu hợp lệ và bị từ chối; các đầu vào khác biệt đúng một dấu phân cách có thể giúp bắt lỗi hiểu sai quy tắc chuẩn hóa."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "caption": "Hai thay đổi chính từ patch (rút gọn).",
+            "language": "javascript",
+            "code": "await assert.rejects(\n  prepareQueued({...draft, title: 'EditorV2', kind: 'tech'}, snapshot, date),\n  /URL/\n);\nassert(!techPosts.some(post => post.slug === 'editorv2'),\n  'Reserved route /techblog/editorv2/ cannot be used for an article');"
+          },
+          {
+            "kind": "table",
+            "caption": "Ranh giới bảo vệ",
+            "columns": [
+              "Nơi kiểm tra",
+              "Tác dụng"
+            ],
+            "rows": [
+              [
+                "Browser submit",
+                "Phản hồi sớm"
+              ],
+              [
+                "Queue adapter",
+                "Chặn bản gửi trước khi tạo PR nội dung"
+              ],
+              [
+                "Content gate",
+                "Bắt slug trùng từ nguồn khác"
+              ],
+              [
+                "Astro CI",
+                "Kiểm tra bản dựng tổng thể"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Khi nào một lần chạy xanh đủ để kết luận?",
+        "paragraphs": [
+          "Native CI 43606792120 trên đúng 030c3e7 thành công, trong đó engineering tests và Playwright E2E đều xanh. PR #82 merge tại 7686e3083c39fadae83342c4591b5bb612c04039; CD 43607221759 success cả prepare, deploy, verify. Điều này chứng minh bản sửa nằm trong phiên bản được phát hành theo bằng chứng workflow, không chứng minh luồng FIFO đã xử lý một bài thật với credentials thật.",
+          "Những dấu X cũ không cần bị xóa hoặc viết lại lịch sử. Chúng bảo tồn vết điều tra. Khi cùng signature xuất hiện nhiều lần, tri thức cần thu gọn về một nguyên nhân cùng regression thay vì tăng giả tạo số lượng lỗi độc lập. Cả hai Issue vẫn đang mở; việc xác nhận đóng hồ sơ thuộc quy trình engineering riêng."
+        ],
+        "visuals": [
+          {
+            "kind": "swatches",
+            "caption": "Trạng thái có chứng cứ",
+            "items": [
+              {
+                "label": "FAIL",
+                "color": "#BD3D3A",
+                "detail": "Hai run cùng assertion"
+              },
+              {
+                "label": "SUCCESS",
+                "color": "#21804B",
+                "detail": "Native CI đúng HEAD"
+              },
+              {
+                "label": "VERIFIED CD",
+                "color": "#386BA8",
+                "detail": "Bản merge được release kiểm tra"
+              },
+              {
+                "label": "OPEN",
+                "color": "#A46F1D",
+                "detail": "Issue chưa đóng"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Issue #84: https://github.com/duykhang68/khoahoctienghan/issues/84",
+          "Issue #85: https://github.com/duykhang68/khoahoctienghan/issues/85",
+          "Run #84: https://github.com/duykhang68/khoahoctienghan/actions/runs/43606628149/job/132482556290",
+          "Run #85: https://github.com/duykhang68/khoahoctienghan/actions/runs/43606731582/job/132482872916",
+          "Patch: https://github.com/duykhang68/khoahoctienghan/commit/030c3e75eca016dd3371fb09f37c88f21cc22df7",
+          "PR #82: https://github.com/duykhang68/khoahoctienghan/pull/82",
+          "Native CI: https://github.com/duykhang68/khoahoctienghan/actions/runs/43606792120",
+          "CD: https://github.com/duykhang68/khoahoctienghan/actions/runs/43607221759",
+          "Node.js assert.rejects: https://nodejs.org/api/assert.html"
+        ]
+      }
+    ],
+    "date": "2026-11-14T22:43:05+07:00",
+    "series": {
+      "name": "Giải phẫu sự cố Editor: từ bản nháp đến production",
+      "part": 5,
+      "total_parts": 5,
+      "target_date": "",
+      "status": "completed"
+    }
   }
 ]
