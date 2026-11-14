@@ -13,8 +13,15 @@ function gh(path,method='GET',body){
   child.stdin.on('error',()=>{});child.stdin.end(body?JSON.stringify(body):undefined);
  });
 }
+export async function verifyGithubOwner(){
+ const owner=await gh('user');
+ assert(owner.login==='duykhang68','Chỉ tài khoản GitHub duykhang68 được kết nối.');
+ const target=await gh(repo);
+ assert(target.full_name==='duykhang68/khoahoctienghan'&&target.permissions?.push===true,'Tài khoản thiếu quyền ghi repository.');
+ return {login:owner.login,repository:target.full_name};
+}
 export async function createDraftPR(draft){
- const owner=await gh('user');assert(owner.login==='duykhang68','Chỉ chủ repository được gửi bài.');
+ await verifyGithubOwner();
  const main=await gh(repo+'/git/ref/heads/main'),sha=main.object.sha,commit=await gh(repo+'/git/commits/'+sha);
  const tree=await gh(repo+'/git/trees/'+commit.tree.sha+'?recursive=1');assert(!tree.truncated,'Repository tree incomplete');
  const paths=tree.tree.filter(f=>f.type==='blob').map(f=>f.path);

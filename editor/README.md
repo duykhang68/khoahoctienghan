@@ -1,3 +1,5 @@
+> Migration direction changed: this adapted composer is retained only for existing regression coverage; the default `npm run editor` now launches the original pinned snapshot under `editor-original/`. See `engineering/REDDIT-EDITOR-MIGRATION.md`.
+
 # Duy Nguyen Editorial Studio — Reddit migration
 
 Source: [reddit-editor at 1a1c3f3efc72b530c1c76ce494bdebd8baa3f795](https://github.com/duykhang68/reddit-editor/tree/1a1c3f3efc72b530c1c76ce494bdebd8baa3f795). Ported ArticleBlocks, Callout, article styles, editor-kit styles and deterministic diagram suggestions together with the original locked React/TipTap dependency graph. The application shell is adapted to the target typography and light pastel design. No Blogger API, Drive OAuth, unrelated utilities, secrets, or PR #67 implementation was copied.

@@ -1,0 +1,3 @@
+[submodule "editor-original"]
+	path = editor-original
+	url = https://github.com/duykhang68/reddit-editor.git

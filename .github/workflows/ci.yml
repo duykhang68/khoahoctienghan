@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          submodules: true
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
@@ -33,10 +34,27 @@ jobs:
         run: npm ci --prefix editor --no-audit --no-fund
       - name: Build migrated Editor (local only)
         run: npm --prefix editor run build
+      - name: Verify full upstream Editor snapshot
+        run: |
+          set -euo pipefail
+          test "$(git -C editor-original rev-parse HEAD)" = "1a1c3f3efc72b530c1c76ce494bdebd8baa3f795"
+          test -z "$(git -C editor-original status --porcelain)"
+      - name: Install original locked Editor dependencies
+        run: npm ci --prefix editor-original --no-audit --no-fund
+      - name: Original Editor syntax and tests
+        run: npm --prefix editor-original run check
+      - name: Original Editor frontend build
+        run: npm --prefix editor-original run build
+      - name: Independent GitHub Editor integration tests
+        run: node --test tests/editor-github.test.mjs
+      - name: Build original Editor with GitHub overlay
+        run: node editor-original/node_modules/vite/bin/vite.js build --config editor-github/vite.config.mjs --configLoader runner --outDir dist-github
       - run: npm run build
       - run: node scripts/verify-build.mjs
       - name: Install Chromium headless shell only
         run: npx playwright install --only-shell chromium
+      - name: Browser smoke — original Editor without Cashflow redirect
+        run: npx playwright test --config playwright.editor.config.ts
       - run: npm run test:e2e -- --workers=2
       - name: Mark trusted main artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
