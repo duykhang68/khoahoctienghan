@@ -3,8 +3,7 @@
  * Measurements are original approximations; no external brand assets.
  */
 .research-article-page{background:#faf9f5;color:#181818}
-.research-article-page .breadcrumb-band,.research-article-page #content{background:#faf9f5}
-.research-article-page .blog-breadcrumb a{color:#4d4c46;text-decoration:underline;text-underline-offset:3px}
+.research-article-page #content{background:#faf9f5}
 .research-article-shell{max-width:1240px;margin:0 auto;padding:clamp(30px,5vw,70px) var(--pad) 80px}
 .research-article{min-width:0}
 .research-article .research-heading{max-width:980px;margin:0 auto 28px}

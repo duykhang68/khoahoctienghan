@@ -1,13 +1,8 @@
 /* Listing only: Anthropic Engineering's introduction / feature / article grid.
  * Keep the site's AWS navigation, independent branding and Source Sans 3 / IBM Plex Mono.
  * Decorative motifs are original CSS, not downloaded editorial images. */
-.engineering-index-page .blog-masthead{background:#faf9f5}
-.engineering-index-page .masthead-inner{max-width:1240px;padding:43px var(--pad) 10px}
-.engineering-index-page .blog-name{font-size:var(--type-masthead);font-weight:300;line-height:1.12;letter-spacing:0;color:#181818}
 .engineering-index-page #content{background:#faf9f5;color:#181818}
 .engineering-index{max-width:1240px;margin:auto;padding:0 var(--pad) 80px}
-.engineering-index .index-intro{max-width:850px;padding:12px 0 32px}
-.engineering-index .index-intro p{font-size:var(--type-body);font-weight:400;line-height:var(--type-leading);margin:0;text-align:start;color:#343431}
 .engineering-index .index-feature{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(24px,4vw,55px);align-items:center;padding:0 0 52px;border-bottom:1px solid #c9c8c0}
 .engineering-index .feature-visual,.engineering-index .index-card-visual{display:block;min-width:0;border-radius:8px;overflow:hidden}
 .engineering-index .editorial-cover{display:block;position:relative;isolation:isolate;aspect-ratio:16/9;overflow:hidden;width:100%;background:#e5e3db;border-radius:8px}
@@ -72,7 +67,7 @@
 .engineering-index .index-more button{background:transparent;border:1px solid #393933;border-radius:5px;padding:11px 22px;color:#181818;font:600 var(--type-button) var(--sans);cursor:pointer}
 .engineering-index .index-more button:hover,.engineering-index .index-year-submit:hover{background:#e8e6de}
 @media(max-width:900px){.engineering-index .index-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.engineering-index .index-feature{gap:24px}}
-@media(max-width:640px){.engineering-index-page .masthead-inner{padding-top:28px}.engineering-index .index-intro{padding-bottom:24px}.engineering-index .index-feature{grid-template-columns:minmax(0,1fr);padding-bottom:32px}.engineering-index .index-grid{grid-template-columns:minmax(0,1fr);gap:24px}.engineering-index .index-grid[data-layout=list] .index-card{grid-template-columns:minmax(82px,116px) minmax(0,1fr);gap:12px}.engineering-index .index-filters{gap:12px}.engineering-index .index-search{max-width:none;flex:1 1 100%}.engineering-index .index-categories{flex-basis:100%}.engineering-index .article-count{font-size:30px}}
+@media(max-width:640px){.engineering-index .index-feature{grid-template-columns:minmax(0,1fr);padding-bottom:32px}.engineering-index .index-grid{grid-template-columns:minmax(0,1fr);gap:24px}.engineering-index .index-grid[data-layout=list] .index-card{grid-template-columns:minmax(82px,116px) minmax(0,1fr);gap:12px}.engineering-index .index-filters{gap:12px}.engineering-index .index-search{max-width:none;flex:1 1 100%}.engineering-index .index-categories{flex-basis:100%}.engineering-index .article-count{font-size:30px}}
 
 .engineering-index .index-read,.engineering-index .index-more button,.engineering-index .index-year-submit{font-size:var(--type-button);font-weight:600;letter-spacing:0}
 .engineering-index .index-categories a{font-size:var(--type-nav);font-weight:500;letter-spacing:0}
