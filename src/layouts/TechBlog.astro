@@ -1,12 +1,10 @@
 ---
 import '../styles/techblog.css';
-import {categories} from '../lib/techblog';
-import {topics} from '../lib/knowledge-topics';
+import EditorialHeader from '../components/EditorialHeader.astro';
+import EditorialFooter from '../components/EditorialFooter.astro';
 const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false,indexPage=false,knowledgeHome=false}=Astro.props;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const canonical=new URL(Astro.url.pathname,Astro.site);
-const brand=knowledgeHome?'Tri thức Hàn Quốc':'Engineering Blog';
-const home=base+(knowledgeHome?'/':'/techblog/');
 ---
 <!doctype html>
 <html lang="vi">
@@ -25,51 +23,8 @@ const home=base+(knowledgeHome?'/':'/techblog/');
 </head>
 <body class:list={[indexPage&&'engineering-index-page',article&&'research-article-page']}>
   <a class="skip" href="#content">Bỏ qua điều hướng</a>
-  <header class="engineering-header">
-    <nav class="engineering-nav engineering-nav-minimal" aria-label="Điều hướng Engineering">
-      <a class="engineering-brand" href={home} aria-current={indexPage?'page':undefined}>{brand}</a>
-    </nav>
-  </header>
-  <div class="blog-navigation blog-navigation-minimal">
-    <nav class="blog-nav-inner" aria-label={knowledgeHome?'Chuyên mục tri thức':'Chuyên mục Blog'}>
-      <details class="edition-menu">
-        <summary>Chuyên mục <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></summary>
-        <div class="edition-panel">
-          {knowledgeHome?<>
-            <a href={home}>Tất cả chủ đề</a>
-            {topics.map(t=><a href={base+'/'+t.id+'/'}>{t.title}</a>)}
-            <a href={base+'/techblog/'}>Engineering Blog</a>
-          </>:<>
-            <a href={base+'/techblog/'}>Tất cả bài viết</a>
-            {categories.map(c=><a href={base+'/techblog/?category='+c.id}>{c.label}</a>)}
-          </>}
-        </div>
-      </details>
-    </nav>
-  </div>
-  <div class="breadcrumb-band"><nav class="blog-breadcrumb" aria-label="Đường dẫn">
-    {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">{brand}</span>}
-    {article&&<><span class="crumb-divider" aria-hidden="true">›</span><span class="current-crumb" aria-current="page">{title}</span></>}
-  </nav></div>
+  <EditorialHeader {title} {article} {indexPage} {knowledgeHome}/>
   <main id="content"><slot/></main>
-  <footer class="engineering-footer"><div class="footer-inner">
-    <section class="footer-intro"><a class="footer-brand" href={home}>{brand}</a><p>{knowledgeHome?'Kho tri thức mở về Hàn Quốc bằng tiếng Việt. Miễn phí, không cần tài khoản.':'Ghi lại những điều học được khi xây dựng phần mềm.'}</p><a class="aws-button footer-cta" href={base+(knowledgeHome?'/techblog/':'/')}>{knowledgeHome?'Engineering Blog':'Về kho tri thức Hàn Quốc'}</a></section>
-  </div><div class="footer-bottom"><div>{knowledgeHome?'Tri thức Hàn Quốc':'Tri thức Hàn Quốc · Engineering'}</div></div></footer>
+  <EditorialFooter {knowledgeHome}/>
 </body>
 </html>
-
-<script>
-  const menu=document.querySelector<HTMLDetailsElement>('.edition-menu');
-  document.addEventListener('click',event=>{if(menu?.open&&!menu.contains(event.target as Node))menu.open=false;});
-  menu?.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary')?.focus();}});
-  for(const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-permalink]')){
-    button.addEventListener('click',async()=>{
-      const status=button.parentElement?.querySelector<HTMLElement>('.share-status');
-      const path=button.dataset.copyPermalink;
-      if(!path)return;
-      const url=new URL(path,location.origin).href;
-      try{await navigator.clipboard.writeText(url);if(status)status.textContent='Đã sao chép liên kết';}
-      catch{if(status)status.textContent='Dùng liên kết Permalink để chia sẻ.';}
-    });
-  }
-</script>

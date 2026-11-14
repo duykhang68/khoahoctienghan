@@ -1,0 +1,78 @@
+{
+  "hangul-basic-letters": {
+    "kind": "bars",
+    "variant": "summary",
+    "title": "24 chữ cái cơ bản của Hangul",
+    "caption": "Tập chữ cái cơ bản trong hệ chữ Hangul hiện đại; không tính phụ âm căng và nguyên âm kết hợp.",
+    "unit": "chữ cái",
+    "source": "Bài Hangul, mục Chữ cái cơ bản; tham khảo các nguồn học tiếp trong bài.",
+    "items": [
+      {
+        "label": "Phụ âm",
+        "value": "14",
+        "color": "#2459A6"
+      },
+      {
+        "label": "Nguyên âm",
+        "value": "10",
+        "color": "#167044"
+      }
+    ]
+  },
+  "hangul-syllable-composition": {
+    "kind": "flow",
+    "title": "Từ ký tự đến khối âm tiết 한",
+    "caption": "Ví dụ minh họa cách phân tích và ghép 한: ㅎ + ㅏ + ㄴ. Không phải mọi âm tiết đều có phụ âm cuối.",
+    "items": [
+      {
+        "label": "ㅎ — Phụ âm đầu",
+        "detail": "Đặt ở vị trí đầu khối âm tiết."
+      },
+      {
+        "label": "ㅏ — Nguyên âm",
+        "detail": "Ghép cùng phụ âm đầu thành 하."
+      },
+      {
+        "label": "ㄴ — Phụ âm cuối",
+        "detail": "Thêm vào phần dưới khối (batchim)."
+      },
+      {
+        "label": "한 — Khối âm tiết hoàn chỉnh",
+        "detail": "Ba ký tự, một khối âm tiết.",
+        "icon": "check"
+      }
+    ]
+  },
+  "hangul-practice-cycle": {
+    "kind": "flow",
+    "variant": "cycle",
+    "title": "Một vòng luyện tập Hangul",
+    "centerLabel": [
+      "Luyện tập",
+      "Hangul"
+    ],
+    "caption": "Quy trình luyện tập gợi ý, không phải số liệu đo lường.",
+    "items": [
+      {
+        "label": "Quan sát",
+        "detail": "Nhìn một khối âm tiết."
+      },
+      {
+        "label": "Tách chữ",
+        "detail": "Nhận diện phụ âm đầu, nguyên âm, phụ âm cuối nếu có."
+      },
+      {
+        "label": "Ghép lại",
+        "detail": "Tự ghép các chữ thành một khối."
+      },
+      {
+        "label": "Đọc thử",
+        "detail": "Thực hành đọc âm tiết."
+      },
+      {
+        "label": "Kiểm tra",
+        "detail": "Đối chiếu, ghi nhớ và lặp lại."
+      }
+    ]
+  }
+}

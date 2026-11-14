@@ -19,3 +19,9 @@ assert(!/label:[^\n]+,\s*autogenerate:/.test(config), 'Legacy Starlight sidebar 
 const {validateVisual}=await import('../src/lib/tech-visual-validation.mjs');
 const techPosts=JSON.parse(await readFile('src/data/techblog/posts.json','utf8'));
 for(const post of techPosts)for(const section of post.sections){if(section.visuals!==undefined){assert(Array.isArray(section.visuals),post.slug+' invalid visuals');for(const v of section.visuals)validateVisual(v);}}
+
+const {validateKnowledgeVisuals}=await import('../src/lib/knowledge-visual-validation.mjs');
+const knowledgeVisuals=JSON.parse(await readFile('src/data/knowledge-visuals.json','utf8'));
+const knowledgePages=await Promise.all(paths.map(async path=>({path,content:await readFile(root+'/'+path,'utf8')})));
+const visualCount=validateKnowledgeVisuals(knowledgeVisuals,knowledgePages);
+console.log('Validated '+visualCount+' Knowledge Base visual references');

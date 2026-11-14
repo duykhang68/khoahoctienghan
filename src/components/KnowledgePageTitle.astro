@@ -1,9 +1,5 @@
 ---
-import PageTitle from '@astrojs/starlight/components/PageTitle.astro';
-const {toc}=Astro.locals.starlightRoute;
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const isHome=Astro.url.pathname.replace(/\/$/,'')===base;
 ---
-<PageTitle />
-{toc&&toc.items.length>0&&<nav class="knowledge-inline-toc" aria-label="Trong bài này">
- <h2>Trong bài này</h2>
- <ul>{toc.items.map(item=><li><a href={'#'+item.slug}>{item.text}</a>{item.children.length>0&&<ul>{item.children.map(child=><li><a href={'#'+child.slug}>{child.text}</a></li>)}</ul>}</li>)}</ul>
-</nav>}
+{isHome&&<h1 id="_top" class="sr-only">{Astro.locals.starlightRoute.entry.data.title}</h1>}
