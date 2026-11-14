@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -141,4 +141,13 @@ test('P1.1 authorized dashboard API is no-store, read-only and fails closed',asy
  assert.equal((await worker.fetch(req('/admin/api/dashboard/',{headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,403);
  globalThis.fetch=async()=>new Response('private upstream error',{status:429});const failed=await worker.fetch(req('/admin/api/dashboard/',{headers}),env);assert.equal(failed.status,502);assert.deepEqual(await failed.json(),{error:'SNAPSHOT_UNAVAILABLE'});
  }finally{globalThis.fetch=original;}
+});
+
+test('P1.3 library lists exact released articles without index pages or fabricated titles',async()=>{
+ const sha='c'.repeat(40),seen=[];
+ const response=async(url,init)=>{seen.push(url);assert.equal(init.redirect,'manual');if(url.endsWith('release-sha.json'))return Response.json({sha});if(url.includes('/git/trees/'))return Response.json({truncated:false,tree:[{type:'blob',path:'src/content/docs/ngon-ngu/index.md'},{type:'blob',path:'src/content/docs/ngon-ngu/hangul.mdx'}]});if(url.endsWith('posts.json'))return Response.json([{slug:'bai-tech',title:'Bài kỹ thuật',summary:'Tóm tắt'}]);return new Response('- [Hangul](/khoahoctienghan/ngon-ngu/hangul/)\n');};
+ const data=await librarySnapshot(response);assert.equal(data.sha,sha);assert.deepEqual(data.rows.map(x=>[x.kind,x.title]),[['tech','Bài kỹ thuật'],['knowledge','Hangul']]);assert.ok(seen.slice(1).every(url=>url.includes(sha)));
+ assert.equal((await worker.fetch(req('/admin/library/'),env)).status,303);
+ assert.equal((await worker.fetch(req('/admin/api/library/'),env)).status,403);
+ assert.equal((await worker.fetch(req('/admin/api/library/',{headers:{Cookie:'__Host-bo_session=invalid.signature'}}),env)).status,403);
 });
