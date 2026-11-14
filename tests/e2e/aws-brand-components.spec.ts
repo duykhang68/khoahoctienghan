@@ -16,9 +16,10 @@ test('blog chrome and AWS-style controls have functional navigation and accessib
  await first.locator('h3 a').click();
  await expect(page.locator('.current-crumb')).toHaveText(title);
  await expect(page.locator('.article-heading h1')).toHaveText(title);
- await expect(page.locator('.article-heading .post-meta')).toBeVisible();
+ await expect(page.locator('.research-meta .post-meta')).toBeVisible();
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
- await expect(page.locator('.resource-links a').first()).toHaveText('Kho tri thức');
+ await expect(page.locator('.research-meta')).toBeVisible();
+ await expect(page.locator('.tech-sidebar')).toHaveCount(0);
  await expect(page.locator('.footer-cta')).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
  await page.setViewportSize({width:375,height:812});

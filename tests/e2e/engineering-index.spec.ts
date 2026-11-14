@@ -19,8 +19,9 @@ test('editorial landing uses latest feature, date-ordered grid and working list 
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
  await cards.first().locator('h3 a').click();
  await expect(page.locator('.engineering-index')).toHaveCount(0);
- await expect(page.locator('.article-grid .tech-sidebar')).toBeVisible();
- await expect(page.locator('.article-heading [data-copy-permalink]')).toBeVisible();
+ await expect(page.locator('.research-reading-grid .research-meta')).toBeVisible();
+ await expect(page.locator('.tech-sidebar')).toHaveCount(0);
+ await expect(page.locator('.research-share [data-copy-permalink]')).toBeVisible();
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
 });
 test('filtered index hides the unfiltered featured panel and shows correct result count',async({page})=>{

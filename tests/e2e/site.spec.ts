@@ -38,8 +38,8 @@ test('inferred categories on both feed and detail, filter works',async({page})=>
  await expect(card).toBeVisible();
  await expect(card.locator('.topic-link')).toHaveText('Engineering');
  await card.locator('h3 a').click();
- await expect(page.locator('.article-heading .topic-link')).toHaveText('Engineering');
- await page.locator('.article-heading .topic-link').click();
+ await expect(page.locator('.research-meta .topic-link')).toHaveText('Engineering');
+ await page.locator('.research-meta .topic-link').click();
  await expect(page.locator('#feed-heading')).toHaveText('Chuyên mục: Engineering');
  await page.goto('./techblog/?category=unknown-topic');
  await expect(page.locator('#no-results')).toBeVisible();
