@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {allowed,digest,applyChanges} from './core.mjs';
-import {selectNativeCI,publishPhase,validSha} from './publishing.mjs';
+import {selectNativeCI,publishPhase,validSha,editorPRSpec,requireDraftResponse} from './publishing.mjs';
 import {createPreview,disposePreview} from './preview.mjs';
 import {mediaPath} from '../src/lib/editor-media.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
@@ -92,7 +92,7 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&path==='/api/session')return json(200,{nonce,login});
   if(req.method==='GET'&&path==='/api/local')return json(200,local());
   if(req.method!=='POST'||req.headers['x-editor-nonce']!==nonce||req.headers.origin!=='http://'+req.headers.host||!req.headers['content-type']?.startsWith('application/json'))return json(403,{error:'Yêu cầu không hợp lệ'});
-  if(writing&&['/api/connect','/api/disconnect','/api/sync'].includes(path))return json(409,{error:'Đang đồng bộ'});
+  if(writing&&['/api/connect','/api/disconnect','/api/sync','/api/test-sync'].includes(path))return json(409,{error:'Đang đồng bộ'});
   const data=await body(req);
   if(path==='/api/connect'){
    if(typeof data.token!=='string'||data.token.length<10||data.token.length>4096||/\s/.test(data.token))throw Error('Token không hợp lệ');
@@ -110,11 +110,13 @@ const server=http.createServer(async(req,res)=>{
   }
   if(path==='/api/pull')return json(200,await remote());
   if(path==='/api/publishing'){if(!token)return json(401,{error:'Kết nối GitHub trước'});return json(200,await publishingStatus(data.numbers));}
-  if(path==='/api/sync'){
+  if(path==='/api/sync'||path==='/api/test-sync'){
+   const test=path==='/api/test-sync';
    if(writing)return json(409,{error:'Đang đồng bộ'});
    writing=true;
    try{
     const snap=await remote();
+    if(!test&&!Object.hasOwn(snap.files,'src/data/editor-images.json'))throw Error('Editor chưa phát hành trên main. Chỉ dùng Test Sync (Draft PR) trong giai đoạn kiểm thử.');
     const old=new Map(Object.entries(snap.files).map(([p,v])=>[p,v.content]));
     applyChanges(old,data.changes);
     const diff=data.changes.filter(c=>(old.get(c.path)??null)!==c.content);
@@ -131,12 +133,13 @@ const server=http.createServer(async(req,res)=>{
     const menuOnly=diff.every(c=>c.path==='src/data/knowledge-menu.json');
     const title=menuOnly?'content: update knowledge navigation':'content: update knowledge content and menus';
     const commit=await gh(prefix+'/git/commits','POST',{message:title,tree:tree.sha,parents:[base]});
-    const branch='content/editor-'+Date.now()+'-'+randomBytes(4).toString('hex');
+    const branch=(test?'content/editor-test-':'content/editor-')+Date.now()+'-'+randomBytes(4).toString('hex');
     await gh(prefix+'/git/refs','POST',{ref:'refs/heads/'+branch,sha:commit.sha});
     let pr;
-    try{pr=await gh(prefix+'/pulls','POST',{title,head:branch,base:'main',body:'Published explicitly from Trithuchanquoc Editor. Standard CI, review and release gates apply. No direct main write.'});}
+    try{pr=await gh(prefix+'/pulls','POST',editorPRSpec(test,branch,title));}
     catch{throw Error('Đã tạo branch '+branch+' nhưng chưa tạo PR; mở GitHub để kiểm tra trước khi thử lại.');}
-    return json(200,{number:pr.number,url:pr.html_url,sha:commit.sha,base,branch});
+    requireDraftResponse(test,pr);
+    return json(200,{number:pr.number,url:pr.html_url,sha:commit.sha,base,branch,draft:pr.draft===true,test});
    }finally{writing=false;}
   }
   return json(404,{error:'Không tìm thấy'});

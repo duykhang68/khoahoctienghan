@@ -8,3 +8,13 @@ export function publishPhase(pr,ci,marker,relation){
  if(ci?.status==='completed')return 'CI_'+String(ci.conclusion||'UNKNOWN').toUpperCase();
  return 'CI_PENDING';
 }
+
+export function editorPRSpec(test,branch,normalTitle){
+ if(typeof test!=='boolean')throw Error('Invalid sync mode');
+ if(test&&!branch.startsWith('content/editor-test-'))throw Error('Invalid test branch');
+ return {title:test?'[TEST ONLY - DO NOT MERGE] Editorial Studio Sync':normalTitle,head:branch,base:'main',draft:test,body:test?'Public acceptance test from Editorial Studio. DO NOT mark ready for review or merge. Close after checking CI and changed files. No production deployment intended.':'Published explicitly from Editorial Studio. Standard CI, review and release gates apply. No direct main write.'};
+}
+export function requireDraftResponse(test,pr){
+ if(test&&pr.draft!==true)throw Error('GitHub không xác nhận Draft PR. Kiểm tra GitHub ngay; không tiếp tục xuất bản.');
+ return pr;
+}

@@ -48,3 +48,6 @@ Actual browser editing without source code; local crop/contain and upload/insert
 - Preview isolation recovery candidate after run 43598286778: replace shared node_modules symlink with private installed dependency copy excluding mutable caches, explicit Astro root and bounded opt-in fixture diagnostics. Real preview regression remains mandatory; no gate changes. See engineering/lessons/editor-preview-isolation.md.
 
 - Follow-up to preview run 43598629674: downloaded Playwright trace confirms HTTP 404 at the generated preview route after successful build. Fixed mutable server closure after ownership transfer; added document and binary asset HTTP status assertions without relaxing the existing DOM/order checks. Native CI pending.
+
+## Test Sync (acceptance)
+- Separate visible Test Sync flow creates a distinctly named Draft PR on main via the same authenticated validation/blob/tree/commit pipeline. Draft flag is passed at creation, never converted afterwards. Public test content only; close test PR instead of marking ready or merging. Regular Sync blocked until main contains the media index. Pre-merge test changes must be compatible with main (use simple prose; new visual/image components not deployed yet). Exact HEAD CI and real owner acceptance pending.

@@ -29,6 +29,7 @@ function renderPublishing(){
  for(const entry of publishingQueue){
   const row=el('article','','publish-entry'),header=el('div','','row'),link=el('a','PR #'+entry.number+' · '+(entry.sha||'').slice(0,12));link.href='https://github.com/duykhang68/khoahoctienghan/pull/'+entry.number;link.target='_blank';link.rel='noopener noreferrer';
   const phase=entry.result?.phase||'SUBMITTED',tag=el('span',publishLabels[phase]||phase,'publish-status');tag.dataset.phase=phase;header.append(link,tag);row.append(header);
+  if(entry.test)row.append(el('p','TEST ONLY · Draft PR · không merge.','notice'));
   if(entry.result?.head&&entry.result.head!==entry.sha)row.append(el('p','HEAD đã thay đổi: '+entry.result.head.slice(0,12)+' · kết quả CI dùng HEAD hiện tại.','notice'));
   for(const item of entry.items||[]){const line=el('div','','publish-item');line.append(el('strong',item.title),el('small',item.action+' · /'+item.route.replace(/\/?$/,'/').replace(/^\/$/,'')));row.append(line)}
   const result=entry.result;if(result){if(result.mergeSha)row.append(el('small','Merge SHA: '+result.mergeSha.slice(0,12)));if(result.ci){const l=el('a','CI: '+(result.ci.conclusion||result.ci.status));l.href='https://github.com/duykhang68/khoahoctienghan/actions/runs/'+result.ci.id;l.target='_blank';l.rel='noopener noreferrer';row.append(l)}if(result.error)row.append(el('small',result.error));if(result.deployment)row.append(el('small','GitHub Pages deployment: success · '+result.deployment.sha.slice(0,12)));if(result.relation)row.append(el('small',result.relation==='exact'?'Production marker trùng merge SHA':'Production marker là hậu duệ merge SHA; không xác nhận nội dung từng bài.'))}
@@ -87,6 +88,7 @@ function state(){
  $('auth-state').textContent=login?'Connected · '+login:'Offline';
  $('draft-count').textContent=Object.keys(drafts).length+' thay đổi local'+(conflicts.length?' · '+conflicts.length+' xung đột':'');
  $('connect').disabled=busy||!!login;$('disconnect').disabled=busy||!login;$('pull').disabled=busy||!login;$('sync').disabled=busy||!login||!Object.keys(drafts).length||!!conflicts.length;
+ $('test-sync').disabled=$('sync').disabled;renderTestSync();
  $('article-preview').disabled=busy||!!conflicts.length||!active||(active===POSTS?postIndex<0:!active.startsWith('src/content/docs/'));
  $('discard').disabled=!active||!drafts[active];$('save').disabled=!active||get(active)===null;
  $('duplicate-article').disabled=busy||!active||(active===POSTS?postIndex<0:!active.startsWith('src/content/docs/'));
@@ -214,7 +216,30 @@ $('article-preview').onclick=()=>action(async()=>{
 });
 $('refresh-publishing').onclick=()=>action(refreshPublishing);
 $('pull').onclick=()=>action(async()=>{flushArticle();if(unsaved()&&!confirm('Thay đổi chưa lưu local sẽ bị bỏ. Tiếp tục Pull?'))return;const s=await request('pull',{});status('Đã tải GitHub, giữ các bản nháp không xung đột.');mergeSnapshot(s,'GitHub main')});
-$('sync').onclick=()=>action(async()=>{flushArticle();if(unsaved()){status('Hãy lưu nội dung/menu đang chỉnh trước khi Sync.');return}const refs=(get(POSTS)||'')+'\n'+(get(MEDIA_INDEX)||'');const changes=Object.entries(drafts).filter(([path])=>!assetPath(path)||refs.includes(path.slice('public'.length))).map(([path,d])=>({path,...d}));if(!changes.length){status('Không có thay đổi nội dung hoặc ảnh đã chèn để Sync.');return}if(!confirm('Tạo PR với '+changes.length+' tệp? Không ghi trực tiếp main.'))return;const items=publishItems(changes);const p=await request('sync',{changes});publishingQueue=[{number:p.number,sha:p.sha,items,createdAt:new Date().toISOString()},...publishingQueue.filter(q=>q.number!==p.number)].slice(0,25);persistQueue();renderPublishing();const link=el('a','PR #'+p.number+' · '+p.sha.slice(0,12));link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';$('pr').replaceChildren(link,document.createTextNode(' — Đã gửi, chờ CI/merge/production. Bản nháp giữ đến khi Pull thấy nội dung đã merge.'));$('pr').hidden=false;status('Đã tạo PR #'+p.number+'; không phải đã triển khai.')});
+function renderTestSync(){
+ const entry=publishingQueue.find(q=>q.test),result=entry?.result,labels=[
+ ['Lưu bản nháp',Object.keys(drafts).length?'ready':'pending'],
+ ['Test Sync',entry?'complete':'pending'],
+ ['GitHub Draft PR',entry?result?.phase==='CLOSED_NOT_MERGED'?'closed':'complete':'pending'],
+ ['CI Validation',result?.ci?.conclusion==='success'?'complete':result?.ci?.conclusion==='failure'?'failed':'pending'],
+ ['Publishing Dashboard',result?'complete':'pending']];
+ const flow=$('test-flow');flow.replaceChildren();for(const [label,phase] of labels){const node=el('div',label,'test-step');node.dataset.phase=phase;flow.append(node)}
+ $('test-result').textContent=entry?'PR #'+entry.number+' · '+(result?.phase==='CLOSED_NOT_MERGED'?'Đã đóng không merge':result?.ci?.conclusion?'CI '+result.ci.conclusion:'Đã gửi Draft PR; kiểm tra GitHub để cập nhật'):'Chưa gửi bản kiểm thử.';
+}
+async function submitSync(test){
+ flushArticle();if(unsaved()){status('Hãy lưu nội dung/menu đang chỉnh trước khi Sync.');return}
+ const refs=(get(POSTS)||'')+'\n'+(get(MEDIA_INDEX)||'');
+ const changes=Object.entries(drafts).filter(([path])=>!assetPath(path)||refs.includes(path.slice('public'.length))).map(([path,d])=>({path,...d}));
+ if(!changes.length){status('Không có thay đổi nội dung hoặc ảnh đã chèn để Sync.');return}
+ if(!confirm(test?'Gửi '+changes.length+' tệp lên repository PUBLIC dưới dạng Draft PR thử nghiệm? Không merge hoặc Ready for review PR thử nghiệm. Chỉ dùng nội dung không nhạy cảm.':'Tạo PR với '+changes.length+' tệp? Không ghi trực tiếp main.'))return;
+ const items=publishItems(changes),p=await request(test?'test-sync':'sync',{changes});
+ if(test&&p.draft!==true)throw Error('GitHub chưa xác nhận Draft PR. Kiểm tra GitHub ngay.');
+ publishingQueue=[{number:p.number,sha:p.sha,items,test,createdAt:new Date().toISOString()},...publishingQueue.filter(q=>q.number!==p.number)].slice(0,25);persistQueue();renderPublishing();renderTestSync();
+ const link=el('a',(test?'Draft PR #':'PR #')+p.number+' · '+p.sha.slice(0,12));link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';
+ $('pr').replaceChildren(link,document.createTextNode(test?' — Kiểm thử. Đóng PR khi xong, không bấm Ready for review. Bản nháp local vẫn còn.':' — Đã gửi, chờ CI/merge/production. Bản nháp giữ đến khi Pull thấy nội dung đã merge.'));$('pr').hidden=false;status(test?'Đã tạo Draft PR thử nghiệm #'+p.number+'. Chưa xuất bản.':'Đã tạo PR #'+p.number+'; không phải đã triển khai.');
+}
+$('sync').onclick=()=>action(()=>submitSync(false));
+$('test-sync').onclick=()=>action(()=>submitSync(true));
 
 function visualTitle(text){return el('p',text,'eyebrow')}
 const cleanText=value=>String(value??'').replace(/\u00a0/g,' ').replace(/\r?\n/g,' ');

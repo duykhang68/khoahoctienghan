@@ -120,3 +120,11 @@ test('preview dependencies are isolated from main checkout and generated caches'
   assert.equal(await getFile(joinPath(dest,'node_modules','.bin','tool'),'utf8'),'draft');
  }finally{await removeTemp(dir,{recursive:true,force:true})}
 });
+
+import {editorPRSpec,requireDraftResponse} from '../local-editor/publishing.mjs';
+test('test sync creates a draft from the first GitHub API request',()=>{
+ const spec=editorPRSpec(true,'content/editor-test-123','normal');
+ assert.equal(spec.draft,true);assert.equal(spec.base,'main');assert.match(spec.title,/DO NOT MERGE/);assert.throws(()=>editorPRSpec(true,'content/editor-normal','normal'));
+ assert.throws(()=>requireDraftResponse(true,{draft:false}),/Draft PR/);assert.equal(requireDraftResponse(true,{draft:true}).draft,true);
+ assert.equal(editorPRSpec(false,'content/editor-normal','normal').draft,false);
+});
