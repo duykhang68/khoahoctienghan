@@ -74,5 +74,258 @@
         "detail": "Đối chiếu, ghi nhớ và lặp lại."
       }
     ]
+  },
+  "jejueo-status": {
+    "kind": "table",
+    "title": "Hai cách nhìn về Jejueo",
+    "caption": "Phân biệt phân loại ngôn ngữ học và tình trạng bảo tồn; Cambridge Handbook (2022), nghiên cứu 2024 và báo cáo UNESCO.",
+    "columns": [
+      "Góc nhìn",
+      "Kết luận"
+    ],
+    "rows": [
+      [
+        "Cách gọi truyền thống",
+        "Phương ngữ Jeju (제주 방언)"
+      ],
+      [
+        "Ngôn ngữ học",
+        "Khả năng thông hiểu thấp; có cơ sở xem là ngôn ngữ riêng"
+      ],
+      [
+        "UNESCO · 2010",
+        "Bị đe dọa nghiêm trọng"
+      ],
+      [
+        "ISO 639-3",
+        "jje"
+      ]
+    ]
+  },
+  "jejueo-history": {
+    "kind": "flow",
+    "title": "Jejueo qua các chặng lịch sử",
+    "caption": "Trục thời gian chọn lọc, không ngụ ý ngôn ngữ Jeju chỉ hình thành qua các mốc này.",
+    "items": [
+      {
+        "label": "Thế kỷ XIII–XIV",
+        "detail": "Tiếp xúc tiếng Mông Cổ thời Nguyên, đặc biệt trong chăn nuôi ngựa."
+      },
+      {
+        "label": "1446",
+        "detail": "Hunminjeongeum được công bố; tư liệu giúp đối chiếu với tiếng Hàn trung đại."
+      },
+      {
+        "label": "Thế kỷ XX",
+        "detail": "Tiếp xúc tiếng Nhật và dịch chuyển dần sang tiếng chuẩn trong nhiều lĩnh vực."
+      },
+      {
+        "label": "2010",
+        "detail": "UNESCO xếp Jejueo vào nhóm bị đe dọa nghiêm trọng."
+      },
+      {
+        "label": "Ngày nay",
+        "detail": "Tư liệu hóa, lớp học, từ điển và bản ghi âm giúp truyền lại ngôn ngữ."
+      }
+    ]
+  },
+  "jejueo-family-vocabulary": {
+    "kind": "table",
+    "title": "Gia đình và con người",
+    "caption": "Phiên âm gần đúng để nhận diện chữ; cách dùng có thể thay đổi theo địa phương.",
+    "columns": [
+      "Jejueo",
+      "Latin",
+      "Tiếng chuẩn",
+      "Tiếng Việt"
+    ],
+    "rows": [
+      [
+        "하르방 / 할망",
+        "hareubang / halmang",
+        "할아버지 / 할머니",
+        "Ông / bà"
+      ],
+      [
+        "아방 / 어멍",
+        "abang / eomeong",
+        "아버지 / 어머니",
+        "Bố / mẹ"
+      ],
+      [
+        "비바리",
+        "bibari",
+        "처녀 / 아가씨",
+        "Thiếu nữ"
+      ],
+      [
+        "가시나 / 지집아이",
+        "gasina / jijibai",
+        "여자아이",
+        "Bé gái (sắc thái tùy ngữ cảnh)"
+      ]
+    ]
+  },
+  "jejueo-daily-vocabulary": {
+    "kind": "table",
+    "title": "Lời chào và hội thoại",
+    "caption": "Đối chiếu nghĩa gần đúng, không phải bản dịch từng hình vị.",
+    "columns": [
+      "Jejueo",
+      "Latin",
+      "Tiếng chuẩn",
+      "Tiếng Việt"
+    ],
+    "rows": [
+      [
+        "폭싹 속았수다",
+        "pokssak sogatsuda",
+        "정말 수고하셨습니다",
+        "Bạn đã vất vả rất nhiều"
+      ],
+      [
+        "맨도롱 또똣",
+        "maendorong ttotteot",
+        "미지근하고 따뜻한",
+        "Ấm vừa đủ, dễ chịu"
+      ],
+      [
+        "혼저 옵서예",
+        "honjeo opseoye",
+        "어서 오세요",
+        "Xin mời vào"
+      ],
+      [
+        "무사",
+        "musa",
+        "왜",
+        "Tại sao"
+      ],
+      [
+        "겅 / 경",
+        "geong / gyeong",
+        "그렇게 / 그래서",
+        "Như vậy / vì thế"
+      ]
+    ]
+  },
+  "jejueo-araea": {
+    "kind": "type",
+    "title": "Nhận diện ba nguyên âm",
+    "caption": "Mẫu chữ minh họa, không phải biểu đồ đo vị trí lưỡi. Araea truyền thống thường được mô tả gần /ɔ/; phát âm thực tế biến thiên.",
+    "items": [
+      {
+        "label": "ㅏ — a",
+        "value": "ㅏ",
+        "size": 60,
+        "weight": 600,
+        "detail": "Nguyên âm tiếng Hàn hiện đại /a/."
+      },
+      {
+        "label": "ㆍ — Araea",
+        "value": "ㆍ",
+        "size": 72,
+        "weight": 700,
+        "detail": "Nguyên âm cổ được bảo tồn trong Jejueo truyền thống."
+      },
+      {
+        "label": "ㅗ — o",
+        "value": "ㅗ",
+        "size": 60,
+        "weight": 600,
+        "detail": "Nguyên âm tiếng Hàn hiện đại /o/."
+      }
+    ]
+  },
+  "jejueo-horse-speech": {
+    "kind": "table",
+    "title": "Một nguyên âm, hai ý nghĩa",
+    "caption": "Ví dụ từ vựng truyền thống; không khái quát thành quy tắc cho mọi từ.",
+    "columns": [
+      "Nghĩa",
+      "Jejueo",
+      "Tiếng chuẩn"
+    ],
+    "rows": [
+      [
+        "Con ngựa",
+        "ᄆᆞᆯ (Araea)",
+        "말"
+      ],
+      [
+        "Lời nói",
+        "말",
+        "말"
+      ]
+    ]
+  },
+  "jejueo-grammar": {
+    "kind": "table",
+    "title": "Nhận diện đuôi câu Jejueo",
+    "caption": "Đây là các ví dụ và dạng thường gặp, không phải bảng thay thế đuôi câu 1–1.",
+    "columns": [
+      "Chức năng",
+      "Jejueo",
+      "Tiếng chuẩn"
+    ],
+    "rows": [
+      [
+        "Hỏi thân mật, tùy ngữ cảnh",
+        "-맨 / -멘",
+        "-니? / -고 있어?"
+      ],
+      [
+        "Hỏi lịch sự",
+        "-우꽈 / -수광",
+        "-습니까? / -세요?"
+      ],
+      [
+        "Trần thuật lịch sự",
+        "-우다 / -수다",
+        "-습니다"
+      ],
+      [
+        "Hành động tiếp diễn",
+        "-암저 / -엄저",
+        "-고 있어"
+      ],
+      [
+        "Ví dụ cảm ơn",
+        "고맙수다",
+        "고맙습니다"
+      ],
+      [
+        "Ví dụ đang ăn",
+        "밥 먹엄저",
+        "밥 먹고 있어"
+      ]
+    ]
+  },
+  "jejueo-sentence-analysis": {
+    "kind": "flow",
+    "title": "어디 감수광? — Câu hỏi được tạo thế nào?",
+    "caption": "Phân tích minh họa theo Viện nghiên cứu Jejueo; không phải ghép chữ cơ học.",
+    "items": [
+      {
+        "label": "어디",
+        "detail": "Ở đâu / đi đâu."
+      },
+      {
+        "label": "가-",
+        "detail": "Gốc động từ: đi."
+      },
+      {
+        "label": "-암ㅅ-",
+        "detail": "Chỉ hành động đang tiếp diễn; kết hợp với 가- tạo phần 감-."
+      },
+      {
+        "label": "-우광",
+        "detail": "Đuôi nghi vấn có sắc thái lịch sự."
+      },
+      {
+        "label": "어디 감수광?",
+        "detail": "Bạn đang đi đâu vậy?"
+      }
+    ]
   }
 }
