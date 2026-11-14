@@ -14,7 +14,7 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
  const count=articleCountsByTopic.get(topic.id)??0;
  return <article class="index-card feed-post" data-knowledge-topic={topic.id}>
   <a class="index-card-visual topic-count-visual" href={base+'/'+topic.id+'/'} tabindex="-1" aria-hidden="true"><TechCover slug={topic.id}/><span class="topic-count-overlay" data-topic-count-overlay style={`--topic-count-digits:${String(count).length}`}><span>{count}</span></span></a>
-  <div class="index-card-copy"><div class="post-meta">Tri thức Hàn Quốc</div><h3><a class="knowledge-card" href={base+'/'+topic.id+'/'} aria-label={topic.title+', tổng '+count+' bài viết'}>{topic.title}</a></h3><p class="post-summary">{topic.desc}</p></div>
+  <div class="index-card-copy"><div class="post-meta">Tri thức Hàn Quốc</div><h3><a class="knowledge-card" href={base+'/'+topic.id+'/'} aria-description={'Tổng '+count+' bài viết'}>{topic.title}</a></h3><p class="post-summary">{topic.desc}</p></div>
  </article>})}
  </div>
  <nav id="index-pagination" class="index-pagination" aria-label="Phân trang chuyên mục" hidden></nav>
