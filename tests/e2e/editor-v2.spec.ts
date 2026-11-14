@@ -50,3 +50,39 @@ test('legacy V2 draft migrates only to its intended workspace',async({page})=>{
  await page.getByRole('button',{name:/02 · Knowledge Base Editor/}).click();
  await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bài cũ');
 });
+
+test('Series planner updates live in both workspaces and counts days in GMT+7',async({page})=>{
+ // 23:30 UTC on November 14 is already November 15 in Vietnam.
+ await page.clock.setFixedTime(new Date('2026-11-14T23:30:00Z'));
+ await page.goto('./techblog/editorv2/');
+ for(const kind of ['tech','knowledge']){
+  await page.locator('[data-workspace="'+kind+'"]').click();
+  await expect(page.locator('[data-series-progress]')).toBeHidden();
+  await page.getByLabel('Bài thuộc Series').check();
+  await page.getByLabel('Tên Series').fill('Series '+kind);
+  await page.getByLabel('Tổng số tập',{exact:true}).fill('10');
+  await page.getByLabel('Tập',{exact:true}).fill('4');
+  await page.getByLabel('Ngày dự kiến kết thúc').fill('2026-11-25');
+  const planner=page.locator('[data-series-progress]');
+  await expect(planner).toBeVisible();
+  await expect(planner.locator('[data-series-bar]')).toHaveJSProperty('value',40);
+  await expect(planner.locator('[data-series-percent]')).toHaveText('40%');
+  await expect(planner.locator('[data-series-remaining]')).toHaveText('6 tập · 60%');
+  await expect(planner.locator('[data-series-days]')).toHaveText('10 ngày');
+  await page.getByLabel('Tập',{exact:true}).fill('10');
+  await expect(planner.locator('[data-series-percent]')).toHaveText('100%');
+  await expect(planner.locator('[data-series-remaining]')).toHaveText('0 tập · 0%');
+  await page.getByLabel('Ngày dự kiến kết thúc').fill('2026-11-15');
+  await expect(planner.locator('[data-series-days]')).toHaveText('Hôm nay');
+  await page.getByLabel('Ngày dự kiến kết thúc').fill('2026-11-12');
+  await expect(planner.locator('[data-series-days]')).toHaveText('3 ngày trễ');
+  await page.getByLabel('Tập',{exact:true}).fill('11');
+  await expect(planner.locator('[data-series-bar]')).toBeHidden();
+  await expect(planner.locator('[data-series-percent]')).toHaveText('—');
+  await page.getByLabel('Tập',{exact:true}).fill('4');
+  await page.getByLabel('Ngày dự kiến kết thúc').fill('');
+  await expect(planner.locator('[data-series-days]')).toHaveText('—');
+  await page.getByLabel('Bài thuộc Series').uncheck();
+  await expect(planner).toBeHidden();
+ }
+});

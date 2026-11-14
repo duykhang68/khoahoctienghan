@@ -12,3 +12,6 @@ Both destinations use the same canonical Astro body and metadata contracts, vali
 
 ## Dual workspace
 The same online route contains Tech Blog Editor and Knowledge Base Editor with fixed destinations, independent browser-local draft keys, distinct block ordering and optional outlines, and preview aligned with the public site’s compact pastel cover and metadata rail. Tech Blog categories remain inferred after publishing; Knowledge Base explicitly selects the actual topic. Existing single-draft data is copied to its original destination and retained as a recovery copy. Switching saves the outgoing draft and resets submission confirmation; GitHub authentication stays in page memory. Both editors share the existing FIFO queue. Preview is approximate; editing already-published articles is still not implemented.
+
+## Series planner
+Both workspaces display the selected-episode projection (part / total), remaining episodes and percentage after that episode, and a calendar-day deadline based on Asia/Ho_Chi_Minh. Due today and overdue are explicit, incomplete or invalid inputs do not display invented percentages. Projection is not evidence of publication; no schema, FIFO or production content changes.

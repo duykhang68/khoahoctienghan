@@ -1,5 +1,6 @@
 import {newBlock,kinds,slugify,metadata,buildDocument} from './model.mjs';
 import {githubClient} from './github.mjs';
+import {seriesProgress} from './series-progress.mjs';
 const legacyKey='khoahoctienghan.editor-v2.draft.v1',activeKey='khoahoctienghan.editor-v2.active.v2';
 const storageKey=kind=>'khoahoctienghan.editor-v2.draft.v2.'+kind;
 const workspace={
@@ -27,7 +28,21 @@ export function mountEditor(root){
  function writeFields(){for(const k of ['title','summary','category','labels'])field(k).value=draft[k];field('seriesEnabled').checked=!!draft.series.enabled;for(const [key,prop] of [['seriesName','name'],['part','part'],['total','total_parts'],['target','target_date']])field(key).value=draft.series[prop]??'';}
  function readFields(){draft.kind=active;for(const key of ['title','summary','category','labels'])draft[key]=field(key).value;draft.series={enabled:field('seriesEnabled').checked,name:field('seriesName').value,part:field('part').value,total_parts:field('total').value,target_date:field('target').value};}
  function store(){clearTimeout(timer);try{localStorage.setItem(storageKey(active),JSON.stringify(draft));$('[data-save-status]').textContent='Đã lưu bản nháp trên thiết bị';return true}catch{$('[data-save-status]').textContent='Bộ nhớ đầy · lưu bản sao ngay';return false}}
- function update(){readFields();$('[data-category-label]').hidden=draft.kind!=='knowledge';$('[data-auto-category]').hidden=draft.kind!=='tech';$('[data-series]').hidden=!draft.series.enabled;$('[data-route]').textContent=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+(slugify(draft.title)||'ten-bai-viet')+'/';$('[data-publish]').disabled=busy||uploads>0||!client||!$('[data-confirm]').checked||!draft.title.trim();all('[data-workspace]').forEach(b=>b.disabled=busy||uploads>0);$('[data-new]').disabled=busy||uploads>0;clearTimeout(timer);timer=setTimeout(store,350);}
+ function renderSeriesProgress(){
+  if(!draft.series.enabled)return;
+  const p=seriesProgress(draft.series),box=$('[data-series-progress]');
+  const fmt=value=>new Intl.NumberFormat('vi-VN',{maximumFractionDigits:2}).format(value);
+  const set=(selector,value)=>{const el=$(selector);if(el.textContent!==value)el.textContent=value};
+  const bar=$('[data-series-bar]');bar.hidden=!p.valid;bar.value=p.percent??0;
+  set('[data-series-percent]',p.valid?fmt(p.percent)+'%':'—');
+  set('[data-series-position]',p.valid?'Tập '+p.part+' / '+p.total+' · Tiến độ dự kiến':'Số tập phải từ 1 đến tổng số tập.');
+  set('[data-series-remaining]',p.valid?p.remainingParts+' tập · '+fmt(p.remainingPercent)+'%':'—');
+  const state=p.days===null?'unset':p.days<0?'overdue':p.days===0?'today':p.days<=3?'near':'future';
+  box.dataset.deadlineState=state;
+  set('[data-series-days]',p.days===null?'—':p.days<0?Math.abs(p.days)+' ngày trễ':p.days===0?'Hôm nay':p.days+' ngày');
+  set('[data-series-deadline]',p.days===null?'Chọn ngày dự kiến kết thúc.':p.days<0?'Đã quá hạn theo lịch GMT+7.':p.days===0?'Hạn kết thúc là hôm nay (GMT+7).':'Hạn '+draft.series.target_date.split('-').reverse().join('/')+' · GMT+7');
+ }
+ function update(){readFields();renderSeriesProgress();$('[data-category-label]').hidden=draft.kind!=='knowledge';$('[data-auto-category]').hidden=draft.kind!=='tech';$('[data-series]').hidden=!draft.series.enabled;$('[data-route]').textContent=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+(slugify(draft.title)||'ten-bai-viet')+'/';$('[data-publish]').disabled=busy||uploads>0||!client||!$('[data-confirm]').checked||!draft.title.trim();all('[data-workspace]').forEach(b=>b.disabled=busy||uploads>0);$('[data-new]').disabled=busy||uploads>0;clearTimeout(timer);timer=setTimeout(store,350);}
  function button(label,fn,aria){const b=make('button',label);b.type='button';if(aria)b.setAttribute('aria-label',aria);b.addEventListener('click',fn);return b}
  function render(){const area=$('[data-blocks]');area.replaceChildren();
   draft.blocks.forEach((b,i)=>{
@@ -111,5 +126,5 @@ export function mountEditor(root){
  $('[data-close-auth]').addEventListener('click',()=>dialog.close());dialog.addEventListener('close',()=>{tokenInput.value=''});
  $('[data-auth-submit]').addEventListener('click',async()=>{const token=tokenInput.value.trim();tokenInput.value='';if(!token.startsWith('github'+'_pat_')){$('[data-auth-status]').textContent='Cần fine-grained personal access token.';return}const b=$('[data-auth-submit]');b.disabled=true;try{const candidate=githubClient(token),login=await candidate.verify();if(!dialog.open)return;client=candidate;connection(login);dialog.close()}catch(e){$('[data-auth-status]').textContent=e.message}finally{b.disabled=false}});
  $('[data-publish]').addEventListener('click',async()=>{if(!client||busy||uploads||!$('[data-confirm]').checked)return;busy=true;update();store();const result=$('[data-result]');try{const snapshot=structuredClone(draft);metadata(snapshot);await buildDocument(snapshot.blocks);const queued=await client.publish(snapshot,topicIds,message=>result.textContent=message);const link=make('a','Xem commit '+queued.sha.slice(0,7));link.href=queued.commitUrl;link.target='_blank';link.rel='noopener noreferrer';const queue=make('a','Mở hàng đợi Issue');queue.href=queued.queueUrl;queue.target='_blank';queue.rel='noopener noreferrer';result.replaceChildren(make('span','Đã gửi commit · Chờ GitHub tạo Issue và xử lý FIFO. '),link,make('span',' · '),queue);$('[data-confirm]').checked=false}catch(e){result.textContent=e.message}finally{busy=false;update()}});
- window.addEventListener('pagehide',store);applyWorkspace();writeFields();render();update();
+ window.addEventListener('pagehide',store);window.addEventListener('focus',renderSeriesProgress);document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderSeriesProgress()});window.setInterval(()=>{if(!document.hidden)renderSeriesProgress()},60000);applyWorkspace();writeFields();render();update();
 }

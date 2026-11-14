@@ -20,3 +20,15 @@
 .ev2 .ev2-preview-cover{aspect-ratio:auto;height:clamp(64px,10vw,120px);margin-bottom:24px}.ev2-preview-grid{display:grid;grid-template-columns:minmax(90px,125px) minmax(0,1fr);gap:22px;align-items:start}.ev2-preview-rail{font-size:12px;color:#555}.ev2-preview-rail dl{display:grid;gap:12px;margin:0}.ev2-preview-rail dt{font-weight:650;color:var(--ink)}.ev2-preview-rail dd{margin:3px 0 0;overflow-wrap:anywhere}.ev2-preview-copy{min-width:0}.ev2-preview-copy .article-lead{text-align:justify;line-height:var(--type-leading)}.ev2-preview-body{margin-top:12px}.ev2-preview-body pre{white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:850px){.ev2-preview-grid{grid-template-columns:minmax(0,1fr);gap:14px}.ev2-preview-rail dl{grid-template-columns:repeat(2,minmax(0,1fr));padding-bottom:14px;border-bottom:1px solid #ddd}}
 @media(max-width:540px){.ev2-workspace-nav{grid-template-columns:minmax(0,1fr)}}
+
+/* Series planner: selected episode projection + Vietnam calendar-day deadline. */
+.ev2-series-progress{display:grid;gap:9px;background:#eef4fa;border:1px solid #d6e2ef;border-radius:8px;padding:12px;min-width:0;--series-fill:#3976b6}
+.ev2[data-workspace-kind=knowledge] .ev2-series-progress{background:#eef5eb;border-color:#d5e5d4;--series-fill:#48815b}
+.ev2-series-progress-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 8px;font-size:13px}
+.ev2-series-progress-head [data-series-percent]{font-variant-numeric:tabular-nums;font-size:23px;font-weight:750;color:var(--series-fill);line-height:1.1}
+.ev2-series-progress progress{display:block;width:100%;height:9px;appearance:none;border:0;border-radius:999px;overflow:hidden;background:#dbe4ed;accent-color:var(--series-fill)}
+.ev2-series-progress progress::-webkit-progress-bar{background:#dbe4ed;border-radius:999px}.ev2-series-progress progress::-webkit-progress-value{background:var(--series-fill);border-radius:999px;transition:width .2s ease}.ev2-series-progress progress::-moz-progress-bar{background:var(--series-fill);border-radius:999px}
+.ev2-series-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.ev2-series-stats>div{display:grid;align-content:start;gap:4px;background:#fff;border-radius:6px;padding:8px;min-width:0}
+.ev2-series-stats strong{font-size:13px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.ev2-series-stats small,.ev2-series-progress .ev2-series-disclaimer{font-size:11px;line-height:1.45}
+.ev2-series-progress[data-deadline-state=near] [data-series-days],.ev2-series-progress[data-deadline-state=today] [data-series-days]{color:#946000}.ev2-series-progress[data-deadline-state=overdue] [data-series-days]{color:#ad332c}
+@media(prefers-reduced-motion:reduce){.ev2-series-progress progress::-webkit-progress-value{transition:none}}
