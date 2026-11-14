@@ -29,3 +29,14 @@ export function branchSyncDecision(pr,comparison){
 export function dependabotSyncEligible(p,repo){
  return p.user?.login==='dependabot[bot]'&&p.head?.repo?.full_name===repo&&p.head.ref.startsWith('dependabot/')&&!p.draft&&Boolean(p.auto_merge);
 }
+
+// Ordinary browser regression specs accompanying a UI change are not automation policy.
+// Test-only changes, test deletions/renames, helpers and all infrastructure still require review.
+export function mergeReviewRequired(pr,files){
+ if(!Array.isArray(files)||!files.length||files.some(f=>!f.filename||!f.status))return true;
+ const ui=/^(?:ui|ux)\//.test(pr?.head?.ref||'')&&files.some(f=>/^src\/(?:styles\/|layouts\/|components\/|pages\/techblog\/)/.test(f.filename)&&['added','modified'].includes(f.status));
+ return files.some(f=>{
+  if(!sensitiveFile(f.filename)&&!sensitiveFile(f.previous_filename))return false;
+  return !(ui&&/^tests\/e2e\/[a-zA-Z0-9_-]+\.spec\.ts$/.test(f.filename)&&['added','modified'].includes(f.status)&&!f.previous_filename);
+ });
+}
