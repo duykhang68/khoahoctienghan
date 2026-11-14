@@ -1,34 +1,23 @@
 import {test,expect} from '@playwright/test';
-
-test('Advanced Docs navigation remains native and usable',async({page})=>{
+test('knowledge reading shares Tech Blog article layout, preserves content and responsive navigation',async({page})=>{
+ await page.goto('./techblog/');
+ await page.locator('[data-tech-post]').first().locator('h3 a').click();
+ const metrics=()=>page.evaluate(()=>{const g=document.querySelector('.research-reading-grid')!,h=document.querySelector('.research-heading h1')!,b=document.querySelector('.article-body')!;return {columns:getComputedStyle(g).gridTemplateColumns.split(' ').length,titleFont:getComputedStyle(h).fontFamily,titleSize:getComputedStyle(h).fontSize,bodyFont:getComputedStyle(b).fontFamily,bodySize:getComputedStyle(b).fontSize}});
+ const reference=await metrics();
  await page.goto('./ngon-ngu/hangul/');
  await expect(page.locator('h1')).toContainText('Hangul');
- const wide=page.viewportSize()!.width>=1152;
- if(wide){
-  const current=page.locator('.sidebar-pane a[aria-current="page"]').first();
-  await expect(current).toBeVisible();
-  await expect(current).toHaveCSS('background-color','rgb(219, 234, 254)');
-  const toc=page.locator('.right-sidebar starlight-toc a').filter({hasText:'Ghép âm tiết'}).first();
-  await expect(toc).toBeVisible();
-  await toc.click();
-  await expect(page).toHaveURL(/#.+/);
- }else{
-  const toc=page.locator('.knowledge-inline-toc');
-  await expect(toc).toBeVisible();
-  await expect(toc.getByRole('link',{name:'Ghép âm tiết'})).toBeVisible();
-  await toc.getByRole('link',{name:'Ghép âm tiết'}).click();
-  await expect(page).toHaveURL(/#.+/);
- }
-
- const search=page.locator('site-search button[data-open-modal]').first();
- await expect(search).toBeVisible();
- await search.click();
- await expect(page.locator('site-search dialog')).toBeVisible();
- await page.keyboard.press('Escape');
- await expect(page.locator('site-search dialog')).not.toBeVisible();
+ expect(await metrics()).toEqual(reference);
+ await expect(page.locator('.research-hero .compact-fallback')).toBeVisible();
+ await expect(page.locator('.research-meta .topic-link')).toHaveAttribute('href',/\/ngon-ngu\/$/);
+ await expect(page.locator('.research-share a')).toHaveAttribute('href',/\/ngon-ngu\/hangul\/$/);
  await expect(page.locator('.sl-markdown-content table')).toBeVisible();
- await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
- await page.goto('./techblog/');
- await expect(page.locator('.engineering-header')).toBeVisible();
- await expect(page.locator('.sidebar-pane')).toHaveCount(0);
+ await expect(page.locator('.sl-markdown-content h2').filter({hasText:'Ghép âm tiết'})).toBeVisible();
+ await expect(page.locator('.sidebar-pane,.right-sidebar,.knowledge-inline-toc')).toHaveCount(0);
+ await page.locator('.edition-menu summary').click();
+ await expect(page.locator('.edition-panel a[href$="/lich-su/"]')).toBeVisible();
+ await page.locator('.edition-menu summary').press('Escape');
+ await expect(page.locator('.edition-panel')).toBeHidden();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+ await page.locator('.article-end a').click();
+ await expect(page.locator('.engineering-brand')).toHaveText('Tri thức Hàn Quốc');
 });

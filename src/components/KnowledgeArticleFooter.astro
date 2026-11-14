@@ -1,0 +1,5 @@
+---
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const isHome=Astro.url.pathname.replace(/\/$/,'')===base;
+---
+{!isHome&&<div class="article-end"><a class="read-link" href={base+'/'}>← Quay lại Tri thức Hàn Quốc</a></div>}

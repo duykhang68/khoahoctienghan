@@ -1,24 +1,16 @@
 import {test,expect} from '@playwright/test';
-test('pastel knowledge topic cards and indented colored navigation',async({page})=>{
- await page.goto('./');
- const cards=page.locator('.pastel-topic-grid .knowledge-card');
- await expect(cards).toHaveCount(10);
- const colors=await cards.locator('.topic-card-art').evaluateAll(elements=>elements.map(el=>getComputedStyle(el).backgroundImage));
- expect(new Set(colors).size).toBe(10);
- await expect(cards.first().locator('.topic-card-mark')).toBeVisible();
- await expect(page.locator('header.header')).toHaveCSS('background-color','rgb(244, 237, 255)');
- await page.goto('./ngon-ngu/hangul/');
- const menu=page.locator('button[popovertarget="starlight__sidebar"]');
- if(await menu.isVisible())await menu.click();
- const group=page.locator('.knowledge-nav-group[data-palette="ngon-ngu"]');
- const heading=group.locator(':scope > h2');
- const child=group.locator(':scope > ul a').first();
- await expect(heading).toBeVisible();await expect(child).toBeVisible();
- expect((await child.boundingBox())!.x-(await heading.boundingBox())!.x).toBeGreaterThanOrEqual(12);
- expect(await heading.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('gradient');
- await expect(group.locator('a[aria-current="page"]')).toHaveCSS('background-color','rgb(219, 234, 254)');
- await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+test('knowledge covers use the same compact pastel component and black header as Tech Blog',async({page})=>{
  await page.goto('./techblog/');
+ const cover=page.locator('.index-card .editorial-cover').first();
+ const height=(await cover.boundingBox())!.height;
+ await page.goto('./');
+ const cards=page.locator('[data-knowledge-topic]');
+ await expect(cards).toHaveCount(10);
+ await expect(page.locator('[data-knowledge-topic]:visible')).toHaveCount(6);
+ expect((await cards.first().locator('.editorial-cover').boundingBox())!.height).toBe(height);
+ await expect(cards.first().locator('.compact-fallback')).toBeVisible();
+ const palettes=await cards.locator('.editorial-cover').evaluateAll(els=>els.map(el=>el.getAttribute('data-palette')));
+ expect(palettes.every(p=>['sage','lavender','sand','blue','rose'].includes(p!))).toBe(true);
  await expect(page.locator('.engineering-header')).toHaveCSS('background-color','rgb(0, 0, 0)');
- await expect(page.locator('.pastel-topic-grid,.knowledge-nav-groups')).toHaveCount(0);
+ await expect(page.locator('.knowledge-nav-groups,.pastel-topic-grid')).toHaveCount(0);
 });
