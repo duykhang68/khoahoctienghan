@@ -68,7 +68,7 @@ export function mountEditor(root){
  function setMode(next){mode=next;$('[data-write]').hidden=next!=='write';$('[data-preview]').hidden=next!=='preview';all('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));if(next==='preview')showPreview()}
  all('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
  all('[data-add]').forEach(b=>b.addEventListener('click',()=>{if(draft.blocks.length>=250)return;draft.blocks.push(newBlock(b.dataset.add));setMode('write');render();store();$('[data-blocks]').lastElementChild?.scrollIntoView({block:'nearest'})}));
- all('[data-field]').forEach(el=>el.addEventListener('input',()=>{update();if(mode==='preview')showPreview()}));
+ all('[data-field]').forEach(el=>{const changed=()=>{update();if(mode==='preview')showPreview()};el.addEventListener('input',changed);if(el.tagName==='SELECT')el.addEventListener('change',changed)});
  $('[data-confirm]').addEventListener('change',update);
  $('[data-backup]').addEventListener('click',()=>{store();const url=URL.createObjectURL(new Blob([JSON.stringify(draft,null,2)],{type:'application/json'})),a=make('a');a.href=url;a.download=(slugify(draft.title)||'ban-nhap')+'.editor-v2.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
  $('[data-new]').addEventListener('click',()=>{if(busy||!confirm('Tạo bài mới? Hãy lưu bản sao nếu cần giữ bản nháp hiện tại.'))return;draft=empty();writeFields();render();setMode('write');$('[data-confirm]').checked=false;update();store()});

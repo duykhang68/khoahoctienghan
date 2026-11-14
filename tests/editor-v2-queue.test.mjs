@@ -29,3 +29,30 @@ test('immutable draft validation and projections respect native Astro schema',as
  assert.equal(post.date,m.date);
  await assert.rejects(prepareQueued({...draft,title:'Editor V2',kind:'tech'},snapshot,date),/URL/);
 });
+
+import {githubClient} from '../src/lib/editor-v2/github.mjs';
+test('browser staging never writes main, retries dispatch without duplicate ref',async()=>{
+ const requests=[],source='c'.repeat(40);let ref=null,file=null;
+ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
+ const fetcher=async(url,opts)=>{
+  const path=new URL(url).pathname,body=opts.body?JSON.parse(opts.body):null;requests.push({path,method:opts.method,body});
+  if(path==='/user')return json({login:'duykhang68'});
+  if(path==='/repos/duykhang68/khoahoctienghan')return json({full_name:'duykhang68/khoahoctienghan',permissions:{push:true}});
+  if(path.endsWith('/git/ref/heads/main'))return json({object:{sha}});
+  if(path.includes('/git/ref/heads/content/editor-v2-'))return ref?json({object:{sha:source}}):json({},404);
+  if(path.endsWith('/git/commits/'+sha))return json({tree:{sha}});
+  if(path.endsWith('/git/blobs'))return json({sha});
+  if(path.endsWith('/git/trees')){assert.equal(body.tree.length,1);file=body.tree[0].path;assert.match(file,/^editor-submissions\/[a-f0-9]{64}\.json$/);return json({sha})}
+  if(path.endsWith('/git/commits')&&opts.method==='POST')return json({sha:source});
+  if(path.endsWith('/git/refs')){assert.match(body.ref,/^refs\/heads\/content\/editor-v2-/);ref=body.ref;return json({ref})}
+  if(path.endsWith('/commits/'+source))return json({files:[{filename:file}]});
+  if(path.endsWith('/dispatches')){assert.equal(body.client_payload.ref,ref);assert.equal(body.client_payload.sha,source);return new Response(null,{status:204})}
+  throw Error('Unexpected '+path);
+ };
+ const draft={title:'Bài mới',summary:'',kind:'tech',category:'ngon-ngu',labels:'',series:{enabled:false},blocks:[{...newBlock('paragraph'),text:'Nội dung'}]};
+ const client=githubClient('test-memory-token',fetcher);const first=await client.publish(draft,[]),second=await client.publish(draft,[]);
+ assert.equal(first.sha,second.sha);assert.equal(first.id,second.id);
+ assert.equal(requests.filter(x=>x.path.endsWith('/git/refs')&&x.method==='POST').length,1);
+ assert.equal(requests.filter(x=>x.path.endsWith('/dispatches')).length,2);
+ assert(!requests.some(x=>x.method!=='GET'&&(/\/main$/.test(x.path)||x.path.endsWith('/pulls'))));
+});

@@ -2,6 +2,8 @@ name: Editor V2 · FIFO publication
 on:
   push:
     branches: ['content/editor-v2-*']
+  repository_dispatch:
+    types: ['editor-v2-submit']
   workflow_run:
     workflows: ['P0 · Knowledge Base CI', 'CD · Public Knowledge Base']
     types: [completed]
@@ -12,11 +14,11 @@ permissions:
   contents: read
 jobs:
   enqueue:
-    if: github.repository == 'duykhang68/khoahoctienghan' && github.event_name == 'push' && github.actor == 'duykhang68' && github.event.created && !github.event.deleted
+    if: github.repository == 'duykhang68/khoahoctienghan' && github.actor == 'duykhang68' && ((github.event_name == 'push' && github.event.created && !github.event.deleted) || github.event_name == 'repository_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
-      group: editor-v2-enqueue-${{ github.sha }}
+      group: editor-v2-enqueue-${{ github.event.client_payload.sha || github.event.after || github.sha }}
       cancel-in-progress: false
     permissions:
       contents: read
@@ -37,8 +39,8 @@ jobs:
     needs: enqueue
     if: >-
       always() && github.repository == 'duykhang68/khoahoctienghan' &&
-      ((github.event_name == 'push' && needs.enqueue.result == 'success') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.head_repository.full_name == github.repository) ||
+      (((github.event_name == 'push' || github.event_name == 'repository_dispatch') && needs.enqueue.result == 'success') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.head_branch == 'main' || startsWith(github.event.workflow_run.head_branch, 'content/editor-fifo-'))) ||
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-24.04

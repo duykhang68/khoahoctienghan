@@ -26,13 +26,15 @@ async function readDraft(source,id){
  return validateSubmission(id,blob(f[0].sha).toString('utf8'));
 }
 async function enqueue(){
- const event=JSON.parse(readFileSync(env.GITHUB_EVENT_PATH,'utf8')),id=submissionId(event.ref);
- assert(env.GITHUB_ACTOR==='duykhang68'&&id&&event.created&&!event.deleted&&shaPattern.test(event.after),'Not an owner submission push');
+ const event=JSON.parse(readFileSync(env.GITHUB_EVENT_PATH,'utf8')),dispatch=env.GITHUB_EVENT_NAME==='repository_dispatch';
+ const ref=dispatch?event.client_payload?.ref:event.ref,source=dispatch?event.client_payload?.sha:event.after,id=submissionId(ref||'');
+ assert(env.GITHUB_ACTOR==='duykhang68'&&id&&shaPattern.test(source)&&(dispatch||event.created&&!event.deleted),'Not an owner submission push');
+ assert(api('git/ref/heads/'+ref.slice('refs/heads/'.length)).object.sha===source,'Submission ref mismatch');
  const prior=all('issues?state=all&per_page=100').map(parseIssue).filter(Boolean).find(s=>s.id===id);
  if(prior){console.log('Already accepted #'+prior.number);return}
  // Fail closed on malformed content, but record an Issue that blocks the queue.
- let title='Bản gửi '+id.slice(0,12);try{const draft=await readDraft(event.after,id);title=draft.title.trim().replace(/[\r\n]/g,' ').slice(0,150)}catch{console.log('Submission validation pending/blocked')}
- const state={id,source:event.after,phase:'QUEUED'};
+ let title='Bản gửi '+id.slice(0,12);try{const draft=await readDraft(source,id);title=draft.title.trim().replace(/[\r\n]/g,' ').slice(0,150)}catch{console.log('Submission validation pending/blocked')}
+ const state={id,source,phase:'QUEUED'};
  const issue=api('issues','POST',{title:'[Editor V2] '+title,body:body(state,'QUEUED — Chờ đến lượt')});
  console.log('Accepted #'+issue.number);
 }
@@ -45,10 +47,10 @@ async function productionVerified(s){
  if(!resp.ok)return null;const tip=(await resp.json()).sha;
  if(!shaPattern.test(tip)||!await firstParentContains(s.merge,tip))return null;
  const runs=api('actions/workflows/release.yml/runs?branch=main&head_sha='+tip+'&per_page=30').workflow_runs;
- const release=runs.find(x=>x.head_sha===tip&&x.conclusion==='success'&&x.head_repository?.full_name===repo);
- if(!release)return null;
- const jobs=api('actions/runs/'+release.id+'/jobs?per_page=100').jobs;
- if(!['prepare','deploy','verify'].every(name=>jobs.some(j=>j.name===name&&j.conclusion==='success')))return null;
+ const releases=runs.filter(x=>x.head_sha===tip&&x.conclusion==='success'&&x.head_repository?.full_name===repo);
+ let released=false;
+ for(const release of releases){const jobs=api('actions/runs/'+release.id+'/jobs?per_page=100').jobs;if(['prepare','deploy','verify'].every(name=>jobs.some(j=>j.name===name&&j.conclusion==='success'))){released=true;break}}
+ if(!released)return null;
  const url=await fetch(site+s.route+'?v='+tip,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
  if(!url.ok)return null;
  // The marker must still identify the same deployed artifact after the route request.
