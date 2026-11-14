@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {selectPullRequestCI,branchToken} from './branch-auth.mjs';
 import {incidentPublication,hasVerifiedRun,alreadyPublished} from './incident-publication.mjs';
 import {labelDefinitions,labelEligible,inferPRLabels} from './pr-labels.mjs';
-import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar,branchSyncDecision,dependabotSyncEligible} from './engineering-policy.mjs';
+import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar,branchSyncDecision,dependabotSyncEligible,mergeReviewRequired} from './engineering-policy.mjs';
 const repo=process.env.GITHUB_REPOSITORY;
 if(repo!=='duykhang68/khoahoctienghan')throw Error('Wrong repository');
 const event=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
@@ -171,10 +171,10 @@ for(const p of prs){
 let rules;try{rules=api('rules/branches/main')}catch{console.log('BLOCKED: cannot verify active repository rules');process.exit(0)}
 if(!nativePolicyReady(api(''),rules)){console.log('BLOCKED: native merge policy not ready');process.exit(0)}
 for(const {p,exact} of synchronized){
- if(sensitive(changed(p))){console.log('REVIEW_REQUIRED PR #'+p.number);continue}
  const current=api('pulls/'+p.number);
  if(current.state!=='open'||!trusted(current)||current.base.ref!=='main'||current.head.sha!==p.head.sha||mainSHA()!==main)continue;
  if(branchSyncDecision(current,api('compare/'+main+'...'+current.head.sha))!=='CURRENT')continue;
+ if(mergeReviewRequired(current,changed(current))){console.log('REVIEW_REQUIRED PR #'+p.number+' · protected paths or test-only change');continue;}
  const jobs=api('actions/runs/'+exact.id+'/jobs?per_page=100').jobs;
  if(!jobs.some(j=>j.name===checkName&&j.conclusion==='success')||jobs.some(j=>j.conclusion!=='success'))continue;
  if(mainSHA()!==main)break;

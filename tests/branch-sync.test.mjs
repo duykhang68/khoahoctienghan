@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {branchSyncDecision,dependabotSyncEligible,trustedPR,sensitiveFile} from '../scripts/engineering-policy.mjs';
+import {branchSyncDecision,dependabotSyncEligible,trustedPR,sensitiveFile,mergeReviewRequired} from '../scripts/engineering-policy.mjs';
 test('sync status uses exact compare behind count, not stale PR base SHA',()=>{
  const p={mergeable:true,base:{sha:'old'}};
  assert.equal(branchSyncDecision(p,{status:'diverged',ahead_by:1,behind_by:1}),'UPDATE');
@@ -39,4 +39,23 @@ test('owner content branch receives sync without bypassing trust or review',()=>
  assert.ok(!trustedPR({...p,head:{...p.head,repo:{full_name:'fork/other'}}},repo));
  assert.ok(!trustedPR({...p,head:{...p.head,ref:'content-other/test'}},repo));
  assert.ok(sensitiveFile('scripts/engineering-policy.mjs'));
+});
+
+test('ordinary UI browser regressions do not block auto-merge; sensitive paths still do',()=>{
+ const ui={head:{ref:'ui/uber-engineering-editorial'}};
+ const src={filename:'src/styles/techblog.css',status:'modified'};
+ const spec={filename:'tests/e2e/engineering-index.spec.ts',status:'modified'};
+ assert.equal(mergeReviewRequired(ui,[src,spec]),false);
+ assert.equal(mergeReviewRequired(ui,[src,{...spec,status:'added'}]),false);
+ assert.equal(mergeReviewRequired(ui,[src]),false);
+ assert.equal(mergeReviewRequired(ui,[spec]),true);
+ assert.equal(mergeReviewRequired({head:{ref:'fix/test-only'}},[src,spec]),true);
+ for(const f of ['.github/workflows/ci.yml','scripts/engineering-controller.mjs','tests/branch-sync.test.mjs','tests/e2e/helper.ts','playwright.config.ts','AGENTS.md','package-lock.json','engineering/lessons/x.md']){
+  assert.equal(mergeReviewRequired(ui,[src,spec,{filename:f,status:'modified'}]),true,f);
+ }
+ assert.equal(mergeReviewRequired(ui,[src,{...spec,status:'removed'}]),true);
+ assert.equal(mergeReviewRequired(ui,[src,{...spec,status:'renamed',previous_filename:'tests/security-check.test.mjs'}]),true);
+ assert.equal(mergeReviewRequired(ui,[src,{filename:'public/moved.ts',status:'renamed',previous_filename:spec.filename}]),true);
+ assert.equal(mergeReviewRequired(ui,[]),true);
+ assert.ok(sensitiveFile(spec.filename)); // known-fixer scope unchanged
 });
