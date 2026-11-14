@@ -22,3 +22,16 @@ test('research article places the title, editorial cover, metadata and readable 
  await expect(page.locator('.engineering-index')).toBeVisible();
  await expect(page.locator('.research-article-shell')).toHaveCount(0);
 });
+
+test('article fallback is a compact color strip rather than a full hero',async({page})=>{
+ await page.goto('./techblog/');
+ const card=page.locator('[data-tech-post]:visible').filter({has:page.locator('[data-cover-kind="decorative"]')}).first();
+ await expect(card).toBeVisible();
+ await card.locator('h3 a').click();
+ const fallback=page.locator('.research-hero .compact-fallback');
+ await expect(fallback).toBeVisible();
+ expect((await fallback.boundingBox())!.height).toBeLessThanOrEqual(120);
+ await expect(page.locator('.article-heading h1')).toBeVisible();
+ await expect(page.locator('.article-body .article-lead')).toBeVisible();
+ await expect(page.locator('.art-shape')).toHaveCount(0);
+});

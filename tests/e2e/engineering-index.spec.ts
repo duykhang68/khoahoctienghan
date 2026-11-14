@@ -53,3 +53,16 @@ test('listing and article share the same compact top navigation and breadcrumb s
  expect(await styles()).toEqual(home);
  await expect(page.locator('.blog-breadcrumb a')).toHaveText('Engineering Blog');
 });
+
+test('compact cover keeps title and summary beside it without oversized artwork',async({page})=>{
+ await page.goto('./techblog/');
+ const card=page.locator('[data-tech-post]:visible').first();
+ await expect(card.locator('.post-summary')).toBeVisible();
+ await expect(page.locator('.art-shape')).toHaveCount(0);
+ const cover=await card.locator('.editorial-cover').boundingBox();
+ const title=await card.locator('h3').boundingBox();
+ expect(cover!.width).toBeLessThanOrEqual(220);
+ expect(cover!.height).toBeLessThanOrEqual(156);
+ expect(title!.x).toBeGreaterThanOrEqual(cover!.x+cover!.width-1);
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
+});
