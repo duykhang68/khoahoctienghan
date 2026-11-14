@@ -1,4 +1,5 @@
-import {test,expect} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './private-office-fixture';
 import {SERIES_BLUEPRINTS,blueprintParts,instantiateBlueprint} from '../../src/lib/editor-v2/blueprints.mjs';
 import {buildDocument} from '../../src/lib/editor-v2/model.mjs';
 test('six original templates preserve outline headings and never serialize writing guides',async()=>{
@@ -16,8 +17,8 @@ test('six original templates preserve outline headings and never serialize writi
  expect(blueprintParts('cinema-review').some(p=>p.tone==='warning'&&p.guide.includes('CẢNH BÁO SPOILER'))).toBe(true);
  expect(blueprintParts('device-hands-on').some(p=>p.guide?.includes('Chưa kiểm chứng'))).toBe(true);
 });
-test('long blueprint appends to existing draft, saves guidance locally and respects workspace boundary',async({page})=>{
- await page.goto('./techblog/editorv2/');
+test('long blueprint appends to existing draft, saves guidance locally and respects workspace boundary',async({page,office})=>{
+ await page.goto(office+'/admin/editor/');
  await page.getByRole('textbox',{name:'Tiêu đề',exact:true}).fill('Bài thử mẫu dài');
  await page.getByRole('textbox',{name:'Đoạn văn 1'}).fill('Nội dung đang viết');
  await page.locator('[data-blueprints] summary').click();

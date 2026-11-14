@@ -1,4 +1,5 @@
-import {test,expect} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './private-office-fixture';
 import {buildDocument,newBlock,prepareV2} from '../../src/lib/editor-v2/model.mjs';
 import {blankDrawio,validateDrawioSource} from '../../src/lib/editor-v2/drawio-source.mjs';
 test('diagram source validation rejects external entities and unrelated XML',()=>{
@@ -6,10 +7,10 @@ test('diagram source validation rejects external entities and unrelated XML',()=
  expect(()=>validateDrawioSource('<!DOCTYPE mxfile [<!ENTITY x SYSTEM "file:///etc/passwd">]><mxfile>&x;</mxfile>')).toThrow();
  expect(()=>validateDrawioSource('<svg></svg>')).toThrow();
 });
-test('draw.io integration uses isolated iframe, saves image and source and preserves draft after reload',async({page})=>{
+test('draw.io integration uses isolated iframe, saves image and source and preserves draft after reload',async({page,office})=>{
  // Deterministic draw.io protocol fixture; does not contact the external editor.
  await page.route('https://embed.diagrams.net/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><button id="save">Save &amp; Exit</button><script>const xml='+JSON.stringify(blankDrawio)+';let loaded=false;const send=m=>parent.postMessage(JSON.stringify(m),"*");window.addEventListener("message",e=>{const m=JSON.parse(e.data);if(m.action==="load"){loaded=true;document.body.dataset.loaded="yes"}if(m.action==="export"){const c=document.createElement("canvas");c.width=120;c.height=60;const ctx=c.getContext("2d");ctx.fillStyle="#335577";ctx.fillRect(0,0,120,60);send({event:"export",format:"png",xml:m.xml,data:c.toDataURL("image/png"),message:m.message})}});document.querySelector("#save").onclick=()=>{if(loaded)send({event:"save",xml,exit:true})};send({event:"init"});</script>'}));
- await page.goto('./techblog/editorv2/');
+ await page.goto(office+'/admin/editor/');
  for(const kind of ['tech','knowledge']){
   await page.locator('[data-workspace="'+kind+'"]').click();
   await expect(page.locator('[data-drawio-host] iframe')).toHaveCount(0);

@@ -47,3 +47,7 @@ assert(!oldDashboard.includes('id="trend"')&&!oldDashboard.includes('api.github.
 const oldSheet=await readFile('dist/viet-blog-by-google-sheet/index.html','utf8');
 assert(oldSheet.includes('https://korean-backoffice.tamsudev-com.workers.dev/admin/sheets/'),'Legacy Sheet route must link to private Back Office');
 assert(!oldSheet.includes('data-sheet-blog')&&!oldSheet.includes('data-gh-token'),'Public build contains Sheets publisher');
+
+const oldEditor=await readFile('dist/techblog/editorv2/index.html','utf8');
+assert(oldEditor.includes('https://korean-backoffice.tamsudev-com.workers.dev/admin/editor/'),'Legacy Editor route must point to private Back Office');
+assert(!oldEditor.includes('data-editor-v2')&&!oldEditor.includes('data-auth-submit')&&!oldEditor.includes('data-publish'),'Public build contains Editor controls');
