@@ -40,7 +40,7 @@ test('end-to-end session exchange with Google-shaped JWKS and signed credential'
  const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
  const now=Math.floor(Date.now()/1000);
  const originalFetch=globalThis.fetch;
- globalThis.fetch=async url=>{assert.equal(url,'https://www.googleapis.com/oauth2/v3/certs');return Response.json({keys:[{kty:'RSA',kid:'integration-key',alg:'RS256',use:'sig',n,e}]});};
+ globalThis.fetch=async (url,init)=>{assert.equal(url,'https://www.googleapis.com/oauth2/v3/certs');assert.equal(init?.redirect,'manual','Workers supports manual redirect rejection, not redirect: error');return Response.json({keys:[{kty:'RSA',kid:'integration-key',alg:'RS256',use:'sig',n,e}]});};
  try {
   const data=encode({alg:'RS256',kid:'integration-key'})+'.'+encode({iss:'https://accounts.google.com',aud:env.GOOGLE_CLIENT_ID,sub:'123',email:'admin@gmail.com',email_verified:true,iat:now,exp:now+300,nonce});
   const credential=data+'.'+Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',kp.privateKey,new TextEncoder().encode(data))).toString('base64url');
@@ -50,5 +50,35 @@ test('end-to-end session exchange with Google-shaped JWKS and signed credential'
   assert.equal((await worker.fetch(req('/admin/',{headers:{Cookie:session}}),env)).status,200);
   const denied=await worker.fetch(req('/admin/',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'});assert.equal(denied.status,303);
   const logout=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:origin,Cookie:session}}),env);assert.equal(logout.status,303);assert.match(logout.headers.get('set-cookie'),/Max-Age=0/);
+ }finally{globalThis.fetch=originalFetch;}
+});
+
+test('JWKS redirects, HTTP errors, invalid JSON and unknown keys never create a session',async()=>{
+ const originalFetch=globalThis.fetch;
+ const responses=[
+  ()=>new Response(null,{status:302,headers:{Location:'https://attacker.test/keys'}}),
+  ()=>new Response('upstream details must stay private',{status:503}),
+  ()=>new Response('not JSON'),
+  ()=>Response.json({keys:null}),
+  ()=>Response.json({keys:[]}),
+ ];
+ try{
+  for(const [index,response] of responses.entries()){
+   // Each isolated module starts with an empty JWKS cache.
+   const {default:isolated}=await import('./worker.mjs?jwks-failure='+index);
+   let requests=0;
+   globalThis.fetch=async (url,init)=>{requests++;assert.equal(url,'https://www.googleapis.com/oauth2/v3/certs');assert.equal(init?.redirect,'manual');return response();};
+   const login=await isolated.fetch(req('/auth/login'),env);
+   const challenge=login.headers.get('set-cookie').split(';')[0];
+   const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+   const credential=encode({alg:'RS256',kid:'missing-key'})+'.'+encode({})+'.AA';
+   const result=await isolated.fetch(req('/auth/session',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Cookie:challenge},body:JSON.stringify({credential})}),env);
+   assert.equal(result.status,403);
+   assert.equal(await result.text(),'AUTH_KEYS');
+   assert.equal(requests,index===4?2:1,'only the fixed Google endpoint may be requested');
+   assert.equal(result.headers.getSetCookie().some(c=>c.startsWith('__Host-bo_session=')),false);
+   assert.match(result.headers.get('set-cookie'),/__Host-bo_challenge=;.*Max-Age=0/);
+   assert.equal((await isolated.fetch(req('/admin/'),env)).status,303);
+  }
  }finally{globalThis.fetch=originalFetch;}
 });
