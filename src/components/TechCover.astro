@@ -1,7 +1,16 @@
 ---
 const {cover,slug='',eager=false}=Astro.props as {cover?:string;slug?:string;eager?:boolean};
-const motif=slug.startsWith('bugfix-')?'repair':slug.includes('researcher')?'network':slug.includes('culture')?'pipeline':['pipeline','network','repair'][Array.from(slug).reduce((n,c)=>n+c.charCodeAt(0),0)%3];
+const palettes=['sage','lavender','sand','blue','rose'];
+const palette=palettes[Array.from(slug).reduce((n,c)=>n+c.charCodeAt(0),0)%palettes.length];
 ---
-<span class="editorial-cover" data-motif={motif} data-cover-kind={cover?'image':'decorative'}>
-  {cover?<img src={cover} alt="" width="1200" height="675" loading={eager?'eager':'lazy'} decoding="async" fetchpriority={eager?'high':'auto'}/>:<span class="cover-art" aria-hidden="true"><span class="art-grid"></span><span class="art-shape art-one"></span><span class="art-shape art-two"></span><span class="art-shape art-three"></span><span class="art-shape art-four"></span></span>}
+<span class="editorial-cover" data-palette={palette} data-cover-kind={cover?'image':'decorative'}>
+  {cover?<img src={cover} alt="" width="1200" height="675" loading={eager?'eager':'lazy'} decoding="async" fetchpriority={eager?'high':'auto'}/>:<span class="compact-fallback" aria-hidden="true"></span>}
 </span>
+<style>
+  .compact-fallback{position:absolute;inset:0;background:linear-gradient(135deg,var(--fallback-a),var(--fallback-b))}
+  [data-palette=sage]{--fallback-a:#e3ecdd;--fallback-b:#b6c9b1}
+  [data-palette=lavender]{--fallback-a:#eee5f5;--fallback-b:#c9b7df}
+  [data-palette=sand]{--fallback-a:#f5e8d4;--fallback-b:#e4bd94}
+  [data-palette=blue]{--fallback-a:#e2edf5;--fallback-b:#b4ccdf}
+  [data-palette=rose]{--fallback-a:#f5e4e3;--fallback-b:#e5b8b5}
+</style>
