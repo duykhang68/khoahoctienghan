@@ -206,5 +206,57 @@
         ]
       }
     ]
+  },
+  {
+    "slug": "bugfix-issue-2",
+    "title": "Bugfix #2: Sửa lỗi sidebar khi nâng cấp Starlight 0.39 trở lên",
+    "summary": "Một thay đổi schema của Starlight khiến Astro không thể build kho tri thức. Nhật ký này phân tích lỗi thực tế, bản sửa tối thiểu và cách ngăn tái diễn bằng kiểm tra hồi quy.",
+    "date": "2026-11-14T15:48:10+07:00",
+    "issues": [
+      2
+    ],
+    "sections": [
+      {
+        "heading": "Sự cố và phạm vi",
+        "paragraphs": [
+          "Ngày 14/11/2026, CI của commit fa4dd563cadad89750ac21cfc9fdc3e7d0c22954 thất bại ở job Content and Astro build. Log xác định cấu hình nhóm sidebar có label và autogenerate không còn hợp lệ. Đây là lỗi cấu hình tại thời điểm build, không phải lỗi mạng hay quyền GitHub Pages."
+        ]
+      },
+      {
+        "heading": "Nguyên nhân gốc",
+        "paragraphs": [
+          "Starlight 0.39 thay đổi cách tự sinh các liên kết điều hướng: mục tự sinh trở thành một phần tử có thể trộn với các liên kết khác trong mảng items. Bản sửa của dự án sử dụng Starlight 0.42.4 và Astro 7.2.10 theo package.json tại SHA đã xác minh. Cấu trúc nhóm cũ không tương thích với schema mới."
+        ]
+      },
+      {
+        "heading": "Bản sửa tối thiểu",
+        "paragraphs": [
+          "Trong astro.config.mjs, thay cấu trúc { label: 'Ngôn ngữ Hàn Quốc', collapsed: true, autogenerate: { directory: 'ngon-ngu' } } bằng { label: 'Ngôn ngữ Hàn Quốc', collapsed: true, items: [{ autogenerate: { directory: 'ngon-ngu' } }] }. Áp dụng cùng cấu trúc cho các nhóm chủ đề còn lại, giữ nguyên tên nhóm, thư mục và trạng thái thu gọn. Không cần tắt kiểm tra hay sửa quyền triển khai."
+        ]
+      },
+      {
+        "heading": "Kiểm thử hồi quy",
+        "paragraphs": [
+          "scripts/check-content.mjs đọc cấu hình Astro và từ chối mẫu nhóm cũ bằng biểu thức chính quy. Đây là kiểm tra nhanh cho cấu trúc đang sử dụng trong repository, không phải trình phân tích cú pháp JavaScript tổng quát. Full Astro build tiếp tục kiểm chứng schema thật. Kết hợp hai lớp giúp phát hiện lỗi trước khi phát hành."
+        ]
+      },
+      {
+        "heading": "Bằng chứng và bài học",
+        "paragraphs": [
+          "PR #1 và issue #2 ghi nhận bản sửa. Run 43571412647, job 132376428383 thành công trên đúng commit 5d305dc75c604e26cbb832cf6b12e07ac19ce216. Đây là bằng chứng CI, không phải tuyên bố rằng riêng commit đó đã được triển khai production. Khi migration dependency, hãy đọc hướng dẫn breaking changes, sửa cấu hình có phạm vi nhỏ và xác minh lại trên đúng SHA."
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "Starlight 0.39 — thay đổi sidebar: https://astro.build/blog/starlight-039/",
+          "Starlight — Sidebar: https://starlight.astro.build/guides/sidebar/",
+          "Issue #2: https://github.com/duykhang68/khoahoctienghan/issues/2",
+          "PR #1: https://github.com/duykhang68/khoahoctienghan/pull/1",
+          "CI thất bại: https://github.com/duykhang68/khoahoctienghan/actions/runs/43571072282/job/132375378515",
+          "CI xác minh bản sửa: https://github.com/duykhang68/khoahoctienghan/actions/runs/43571412647/job/132376428383"
+        ]
+      }
+    ]
   }
 ]
