@@ -14,3 +14,8 @@ console.log('Validated '+paths.length+' content files');
 
 const config = await readFile('astro.config.mjs','utf8');
 assert(!/label:[^\n]+,\s*autogenerate:/.test(config), 'Legacy Starlight sidebar group: wrap autogenerate in items');
+
+// Rich article content validation; keep existing checks intact.
+const {validateVisual}=await import('../src/lib/tech-visual-validation.mjs');
+const techPosts=JSON.parse(await readFile('src/data/techblog/posts.json','utf8'));
+for(const post of techPosts)for(const section of post.sections){if(section.visuals!==undefined){assert(Array.isArray(section.visuals),post.slug+' invalid visuals');for(const v of section.visuals)validateVisual(v);}}

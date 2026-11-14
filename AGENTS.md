@@ -24,3 +24,9 @@
 
 ## Commands
 npm ci, npm run check, npm run test:engineering, npm run build, node scripts/verify-build.mjs, npm run test:e2e. Keep package-lock.json committed and synchronized; CI must never regenerate it.
+
+## Tech Blog — Visual Editorial (mandatory authoring rule)
+- Before publishing each article, identify concepts that benefit from visuals; use meaningful visual blocks at relevant sections rather than walls of text. For technical research use at least one when applicable; record a short editorial reason when a new article is deliberately text-only. Do not manufacture data or add decorative filler merely to meet a quota.
+- UI/UX or branding articles must show actual HEX swatches, button states, type specimens, and wireframes when discussed. Architecture/process articles should show flow or architecture diagrams; measured comparisons use charts or tables with units, source and period; code uses semantic pre/code. Label proposals, illustrative values, and measured facts distinctly.
+- Use the documented structured visual schema in docs/techblog-visuals.md; no raw HTML/JS in posts, no external CDN dependencies, no arbitrary executable diagrams. Provide captions and alt/accessible labels, accessible data alternatives, responsive layouts, and keyboard controls. Original CSS/SVG diagrams are allowed; raster assets must be optimized WebP. Never replace existing pastel fallback thumbnails as part of article visualization.
+- Preserve existing articles and slugs. Run content validation, build, and desktop/mobile E2E before merge. New renderers must not alter the Korean Knowledge Base layout.

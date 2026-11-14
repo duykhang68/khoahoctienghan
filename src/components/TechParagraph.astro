@@ -1,5 +1,8 @@
 ---
 import {linkParts} from '../lib/tech-links.mjs';
-const {value}=Astro.props;
+const {value}=Astro.props as {value:string};
+const lines=value.split('\n');
+const list=lines.length>0&&lines.every(line=>/^- /.test(line));
+const code=/^(css|js|javascript|ts|typescript|bash|sh|json|python|yaml|html|sql)\n/.test(value);
 ---
-<p>{linkParts(value).map(part=>part.href?<a href={part.href} title={part.href} class="inline-source-link">{part.text}</a>:part.text)}</p>
+{code?<pre><code>{lines.slice(1).join('\n')}</code></pre>:list?<ul>{lines.map(line=><li>{linkParts(line.replace(/^- /,'')).map(part=>part.href?<a href={part.href} class="inline-source-link">{part.text}</a>:part.text)}</li>)}</ul>:<p>{linkParts(value).map(part=>part.href?<a href={part.href} title={part.href} class="inline-source-link">{part.text}</a>:part.text)}</p>}
