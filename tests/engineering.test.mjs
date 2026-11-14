@@ -24,3 +24,5 @@ test('categories derive from article context and do not require metadata',()=>{
  assert.equal(inferCategory({title:'Vector database và LLM',summary:'embedding RAG machine learning',sections:[]}).id,'ai-data');
  assert.equal(categoryIndex(p).reduce((n,c)=>n+c.count,0),p.length);
 });
+
+import './incident-publication.test.mjs';

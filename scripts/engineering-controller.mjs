@@ -1,5 +1,6 @@
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
+import {incidentPublication,hasVerifiedRun,alreadyPublished} from './incident-publication.mjs';
 import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar,branchSyncDecision,dependabotSyncEligible} from './engineering-policy.mjs';
 const repo=process.env.GITHUB_REPOSITORY;
 if(repo!=='duykhang68/khoahoctienghan')throw Error('Wrong repository');
@@ -55,14 +56,22 @@ if(run?.head_repository?.full_name===repo&&[ciName,releaseName].includes(run.nam
   }
  }
 }
-// Preserve stable, deduplicated editorial batches. Keep previously consumed issue IDs.
-const verified=issues.filter(i=>i.state==='closed'&&['duykhang68','github-actions[bot]'].includes(i.user.login)&&hasMarker(i,'<!-- engineering-incident:v1 -->')&&/<!-- verified-sha: [a-f0-9]{40} -->/.test(i.body||'')).sort((a,b)=>a.number-b.number);
-const consumed=new Set(issues.filter(i=>['duykhang68','github-actions[bot]'].includes(i.user.login)).flatMap(i=>[...String(i.body||'').matchAll(/<!-- techblog-batch-([\d-]+) -->/g)].flatMap(m=>m[1].split('-').map(Number))));
-const remaining=verified.filter(i=>!consumed.has(i.number));
-for(let i=0;i+5<=remaining.length;i+=5){
- const batch=remaining.slice(i,i+5),marker='<!-- techblog-batch-'+batch.map(x=>x.number).join('-')+' -->';
- if(!issues.some(x=>hasMarker(x,marker)))issues.push(api('issues','POST',{title:'[Tech Blog] Engineering retrospective '+batch.map(x=>'#'+x.number).join(', '),body:marker+'\n\nSynthesize these verified incidents with sources and regression tests. Publish only via reviewed PR.\n\n'+batch.map(x=>'- '+x.html_url).join('\n')}));
-}
+// One incident, one retrospective. The scheduled Researcher authors the content PR.
+try{
+ const posts=JSON.parse(readFileSync('src/data/techblog/posts.json','utf8'));
+ for(const issue of issues){
+  const record=incidentPublication(issue,repo);
+  if(!record||alreadyPublished(record,posts,prs))continue;
+  const marker='<!-- techblog-incident:'+record.number+' -->';
+  if(issues.some(x=>hasMarker(x,marker)))continue;
+  let evidence=[];
+  for(const id of record.runIds.slice(0,20)){try{evidence.push(api('actions/runs/'+id))}catch{}}
+  if(!hasVerifiedRun(record,evidence,repo)){console.log('BLOG_BLOCKED #'+record.number+' · no exact successful run');continue}
+  // Only trusted source facts, no issue body or raw logs copied into a public candidate.
+  issues.push(api('issues','POST',{title:'[Tech Blog] Bugfix retrospective #'+record.number,body:marker+'\n\nSource: https://github.com/'+repo+'/issues/'+record.number+'\nVerified SHA: '+record.sha+'\n\nResearcher: verify root cause, fix, regression, official sources and deployment if applicable; write one Vietnamese article at slug '+record.slug+' via content PR. Confirm lesson record, do not publish sensitive material or invent evidence.'}));
+  console.log('BLOG_QUEUED #'+record.number);
+ }
+}catch{console.log('BLOG_RECONCILIATION_DEFERRED');}
 // Recover missing main CI when a token-originated merge did not emit a push-triggered run.
 const mainRuns=api('actions/workflows/ci.yml/runs?branch=main&head_sha='+main+'&per_page=30').workflow_runs;
 const mainCI=latestRun(mainRuns,main,repo,['push','workflow_dispatch'],'main');
