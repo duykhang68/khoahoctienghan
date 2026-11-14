@@ -11,3 +11,25 @@
 .tv-tablewrap{max-width:100%;overflow:auto}.article-body .tv-table{display:table;width:100%;border-collapse:collapse;font-size:13px}.tv-table th,.tv-table td{padding:9px!important;border:1px solid #ddd!important;text-align:left!important}.tv-table tbody th{font-weight:500;background:#fff}.tv-table thead th{background:#f6f6f6}
 .article-body .tv-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px;list-style-position:inside;padding:0;counter-reset:steps}.article-body .tv-flow li{font-size:14px;line-height:1.4;text-align:left;border:1px solid #ddd;background:#f6f6f6;border-radius:5px;padding:12px}.tv-bars{display:grid;gap:12px}.tv-bars>div{display:grid;grid-template-columns:minmax(80px,1fr) 2fr auto;gap:10px;align-items:center}.tv-bartrack{background:#eee;height:18px}.tv-bartrack span{display:block;height:100%;background:#333}
 .tv-codehead{display:flex;justify-content:space-between;align-items:center;background:#eee;padding:8px 12px;border:1px solid #ddd;border-bottom:0}.tv-codehead button{background:#fff;border:1px solid #ccc;border-radius:4px;padding:5px 10px}.article-body .tv pre{margin:0;border:1px solid #ddd;max-width:100%;overflow:auto;white-space:pre;overflow-wrap:normal}.article-body .tv pre code{white-space:pre;font-size:13px}
+
+/* Visual Editorial 2.0 — conversation-reference visual language. */
+.article-body .tv{background:#fff;border:1px solid #e2e2e2;border-radius:14px;padding:clamp(14px,3vw,24px);margin:32px 0 40px;box-shadow:0 1px 2px #00000006;overflow-wrap:anywhere}
+.article-body .tv .tv-figure-title{font-size:18px;font-weight:700;line-height:1.35;margin-bottom:20px;color:#141414}
+.article-body .tv figcaption{font-size:12px;line-height:1.6;color:#666;margin-top:16px}
+.tv-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,80px),1fr));gap:12px;margin-bottom:20px}
+.tv-metrics strong{display:block;font-size:clamp(30px,6vw,44px);font-weight:700;line-height:1.15;letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+.tv-metrics small{font-size:13px;margin-bottom:5px}
+.tv-segments{display:flex;height:28px;border-radius:6px;overflow:hidden;margin-bottom:10px}
+.tv-segments span{display:block;height:100%}
+.article-body .tv-flow{display:flex;flex-direction:column;align-items:center;gap:0;margin:0;padding:0;list-style:none}
+.article-body .tv-flow li{display:flex;flex-direction:column;align-items:center;width:min(100%,300px);padding:0;border:0;background:none;list-style:none}
+.tv-flow-node{display:flex;align-items:center;gap:12px;width:100%;padding:13px 16px;border:1px solid #dedede;border-radius:10px;background:#fff}
+.tv-flow-node>svg{flex:none;color:#343434}.tv-flow-node strong{display:block;font-size:14px}.tv-flow-node small{font-size:12px;margin-top:2px}.tv-flow-arrow{margin:5px auto;color:#888;flex:none}
+.tv-cycle svg{display:block;width:100%;max-width:400px;height:auto;margin:auto}.article-body .tv-cycle-key{display:grid;gap:4px;margin:12px 0 0;padding-left:20px}.article-body .tv-cycle-key li{font-size:12px;line-height:1.5;text-align:start;color:#666}
+.tv-swatches{gap:16px}.tv-swatch{border:0;border-radius:8px;padding:0;gap:5px;background:transparent}.tv-swatch:hover .tv-color{outline:2px solid #888;outline-offset:2px}.tv-color{height:64px;border-radius:8px}.tv-swatch strong{font-size:13px}.tv-swatch small{font-size:11px}
+.tv-buttons{gap:18px}.tv-buttons>div{padding:12px;border:1px solid #e2e2e2;border-radius:10px}.tv-demo{font-weight:600;min-height:48px}
+.tv-type{border:0;padding:0}.tv-type>div{padding:12px 0}.tv-type>div+div{margin-top:0}.tv-specimen{line-height:1.25;letter-spacing:-.02em}
+.tv-wire{border-radius:5px}.tv-screen{padding:clamp(12px,3vw,24px)}.tv-cardgrid{gap:24px 14px}.tv-thumb{border-radius:2px}
+.tv-spacing span{border-radius:3px}.tv-tablewrap{border-radius:8px}.tv-table th,.tv-table td{border:0!important;border-bottom:1px solid #e5e5e5!important;padding:12px!important}.tv-table thead th{background:#f5f5f5;color:#333}.tv-table tbody tr:last-child>*{border-bottom:0!important}
+.tv-codehead{border-radius:8px 8px 0 0}.article-body .tv pre{border-radius:0 0 8px 8px}.tv-bars>div{gap:12px}.tv-bartrack{border-radius:4px;overflow:hidden}.tv-bartrack span{background:#555;border-radius:4px}
+@media(max-width:400px){.article-body .tv{padding:12px}.tv-metrics{gap:8px}.tv-metrics small{font-size:11px}.tv-cardgrid{gap:14px 8px}.tv-cardgrid small{font-size:9px}}

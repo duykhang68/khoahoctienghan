@@ -816,13 +816,17 @@
             "items": [
               {
                 "label": "Đang mở",
-                "value": "9"
+                "value": "9",
+                "color": "#D97706"
               },
               {
                 "label": "Đã đóng",
-                "value": "1"
+                "value": "1",
+                "color": "#16A34A"
               }
-            ]
+            ],
+            "variant": "summary",
+            "title": "Tình trạng GitHub Issues"
           }
         ]
       },
@@ -838,30 +842,37 @@
             "caption": "Hành trình một thay đổi từ bản thảo tới độc giả.",
             "items": [
               {
-                "label": "Bản sửa",
-                "detail": "Commit"
+                "label": "Viết bản thảo",
+                "detail": "Commit",
+                "icon": "file"
               },
               {
-                "label": "Đề nghị",
-                "detail": "Pull request"
+                "label": "Đề nghị thay đổi",
+                "detail": "Pull request",
+                "icon": "pull"
               },
               {
-                "label": "Kiểm tra",
-                "detail": "CI"
+                "label": "Kiểm tra chất lượng",
+                "detail": "Continuous Integration",
+                "icon": "shield"
               },
               {
-                "label": "Bản chính",
-                "detail": "Merge"
+                "label": "Hợp nhất bản sửa",
+                "detail": "Merge",
+                "icon": "merge"
               },
               {
-                "label": "Đưa lên web",
-                "detail": "CD"
+                "label": "Xuất bản website",
+                "detail": "Continuous Deployment",
+                "icon": "cloud"
               },
               {
-                "label": "Đối chiếu",
-                "detail": "Production verification"
+                "label": "Xác minh bản công khai",
+                "detail": "Production Verification",
+                "icon": "check"
               }
-            ]
+            ],
+            "title": "Từ bản thảo đến website"
           }
         ]
       },
@@ -1089,7 +1100,7 @@
                 "detail": "Có bằng chứng"
               },
               {
-                "label": "Sửa nhỏ",
+                "label": "Sửa lỗi",
                 "detail": "Không bỏ kiểm tra"
               },
               {
@@ -1100,7 +1111,9 @@
                 "label": "Ghi nhớ",
                 "detail": "Tránh lặp lại"
               }
-            ]
+            ],
+            "variant": "cycle",
+            "title": "Học hỏi từ sai sót"
           }
         ]
       },
