@@ -23,7 +23,7 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
       <div data-blueprint-preview hidden><p data-blueprint-summary></p><ol data-blueprint-headings></ol></div>
       <button type="button" data-blueprint-insert disabled>＋ Chèn dàn ý vào bài</button><small data-blueprint-status role="status">Chỉ chèn thêm, không ghi đè nội dung.</small>
     </details><div class="ev2-block-buttons">
-    { [['paragraph','¶','Đoạn văn'],['heading','H2','Tiêu đề'],['subheading','H3','Tiêu đề phụ'],['quote','❝','Trích dẫn'],['bullet','•','Danh sách'],['ordered','1.','Danh sách số'],['note','▣','Ghi chú'],['code','<>','Mã nguồn'],['table','▦','Bảng'],['image','▧','Ảnh từ máy'],['divider','—','Đường phân cách']].map(([kind,icon,label])=><button type="button" data-add={kind}><span aria-hidden="true">{icon}</span>{label}</button>)}
+    { [['paragraph','¶','Đoạn văn'],['heading','H2','Tiêu đề'],['subheading','H3','Tiêu đề phụ'],['quote','❝','Trích dẫn'],['bullet','•','Danh sách'],['ordered','1.','Danh sách số'],['note','▣','Ghi chú'],['code','<>','Mã nguồn'],['table','▦','Bảng'],['image','▧','Ảnh từ máy'],['diagram','◇','Sơ đồ draw.io'],['divider','—','Đường phân cách']].map(([kind,icon,label])=><button type="button" data-add={kind}><span aria-hidden="true">{icon}</span>{label}</button>)}
    </div><p data-library-help>Thêm đoạn phân tích, ví dụ code, bảng và ảnh minh họa.</p></aside>
    <section class="ev2-canvas ev2-panel" aria-label="Không gian viết">
     <div data-write><span class="ev2-kicker" data-compose-kicker>02 · ENGINEERING ARTICLE</span><label class="ev2-title-label">Tiêu đề<input data-field="title" maxlength="180" placeholder="Tiêu đề bài viết"/></label><label>Mô tả ngắn<textarea data-field="summary" maxlength="500" rows="2" placeholder="Tóm tắt bài viết"></textarea></label><div class="ev2-divider"></div><div data-blocks></div><button class="ev2-add-bottom" type="button" data-add="paragraph">＋ Thêm đoạn văn</button></div>
@@ -41,6 +41,11 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
     <div class="ev2-path"><small>URL dự kiến</small><code data-route></code></div><label class="ev2-check"><input type="checkbox" data-confirm/> Tôi xác nhận gửi nội dung lên repo công khai.</label><button class="ev2-primary" type="button" data-publish disabled>Gửi bài → Hàng đợi FIFO</button><p data-result role="status" aria-live="polite">Chưa gửi GitHub. Bản nháp tự lưu trên trình duyệt.</p><a class="ev2-queue-link" href="https://github.com/duykhang68/khoahoctienghan/issues?q=is%3Aissue+%22Editor+V2%22+in%3Atitle" target="_blank" rel="noopener noreferrer">Xem hàng đợi bài viết trên GitHub</a><button type="button" data-new>Bài viết mới</button>
    </aside>
   </div>
+  <dialog data-drawio-dialog class="ev2-drawio-dialog" aria-label="Vẽ sơ đồ draw.io">
+   <div class="ev2-drawio-header"><div><span class="ev2-kicker">DIAGRAM STUDIO</span><h2>draw.io</h2></div><button type="button" data-drawio-close>Đóng</button></div>
+   <p data-drawio-status role="status">Đang kết nối draw.io…</p><div data-drawio-host class="ev2-drawio-host"></div>
+   <small>Chỉ dữ liệu sơ đồ được gửi sang trình vẽ bên ngoài. Khi lưu, Editor giữ XML gốc và ảnh WebP. Không chứa thông tin bí mật trong sơ đồ.</small>
+  </dialog>
   <dialog data-auth><div class="ev2-dialog-head"><h2>Kết nối GitHub</h2><button type="button" data-close-auth aria-label="Đóng">×</button></div><p>Chỉ nhận token fine-grained của chủ blog, giới hạn ở repo này với quyền Contents: Read and write. Token chỉ nằm trong bộ nhớ trang, không lưu cùng bản nháp.</p><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">Tạo token giới hạn quyền trên GitHub</a><label>GitHub token<input data-token type="password" autocomplete="off" spellcheck="false"/></label><button type="button" data-auth-submit class="ev2-primary">Xác minh và kết nối</button><p data-auth-status role="status"></p></dialog>
  </div>
  <script>

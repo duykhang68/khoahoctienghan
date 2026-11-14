@@ -1,6 +1,7 @@
 import {newBlock,kinds,slugify,metadata,buildDocument} from './model.mjs';
 import {githubClient} from './github.mjs';
 import {seriesProgress} from './series-progress.mjs';
+import {mountDrawio,downloadDrawio,importDrawio} from './drawio-browser.mjs';
 import {blueprintParts,instantiateBlueprint} from './blueprints.mjs';
 const legacyKey='khoahoctienghan.editor-v2.draft.v1',activeKey='khoahoctienghan.editor-v2.active.v2';
 const storageKey=kind=>'khoahoctienghan.editor-v2.draft.v2.'+kind;
@@ -9,7 +10,7 @@ const workspace={
  knowledge:{title:'Knowledge Editorial',description:'Biên soạn bài học theo chuyên mục của Tri thức Hàn Quốc.',library:'Khối bài học',help:'Ưu tiên khái niệm, ví dụ, bảng đối chiếu, ghi chú và hình minh họa.',outline:'＋ Thêm dàn ý bài học',sections:['Khái niệm và bối cảnh','Nội dung chính','Ví dụ minh họa','Ghi nhớ và luyện tập'],compose:'02 · KNOWLEDGE LESSON',settings:'Thông tin bài học',destination:'Tri thức Hàn Quốc',path:'Chuyên mục đã chọn',preview:'XEM TRƯỚC · TRI THỨC HÀN QUỐC',group:'Tri thức Hàn Quốc',labels:'Hangul, TOPIK…',placeholder:'Tiêu đề bài học',summary:'Nội dung và mục tiêu bài học'}
 };
 const palettes=[['#e3ecdd','#b6c9b1'],['#eee5f5','#c9b7df'],['#f5e8d4','#e4bd94'],['#e2edf5','#b4ccdf'],['#f5e4e3','#e5b8b5']];
-const names={paragraph:'Đoạn văn',heading:'Tiêu đề H2',subheading:'Tiêu đề H3',detailheading:'Tiêu đề H4',quote:'Trích dẫn',bullet:'Danh sách',ordered:'Danh sách số',note:'Ghi chú',code:'Mã nguồn',table:'Bảng',image:'Ảnh WebP',divider:'Đường phân cách'};
+const names={paragraph:'Đoạn văn',heading:'Tiêu đề H2',subheading:'Tiêu đề H3',detailheading:'Tiêu đề H4',quote:'Trích dẫn',bullet:'Danh sách',ordered:'Danh sách số',note:'Ghi chú',code:'Mã nguồn',table:'Bảng',image:'Ảnh WebP',diagram:'Sơ đồ draw.io',divider:'Đường phân cách'};
 const make=(tag,text,cls)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el};
 const empty=(kind='tech')=>({title:'',summary:'',kind,category:'ngon-ngu',labels:'',series:{enabled:false,name:'',part:1,total_parts:1,target_date:''},blocks:[newBlock('paragraph')]});
 export function mountEditor(root){
@@ -25,6 +26,8 @@ export function mountEditor(root){
  if(Object.hasOwn(workspace,requested))active=requested;else if(Object.hasOwn(workspace,remembered))active=remembered;else if(valid(legacy)&&Object.hasOwn(workspace,legacy.kind))active=legacy.kind;
  function load(kind){const saved=read(storageKey(kind));if(valid(saved))return {...empty(kind),...saved,kind};if(valid(legacy)&&legacy.kind===kind)return {...empty(kind),...legacy,kind};return empty(kind)}
  let draft=load(active);
+ const drawio=mountDrawio(root,{onSave:(block,value)=>{if(!draft.blocks.includes(block))return;Object.assign(block,value);render();store();if(mode==='preview')showPreview();$('[data-result]').textContent='Đã lưu sơ đồ và ảnh WebP vào bản nháp.'}});
+ function openDrawio(block,source){if(busy||uploads||drawio.isOpen())return;try{drawio.open(block,source)}catch(e){$('[data-result]').textContent=e.message}}
  const topicIds=Array.from(field('category').options,o=>o.value);
  function writeFields(){for(const k of ['title','summary','category','labels'])field(k).value=draft[k];field('seriesEnabled').checked=!!draft.series.enabled;for(const [key,prop] of [['seriesName','name'],['part','part'],['total','total_parts'],['target','target_date']])field(key).value=draft.series[prop]??'';}
  function readFields(){draft.kind=active;for(const key of ['title','summary','category','labels'])draft[key]=field(key).value;draft.series={enabled:field('seriesEnabled').checked,name:field('seriesName').value,part:field('part').value,total_parts:field('total').value,target_date:field('target').value};}
@@ -56,6 +59,17 @@ export function mountEditor(root){
    tools.append(up,down,button('×',()=>{draft.blocks.splice(i,1);if(!draft.blocks.length)draft.blocks.push(newBlock('paragraph'));render();store()},'Xóa khối '+(i+1)));
    wrapper.append(top);
    if(b.kind==='divider')wrapper.append(make('hr'));
+   else if(b.kind==='diagram'){
+    const actions=make('div',undefined,'ev2-diagram-actions');
+    const edit=button(b.drawioXml?'Chỉnh sửa sơ đồ':'Mở draw.io',()=>openDrawio(b));actions.append(edit);
+    const importLabel=make('label','Nhập file .drawio'),file=make('input');file.type='file';file.accept='.drawio,.xml';importLabel.append(file);actions.append(importLabel);
+    file.addEventListener('change',async()=>{const selected=file.files?.[0];if(!selected||busy||uploads||drawio.isOpen())return;uploads++;update();try{const xml=await importDrawio(selected);if(draft.blocks.includes(b))drawio.open(b,xml)}catch(e){$('[data-result]').textContent=e.message}finally{uploads--;file.value='';update()}});
+    if(b.drawioXml){actions.append(button('Tải file .drawio',()=>{try{downloadDrawio(b.drawioXml)}catch(e){$('[data-result]').textContent=e.message}}))}
+    const repo=make('a','Mở repository trong github.dev');repo.href='https://github.dev/duykhang68/khoahoctienghan';repo.target='_blank';repo.rel='noopener noreferrer';actions.append(repo);wrapper.append(actions);
+    for(const [key,label,max] of [['alt','Mô tả sơ đồ (bắt buộc)',500],['caption','Chú thích sơ đồ (tùy chọn)',1000]]){const l=make('label',label),input=make('input');input.value=b[key]||'';input.maxLength=max;input.addEventListener('input',()=>{b[key]=input.value;store()});l.append(input);wrapper.append(l)}
+    if(b.src&&/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src)){const image=make('img');image.src=b.src;image.alt=b.alt||'';wrapper.append(image)}
+    else wrapper.append(make('p','Chưa có sơ đồ. Vẽ hoặc nhập file, rồi lưu từ draw.io.','ev2-diagram-empty'));
+   }
    else if(b.kind==='image'){
     const label=make('label','Chọn ảnh từ thiết bị'),input=make('input');input.type='file';input.accept='image/png,image/jpeg,image/webp,image/gif';label.append(input);wrapper.append(label);
     const altLabel=make('label','Mô tả ảnh (bắt buộc)'),alt=make('input');alt.value=b.alt||'';alt.maxLength=500;alt.addEventListener('input',()=>{b.alt=alt.value;store()});altLabel.append(alt);wrapper.append(altLabel);
@@ -89,7 +103,7 @@ export function mountEditor(root){
   const target=$('[data-preview-body]');target.replaceChildren();
   for(const b of draft.blocks){
    const t=b.text||'';let node;
-   if(b.kind==='image'){if(!/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src||''))continue;node=make('img');node.src=b.src;node.alt=b.alt||'';node.width=b.width;node.height=b.height}
+   if(b.kind==='image'||b.kind==='diagram'){if(!/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/.test(b.src||''))continue;const image=make('img');image.src=b.src;image.alt=b.alt||'';image.width=b.width;image.height=b.height;if(b.kind==='diagram'&&b.caption){node=make('figure');node.append(image,make('figcaption',b.caption))}else node=image}
    else if(b.kind==='table'){node=make('table');for(const [i,row] of b.rows.entries()){const tr=make('tr');row.forEach(v=>tr.append(make(i?'td':'th',v)));node.append(tr)}}
    else if(b.kind==='bullet'||b.kind==='ordered'){if(!t.trim())continue;node=make(b.kind==='bullet'?'ul':'ol');t.split('\n').filter(s=>s.trim()).forEach(v=>node.append(make('li',v)))}
    else if(b.kind==='divider')node=make('hr');
@@ -102,7 +116,7 @@ export function mountEditor(root){
   for(const [selector,value] of Object.entries({'[data-workspace-title]':w.title,'[data-workspace-description]':w.description,'[data-library-title]':w.library,'[data-library-help]':w.help,'[data-outline]':w.outline,'[data-compose-kicker]':w.compose,'[data-settings-title]':w.settings,'[data-destination]':w.destination,'[data-destination-path]':w.path,'[data-preview-kicker]':w.preview}))$(selector).textContent=value;
   field('title').placeholder=w.placeholder;field('summary').placeholder=w.summary;field('labels').placeholder=w.labels;
   all('[data-workspace]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.workspace===active)));
-  const tools=$('.ev2-block-buttons');const order=active==='tech'?['paragraph','heading','subheading','code','table','note','image','quote','bullet','ordered','divider']:['paragraph','heading','subheading','note','bullet','ordered','table','image','quote','code','divider'];
+  const tools=$('.ev2-block-buttons');const order=active==='tech'?['paragraph','heading','subheading','code','diagram','table','note','image','quote','bullet','ordered','divider']:['paragraph','heading','subheading','note','bullet','ordered','diagram','table','image','quote','code','divider'];
   for(const kind of order){const b=$('.ev2-block-buttons [data-add="'+kind+'"]');if(b)tools.append(b)}
  }
  function syncBlueprintButton(){const choice=$('[data-blueprint-select]');$('[data-blueprint-insert]').disabled=busy||uploads>0||!choice.value}
