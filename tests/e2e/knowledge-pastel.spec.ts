@@ -1,0 +1,24 @@
+import {test,expect} from '@playwright/test';
+test('pastel knowledge topic cards and indented colored navigation',async({page})=>{
+ await page.goto('./');
+ const cards=page.locator('.pastel-topic-grid .knowledge-card');
+ await expect(cards).toHaveCount(10);
+ const colors=await cards.locator('.topic-card-art').evaluateAll(elements=>elements.map(el=>getComputedStyle(el).backgroundImage));
+ expect(new Set(colors).size).toBe(10);
+ await expect(cards.first().locator('.topic-card-mark')).toBeVisible();
+ await expect(page.locator('header.header')).toHaveCSS('background-color','rgb(244, 237, 255)');
+ await page.goto('./ngon-ngu/hangul/');
+ const menu=page.locator('button[popovertarget="starlight__sidebar"]');
+ if(await menu.isVisible())await menu.click();
+ const group=page.locator('.knowledge-nav-group[data-palette="ngon-ngu"]');
+ const heading=group.locator(':scope > h2');
+ const child=group.locator(':scope > ul a').first();
+ await expect(heading).toBeVisible();await expect(child).toBeVisible();
+ expect((await child.boundingBox())!.x-(await heading.boundingBox())!.x).toBeGreaterThanOrEqual(12);
+ expect(await heading.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('gradient');
+ await expect(group.locator('a[aria-current="page"]')).toHaveCSS('background-color','rgb(219, 234, 254)');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+ await page.goto('./techblog/');
+ await expect(page.locator('.engineering-header')).toHaveCSS('background-color','rgb(0, 0, 0)');
+ await expect(page.locator('.pastel-topic-grid,.knowledge-nav-groups')).toHaveCount(0);
+});
