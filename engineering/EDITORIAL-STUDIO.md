@@ -51,3 +51,6 @@ Actual browser editing without source code; local crop/contain and upload/insert
 
 ## Test Sync (acceptance)
 - Separate visible Test Sync flow creates a distinctly named Draft PR on main via the same authenticated validation/blob/tree/commit pipeline. Draft flag is passed at creation, never converted afterwards. Public test content only; close test PR instead of marking ready or merging. Regular Sync blocked until main contains the media index. Pre-merge test changes must be compatible with main (use simple prose; new visual/image components not deployed yet). Exact HEAD CI and real owner acceptance pending.
+
+## New article inline UX
+- Both new-article entry points open an inline form, not browser prompt. Select existing Knowledge Base category, enter title/optional description, preview auto-generated Vietnamese slug and stable route (collision suffix), then open visual canvas. Knowledge entry and a link in its existing category overview are staged together; original overview text retained. Tech Blog continues automatic category inference. Only existing category overview routes are selectable; advanced overview source is protected. No automatic sync or deployment. Browser regression exercises both workspaces, no prompt, category linkage and duplicate slug.

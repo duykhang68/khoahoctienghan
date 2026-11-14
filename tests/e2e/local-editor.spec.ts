@@ -157,3 +157,41 @@ test('actual Astro draft preview renders placed Knowledge image and existing vis
   const unchanged=await (await fetch(base+'/api/local')).json();expect(unchanged.files[docs].hash).toBe(snapshot.files[docs].hash);
  }finally{await new Promise<void>(resolve=>{if(child.exitCode!==null||child.signalCode!==null)return resolve();child.once('exit',()=>resolve());child.kill()})}
 });
+
+test('new articles use inline category form and automatically generate unique URLs',async({page})=>{
+ const category='src/content/docs/ngon-ngu/index.md';
+ const snapshot={sha:'0123456789abcdef',files:{[docs]:entry(source),[category]:entry(read(category)),[menu]:entry(read(menu)),[visuals]:entry(read(visuals)),[posts]:entry(JSON.stringify(sample,null,2)+'\n')}};
+ const unexpected:string[]=[];page.on('dialog',async d=>{unexpected.push(d.message());await d.dismiss()});
+ await page.route(route+'**',async req=>{
+  const path=new URL(req.request().url()).pathname;
+  if(path==='/api/session')return req.fulfill({json:{nonce:'fixture',login:null}});
+  if(path==='/api/local')return req.fulfill({json:snapshot});
+  const asset=assets[path];if(asset)return req.fulfill({path:resolve('local-editor/web',asset),contentType:asset.endsWith('.js')?'text/javascript':asset.endsWith('.css')?'text/css':'text/html'});
+  return req.fulfill({status:404,body:'Not found'});
+ });
+ await page.goto(route);await expect(page.locator('#status')).toContainText('Sẵn sàng');
+ await page.locator('#new').click();
+ const form=page.getByRole('form',{name:'Tạo bài viết mới'});
+ await expect(form).toBeVisible();
+ await form.getByLabel('Chuyên mục',{exact:true}).selectOption({label:'Ngôn ngữ Hàn Quốc'});
+ await form.getByLabel('Tiêu đề bài viết').fill('Từ vựng & đời sống');
+ await expect(form.locator('#new-url')).toContainText('/ngon-ngu/tu-vung-doi-song/');
+ await form.getByRole('button',{name:'Tạo bài và bắt đầu viết'}).click();
+ await expect(form).toBeHidden();
+ await expect(page.locator('#visual-editor h1')).toHaveText('Từ vựng & đời sống');
+ const path='src/content/docs/ngon-ngu/tu-vung-doi-song.mdx';
+ const drafts=await page.evaluate(()=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}'));
+ expect(drafts[path].content).toContain('title: "Từ vựng & đời sống"');
+ expect(drafts[category].content).toContain('[Từ vựng &amp; đời sống](/khoahoctienghan/ngon-ngu/tu-vung-doi-song/)');
+ expect(drafts[category].content).toContain('/khoahoctienghan/ngon-ngu/hangul/');
+ await page.locator('#new').click();
+ await form.getByLabel('Tiêu đề bài viết').fill('Từ vựng & đời sống');
+ await expect(form.locator('#new-url')).toContainText('/ngon-ngu/tu-vung-doi-song-2/');
+ await form.getByLabel('Không gian').selectOption('tech');
+ await expect(form.getByLabel('Chuyên mục',{exact:true})).toBeHidden();
+ await form.getByLabel('Tiêu đề bài viết').fill('Kiến trúc Editor');
+ await expect(form.locator('#new-url')).toContainText('/techblog/kien-truc-editor/');
+ await form.getByRole('button',{name:'Tạo bài và bắt đầu viết'}).click();
+ await expect(page.locator('#visual-editor h1')).toHaveText('Kiến trúc Editor');
+ expect(unexpected).toEqual([]);
+});

@@ -117,6 +117,7 @@ function renderFiles(){
 }
 function keepCurrent(){try{flushArticle();return true}catch(e){status(e.message);return confirm('Không lưu được bản nháp. Bỏ phần chưa lưu?')}}
 function select(p){
+ $('new-article-form').hidden=true;
  $('preview-result').replaceChildren();clearTimeout(autoTimer);autoTimer=0;active=p;postIndex=-1;postList=null;$('file-title').textContent=name(p,get(p));$('file-path').textContent=p;
  $('editor').disabled=false;$('editor').value=get(p)||'';$('preview').textContent=$('editor').value;
  $('post-tools').hidden=p!==POSTS;
@@ -134,11 +135,83 @@ function saveFile(){
 }
 $('save').onclick=()=>{try{clearTimeout(autoTimer);autoTimer=0;saveFile()}catch(e){status(e.message)}};
 $('save-post').onclick=$('save').onclick;
-$('new-post').onclick=()=>{if(!postList||!keepCurrent())return;const slug=prompt('Slug bài Tech Blog (a-z, 0-9, dấu gạch ngang)');if(!slug||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||postList.some(p=>p.slug===slug)){status('Slug không hợp lệ hoặc đã tồn tại');return}const parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T');postList.push({slug,title:'Tiêu đề mới',summary:'Mô tả bài viết',date:parts+'+07:00',sections:[{heading:'Giới thiệu',paragraphs:['Nội dung']}],issues:[]});postIndex=postList.length-1;renderPosts();stage(POSTS,JSON.stringify(postList,null,2)+'\n');$('editor').value=JSON.stringify(postList[postIndex],null,2);renderVisual();status('Bài mới đã được tạo dưới dạng bản nháp local')};
+$('new-post').onclick=()=>openNewArticle('tech');
 document.querySelectorAll('[data-scope]').forEach(b=>b.onclick=()=>{scope=b.dataset.scope;document.querySelectorAll('[data-scope]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderFiles()});
 $('filter').oninput=renderFiles;
 $('discard').onclick=()=>{if(active&&confirm('Hủy bản nháp '+active+'?')){delete drafts[active];conflicts=conflicts.filter(p=>p!==active);persist();select(active);state()}};
-$('new').onclick=()=>{if(!keepCurrent())return;const slug=prompt('Đường dẫn bài học, ví dụ ngon-ngu/tu-vung (không có phần mở rộng)');if(!slug||! /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){status('Đường dẫn không hợp lệ');return}const p='src/content/docs/'+slug+'.mdx';if(get(p)||get(p.slice(0,-1))){status('Bài đã tồn tại');return}stage(p,'---\ntitle: Bài mới\ndescription: Mô tả bài mới\n---\n\nNội dung bài viết.\n');select(p)};
+$('new').onclick=()=>openNewArticle(scope==='tech'?'tech':'knowledge');
+function categoryOptions(){
+ // Existing top-level Knowledge Base overview routes, in configured menu order.
+ const options=new Map();
+ const add=(path,label)=>{
+  if(!/^\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(path)||path==='/techblog/')return;
+  const route=path.slice(1,-1),prefix='src/content/docs/'+route+'/index',file=[prefix+'.md',prefix+'.mdx'].find(p=>get(p)!=null);
+  if(file&&!options.has(route))options.set(route,{route,label:label||name(file,get(file)),file});
+ };
+ let entries=[];try{entries=JSON.parse(get(MENU)||'[]')}catch{}
+ for(const item of entries){if(Array.isArray(item.items)){for(const child of item.items)add(child.link,item.label||child.label)}else add(item.link,item.label)}
+ for(const path of docPaths()){const match=/^src\/content\/docs\/([a-z0-9-]+)\/index\.mdx?$/.exec(path);if(match)add('/'+match[1]+'/',name(path,get(path)))}
+ return [...options.values()];
+}
+function slugFromTitle(title){return title.normalize('NFD').replace(/\p{M}/gu,'').replace(/[đĐ]/g,c=>c==='Đ'?'D':'d').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'')||'bai-viet'}
+function newArticleTarget(){
+ const workspace=$('new-workspace').value,title=$('new-title').value.trim(),category=categoryOptions().find(c=>c.route===$('new-category').value);
+ const used=new Set();
+ if(workspace==='tech'){for(const post of JSON.parse(get(POSTS)||'[]'))used.add(post.slug)}
+ else if(category){for(const path of docPaths()){const rel=routeForDoc(path),prefix=category.route+'/';if(rel.startsWith(prefix))used.add(rel.slice(prefix.length).split('/')[0])}used.add('index')}
+ const base=slugFromTitle(title);let slug=base,n=2;while(used.has(slug))slug=base+'-'+n++;
+ const route=workspace==='tech'?'techblog/'+slug:category?category.route+'/'+slug:'';
+ return {workspace,title,category,slug,route};
+}
+function updateNewArticle(){
+ const tech=$('new-workspace').value==='tech';$('new-category-field').hidden=tech;$('new-category').required=!tech;
+ $('new-auto-category').hidden=!tech;
+ try{const target=newArticleTarget();$('new-url').textContent=target.title&&target.route?'https://duykhang68.github.io/khoahoctienghan/'+target.route+'/':'URL sẽ tự tạo khi nhập tiêu đề';$('new-create').disabled=busy||!target.title||(!tech&&!target.category)}
+ catch(e){$('new-error').textContent=e.message;$('new-create').disabled=true}
+}
+function openNewArticle(workspace){
+ if(!keepCurrent())return;
+ const form=$('new-article-form');form.reset();$('new-error').textContent='';$('new-workspace').value=workspace;
+ const options=categoryOptions(),select=$('new-category');select.replaceChildren(new Option('Chọn chuyên mục',''));
+ for(const option of options)select.add(new Option(option.label,option.route));
+ const current=active.startsWith('src/content/docs/')?routeForDoc(active).split('/')[0]:'';
+ if(options.some(c=>c.route===current))select.value=current;
+ form.hidden=false;updateNewArticle();$('new-title').focus();
+}
+function setContentScope(next){scope=next;document.querySelectorAll('[data-scope]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.scope===next)));$('filter').value=''}
+function categoryLink(source,title,route){
+ // Escape link text; route consists exclusively of validated ASCII slugs.
+ const entities={'&':'&amp;','<':'&lt;','>':'&gt;','{':'&#123;','}':'&#125;','[':'&#91;',']':'&#93;','\\':'&#92;','*':'&#42;','_':'&#95;','\x60':'&#96;'};
+ const label=Array.from(title,c=>entities[c]||c).join('');
+ const link='- ['+label+'](/khoahoctienghan/'+route+'/)';
+ const marker='## Bài viết trong chuyên mục';
+ const body=source.trimEnd();
+ // Append a separate subsection without rewriting other source or metadata.
+ return body+(body.includes('\n'+marker+'\n')?'\n':'\n\n'+marker+'\n\n')+link+'\n';
+}
+$('new-workspace').onchange=updateNewArticle;$('new-category').onchange=updateNewArticle;$('new-title').oninput=updateNewArticle;
+$('new-cancel').onclick=()=>{$('new-article-form').hidden=true;$('new').focus()};
+$('new-article-form').onsubmit=e=>{
+ e.preventDefault();if(busy)return;
+ try{
+  const {workspace,title,category,slug,route}=newArticleTarget();
+  if(!title||title.length>180||(!category&&workspace!=='tech'))throw Error('Nhập tiêu đề và chọn chuyên mục.');
+  const description=$('new-description').value.trim()||title;
+  if(workspace==='tech'){
+   const list=JSON.parse(get(POSTS)||'[]'),post={slug,title,summary:description,date:dateNow(),sections:[{heading:'Giới thiệu',paragraphs:['Nội dung bài viết.']}],issues:[]};
+   const next=[...list,post];stage(POSTS,JSON.stringify(next,null,2)+'\n');
+   setContentScope('tech');select(POSTS);postIndex=next.length-1;renderPosts();$('editor').value=JSON.stringify(post,null,2);renderVisual();state();
+  }else{
+   const path='src/content/docs/'+route+'.mdx',source=get(category.file);
+   if(!source)throw Error('Chuyên mục không còn tồn tại. Mở lại form.');
+   if(!knowledgeDocument(source)?.safe)throw Error('Trang chuyên mục có nội dung nâng cao. Không thể thêm liên kết an toàn.');
+   const content='---\ntitle: '+JSON.stringify(title)+'\ndescription: '+JSON.stringify(description)+'\n---\n\nNội dung bài viết.\n';
+   stageMany([[path,content],[category.file,categoryLink(source,title,route)]]);
+   setContentScope('knowledge');select(path);
+  }
+  $('new-article-form').hidden=true;$('visual-editor').querySelector('.paper-field')?.focus();status('Đã tạo bài mới và lưu bản nháp local. Chưa xuất bản.');
+ }catch(error){$('new-error').textContent=error.message}
+};
 const leafDoc=/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)+[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/;
 function canDeleteDoc(path){return leafDoc.test(path)&&!/(?:\/index|\/ngon-ngu\/hangul|\/lich-su\/joseon|\/van-hoa\/chao-hoi)\.mdx?$/.test(path)}
 function dateNow(){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T')+'+07:00'}
