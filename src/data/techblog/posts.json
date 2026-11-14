@@ -1138,5 +1138,401 @@
         "visuals": []
       }
     ]
+  },
+  {
+    "slug": "ba-issue-mot-bai-hoc-conflict-va-e2e",
+    "title": "Ba issue, một bài học: Khi Git merge được nhưng phần mềm chưa chắc đã đúng",
+    "summary": "Hai xung đột Pull Request và một lần Playwright thất bại trong dự án Tri thức Hàn Quốc cho thấy vì sao build xanh, merge thành công và production được xác minh là ba câu chuyện khác nhau. Một nhật ký điều tra với dòng thời gian, sơ đồ Git, chuỗi CI và vòng lặp học hỏi từ lỗi.",
+    "date": "2026-11-14T19:33:00+07:00",
+    "issues": [
+      66,
+      69,
+      71
+    ],
+    "sections": [
+      {
+        "heading": "01 — Ba tín hiệu trong 15 phút",
+        "paragraphs": [
+          "Tối 14/11/2026, GitHub Actions của dự án Tri thức Hàn Quốc ghi nhận ba incident: hai xung đột khi tích hợp Pull Request và một lỗi chưa được phân loại. Chúng xuất hiện trong khoảng từ 19:01 đến 19:15 (GMT+7), đúng lúc dự án đang thay đổi trải nghiệm đọc và hệ thống xuất bản trực quan. Đằng sau ba dòng màu đỏ là ba tình huống khác nhau về cách bảo vệ chất lượng.",
+          "Đây là nhật ký điều tra, không phải tổng kết ba lỗi đã sửa. Tại lần đối chiếu khoảng 19:33, cả ba issue vẫn mở và chưa có nội dung xác minh khắc phục trong phần thảo luận. Hai PR liên quan có kết quả khác nhau. Không thể từ đó suy ra ba lỗi production, hay một nguyên nhân chung."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "variant": "summary",
+            "title": "3 incident · 2 nhóm tín hiệu",
+            "caption": "Phân loại theo tiêu đề và nội dung ba issue được khảo sát; không phải thống kê toàn bộ repository.",
+            "unit": "issue",
+            "source": "GitHub Issues #66, #69, #71 — 14/11/2026, GMT+7",
+            "items": [
+              {
+                "label": "Xung đột PR",
+                "value": "2",
+                "color": "#D97706"
+              },
+              {
+                "label": "Chưa phân loại",
+                "value": "1",
+                "color": "#7C3AED"
+              }
+            ]
+          },
+          {
+            "kind": "flow",
+            "title": "Dòng thời gian sự cố",
+            "caption": "Thời điểm tạo issue theo GitHub, quy đổi sang GMT+7 ngày 14/11/2026.",
+            "items": [
+              {
+                "label": "19:01:11 · Issue #66",
+                "detail": "Conflict — PR #65",
+                "icon": "pull"
+              },
+              {
+                "label": "19:07:17 · Issue #69",
+                "detail": "Conflict — PR #61",
+                "icon": "pull"
+              },
+              {
+                "label": "19:15:46 · Issue #71",
+                "detail": "UNKNOWN — GitHub Actions run 43593851717",
+                "icon": "file"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Issue #66: Xung đột khi mở rộng Visual Editorial 2.0",
+        "paragraphs": [
+          "PR #65 mở rộng hệ thống Visual Editorial 2.0 từ Tech Blog sang Knowledge Base. Theo mô tả PR, mục tiêu là dùng chung renderer và CSS thông qua KnowledgeVisual, danh mục JSON đã kiểm tra và ID tham chiếu trong MDX. Bài Hangul được chọn làm ví dụ: biểu đồ 14 phụ âm + 10 nguyên âm cơ bản, sơ đồ tạo âm tiết 한 và vòng lặp luyện tập. Các thay đổi còn liên quan đến quy tắc biên tập và kiểm tra nội dung.",
+          "Issue #66 ghi nhận xung đột tại HEAD aab55adcccde51a2c42fb7d9cd90522e577cfcf3. Nó yêu cầu nghiên cứu xung đột ngữ nghĩa thay vì chọn toàn bộ ours hoặc theirs. Hai nhánh có thể đều hợp lệ khi đứng riêng nhưng không tương thích sau khi tích hợp; xóa dấu conflict không đồng nghĩa bảo toàn hành vi của cả hai.",
+          "Đến 19:26:12, PR #65 đã merge với HEAD cuối 50f11b3b8af45e087eff24b84acd530869318fc1 và merge SHA 9efedd291076a6c923d341c69ca416c75fa927d1. Đây là bằng chứng về trạng thái merge, không phải bằng chứng issue đã được đóng hay bản phát hành đã được xác minh. Nguồn hiện có chưa chứng minh chính xác đoạn xung đột nào được sửa và bằng cách nào."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Một bộ renderer, hai nơi xuất bản",
+            "caption": "Sơ đồ kiến trúc theo mô tả PR #65 và tài liệu Visual Editorial; không phải ảnh chụp màn hình production.",
+            "items": [
+              {
+                "label": "Tech Blog",
+                "detail": "Nội dung JSON + visual blocks",
+                "icon": "file"
+              },
+              {
+                "label": "Knowledge Base",
+                "detail": "MDX + KnowledgeVisual + ID",
+                "icon": "file"
+              },
+              {
+                "label": "Hợp đồng visual dùng chung",
+                "detail": "Schema và validation; hai luồng nội dung hội tụ",
+                "icon": "shield"
+              },
+              {
+                "label": "TechVisual",
+                "detail": "Renderer Astro/CSS dùng chung",
+                "icon": "merge"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Ba định danh khác nhau của PR #65; SHA đầy đủ nêu trong nội dung.",
+            "columns": [
+              "Mốc",
+              "SHA rút gọn",
+              "Ý nghĩa"
+            ],
+            "rows": [
+              [
+                "HEAD lúc có conflict",
+                "aab55adcccde",
+                "Issue #66"
+              ],
+              [
+                "HEAD cuối PR",
+                "50f11b3b8af4",
+                "Phiên bản cuối nhánh"
+              ],
+              [
+                "Merge commit",
+                "9efedd291076",
+                "Đã vào main; chưa xác minh production trong bài"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Issue #69: Xung đột không phải lý do để ghi đè ý định thiết kế",
+        "paragraphs": [
+          "PR #61 đề xuất chuyển giao diện Knowledge Base sang concept tài liệu Veltro: header hai tầng cố định, nhóm điều hướng gọn, mục lục desktop/mobile, tìm kiếm Pagefind và liên kết điều hướng bài. Theo mô tả PR, mục tiêu là giữ nguyên nội dung, route, màu chữ, Light Mode và Tech Blog.",
+          "Issue #69 đánh dấu conflict tại HEAD 71416d4acd32b4c2aecbd5a5044d7cf2fca242d3. Khi đối chiếu, PR #61 ở trạng thái closed nhưng không merged. Điều đó chỉ chứng minh PR không được tích hợp theo đường này; không chứng minh tính năng bị bỏ vĩnh viễn, cũng không chứng minh một PR khác đã thay thế.",
+          "Với giao diện tài liệu, một lựa chọn giữ toàn bộ một phía có thể làm biến mất một hành vi quan trọng, chẳng hạn khả năng mở menu trên mobile hoặc chuyển đến mục đang đọc. Các ví dụ này minh họa rủi ro thiết kế chung, không phải kết luận về file conflict thực tế của PR #61."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Giải quyết xung đột theo ý định",
+            "caption": "Quy trình minh họa được đề xuất cho conflict ngữ nghĩa; không khẳng định PR #61 đã thực hiện các bước này.",
+            "items": [
+              {
+                "label": "1 · Đọc base và hai nhánh",
+                "detail": "Hiểu mục tiêu của mỗi thay đổi",
+                "icon": "file"
+              },
+              {
+                "label": "2 · Đối chiếu hợp đồng UI",
+                "detail": "Route, menu, TOC, responsive",
+                "icon": "pull"
+              },
+              {
+                "label": "3 · Kết hợp phần tương thích",
+                "detail": "Không chọn blanket ours/theirs",
+                "icon": "merge"
+              },
+              {
+                "label": "4 · Chạy regression",
+                "detail": "Kiểm tra lại cả hai ý định",
+                "icon": "shield"
+              },
+              {
+                "label": "5 · Xác minh trên HEAD mới",
+                "detail": "Chỉ merge khi đủ gate",
+                "icon": "check"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Ví dụ giả định: bảo toàn hành vi khi hai thay đổi cùng đụng một khu vực giao diện.",
+            "columns": [
+              "Ý định A",
+              "Ý định B",
+              "Tiêu chí tích hợp"
+            ],
+            "rows": [
+              [
+                "Header cố định",
+                "Menu mobile",
+                "Không che nội dung; menu vẫn dùng được"
+              ],
+              [
+                "TOC bản mới",
+                "Điều hướng heading",
+                "Nhảy đúng mục, không tràn trang"
+              ],
+              [
+                "Tổ chức nhóm chủ đề",
+                "Route hiện hữu",
+                "Giữ đường dẫn và phân cấp"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Issue #71: Build thành công, Playwright vẫn thất bại",
+        "paragraphs": [
+          "Issue #71 dẫn tới GitHub Actions run 43593851717, SHA 9c6df5c45da36faf376b3f6cbc97b8421ccb82ef. Thay vì suy đoán từ chữ UNKNOWN, có thể kiểm tra kết luận từng bước của job Content and Astro build. Cài dependency, security check, content check, engineering tests, Astro build, kiểm tra build tĩnh và cài Chromium headless shell đều thành công. Bước npm run test:e2e -- --workers=2 thất bại; các bước đánh dấu artifact tin cậy và tải artifact phát hành lên bị bỏ qua. Job Release handoff cũng bị bỏ qua.",
+          "Điều này khoanh vùng điểm hỏng ở kiểm thử trình duyệt, nhưng chưa xác định test cụ thể, assertion hay nguyên nhân gốc. Một bài test có thể phát hiện sai hành vi hoặc tự nó cần cập nhật khi yêu cầu giao diện đã thay đổi; cũng có thể có vấn đề môi trường. Chưa có bằng chứng đủ để lựa chọn giữa các giả thuyết. Không nên gọi UNKNOWN là lỗi Astro build, hay kết luận website đang gặp sự cố production.",
+          "Commit liên quan có thay đổi cấu hình Astro, nhiều component header/footer và bố cục Knowledge Base, CSS cùng các test E2E cho site và Tech Blog. Đây là phạm vi cần xem xét khi điều tra, không phải danh sách thủ phạm. Không có lý do xóa hoặc nới assertion chỉ để CI chuyển xanh."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "variant": "summary",
+            "title": "Điểm dừng của chất lượng",
+            "caption": "Tám bước kiểm chứng/cài đặt được chọn trước handoff: 7 thành công, 1 thất bại; không tính setup, teardown, artifact hoặc các bước bị bỏ qua.",
+            "unit": "bước",
+            "source": "Run 43593851717 · job 132444090422 · 14/11/2026",
+            "items": [
+              {
+                "label": "Thành công",
+                "value": "7",
+                "color": "#16835D"
+              },
+              {
+                "label": "Thất bại",
+                "value": "1",
+                "color": "#DC2626"
+              }
+            ]
+          },
+          {
+            "kind": "flow",
+            "title": "Chuỗi CI dừng ở trình duyệt",
+            "caption": "Trạng thái quan sát trong run 43593851717; các bước liên quan được chọn lọc.",
+            "items": [
+              {
+                "label": "Dependency + Security",
+                "detail": "Thành công",
+                "icon": "shield"
+              },
+              {
+                "label": "Content + Engineering tests",
+                "detail": "Thành công",
+                "icon": "check"
+              },
+              {
+                "label": "Astro build + static verification",
+                "detail": "Thành công",
+                "icon": "check"
+              },
+              {
+                "label": "Chromium headless shell",
+                "detail": "Thành công",
+                "icon": "check"
+              },
+              {
+                "label": "Playwright E2E",
+                "detail": "Thất bại — cần nghiên cứu",
+                "icon": "file"
+              },
+              {
+                "label": "Release handoff",
+                "detail": "Bị bỏ qua — không phải lỗi deploy",
+                "icon": "cloud"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "05 — Một dấu xanh không đại diện cho toàn bộ hệ thống",
+        "paragraphs": [
+          "Mergeability là câu hỏi Git có thể kết hợp thay đổi hay không. Buildability là câu hỏi mã nguồn có thể tạo ra sản phẩm hay không. Kiểm thử hành vi hỏi sản phẩm có thực hiện đúng những gì được mong đợi. Release verification hỏi người dùng có thực sự nhận đúng phiên bản đã được kiểm tra hay không. Không thể dùng kết quả của câu hỏi trước để trả lời câu hỏi sau.",
+          "Hai issue conflict yêu cầu giải quyết trước khi tích hợp; issue UNKNOWN đã chỉ ra một bước CI không đạt. Cùng nằm trong hệ thống cảnh báo chất lượng, nhưng các hiện tượng khác nhau, nên phương pháp xử lý phải khác nhau."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Ảnh chụp trạng thái logic, tại lần kiểm tra ngày 14/11/2026; dấu hỏi là chưa có xác minh trong phạm vi nguồn.",
+            "columns": [
+              "Issue",
+              "Tín hiệu",
+              "Bằng chứng hiện có",
+              "Chưa kết luận"
+            ],
+            "rows": [
+              [
+                "#66",
+                "Conflict PR #65",
+                "PR đã merge",
+                "Root cause; regression; production"
+              ],
+              [
+                "#69",
+                "Conflict PR #61",
+                "PR đóng, không merge",
+                "Bản thay thế; root cause"
+              ],
+              [
+                "#71",
+                "UNKNOWN",
+                "Build xanh; E2E đỏ; handoff skipped",
+                "Test lỗi cụ thể; bản vá; production"
+              ]
+            ]
+          },
+          {
+            "kind": "flow",
+            "title": "Bốn lớp kiểm chứng",
+            "caption": "Mô hình khái niệm cho phát hành an toàn; không phải kết quả một workflow cụ thể.",
+            "items": [
+              {
+                "label": "Tích hợp",
+                "detail": "Git và exact HEAD tương thích với base",
+                "icon": "merge"
+              },
+              {
+                "label": "Tạo sản phẩm",
+                "detail": "Astro build và static smoke",
+                "icon": "file"
+              },
+              {
+                "label": "Kiểm thử hành vi",
+                "detail": "Playwright desktop/mobile",
+                "icon": "shield"
+              },
+              {
+                "label": "Xác minh phát hành",
+                "detail": "Đúng SHA và route công khai",
+                "icon": "cloud"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "06 — Researcher nên học gì từ ba tín hiệu?",
+        "paragraphs": [
+          "Đề xuất cho Engineering Researcher là lưu fingerprint gồm loại incident, PR hoặc run/job, HEAD SHA và dấu hiệu đã lọc. Đối với conflict, đọc merge base và thay đổi hai nhánh; đối với UNKNOWN, chọn bước thất bại đầu tiên, xem assertion đã lọc, tái hiện với phiên bản dependency đã khóa rồi mới đề xuất bản vá nhỏ. Retry có giới hạn chỉ hữu ích nếu có bằng chứng lỗi tạm thời; không thay thế nghiên cứu lỗi xác định.",
+          "Ví dụ lệnh sau là gợi ý điều tra cục bộ sau khi checkout đúng SHA trong nhánh riêng. Không phải log thực thi và không chứng minh test đã được chạy trong quá trình viết bài. Sau khi xác định được test lỗi, ưu tiên chạy đúng test đó để tái hiện, sau đó chạy toàn bộ gate."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "language": "bash",
+            "caption": "Lệnh tái hiện đề xuất; dùng phiên bản Node theo repository và lockfile, không thay đổi gate.",
+            "code": "npm ci\nnpm run check\nnpm run test:engineering\nnpm run build\nnode scripts/verify-build.mjs\nnpx playwright install chromium --only-shell\nnpm run test:e2e -- --workers=2"
+          },
+          {
+            "kind": "flow",
+            "variant": "cycle",
+            "title": "Vòng lặp học hỏi từ lỗi",
+            "centerLabel": [
+              "Bằng chứng",
+              "kỹ thuật"
+            ],
+            "caption": "Quy trình đề xuất dựa trên Engineering contract; chỉ ghi bài học hoàn tất khi hồi quy và SHA đã được xác minh.",
+            "items": [
+              {
+                "label": "Phát hiện",
+                "detail": "Ghi đúng run, PR và SHA"
+              },
+              {
+                "label": "Nghiên cứu",
+                "detail": "Phân biệt dấu hiệu và nguyên nhân"
+              },
+              {
+                "label": "Sửa tối thiểu",
+                "detail": "Bảo toàn ý định, không bỏ gate"
+              },
+              {
+                "label": "Xác minh",
+                "detail": "Regression + CI + bằng chứng phù hợp"
+              },
+              {
+                "label": "Ghi nhớ",
+                "detail": "Lưu lesson đã kiểm chứng"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "07 — Một trang blog không thể thay thế việc điều tra",
+        "paragraphs": [
+          "Ba issue này có giá trị ngay cả khi chưa thể tuyên bố khắc phục hoàn toàn. Chúng cho thấy hệ thống biết phát hiện xung đột và dừng handoff khi kiểm thử không đạt. Chúng cũng cho thấy điều cần cải thiện về thông tin: mô tả test lỗi đã lọc, nguyên nhân gốc, liên kết bản vá và kết quả hồi quy phải được ghi lại trước khi đóng incident.",
+          "Một repo có văn hóa kỹ thuật tốt không cố làm biến mất mọi dấu đỏ bằng bất cứ giá nào. Nó phân biệt được dấu hiệu và nguyên nhân, bảo vệ hành vi người dùng khi tích hợp nhiều thay đổi, và chỉ tuyên bố thành công ở mức bằng chứng cho phép. Khi từng incident có đủ xác minh, mỗi lỗi có thể trở thành một bài bugfix riêng theo quy tắc hiện hành."
+        ]
+      },
+      {
+        "heading": "Nguồn tham khảo",
+        "paragraphs": [
+          "GitHub — Issue #66: https://github.com/duykhang68/khoahoctienghan/issues/66",
+          "GitHub — Issue #69: https://github.com/duykhang68/khoahoctienghan/issues/69",
+          "GitHub — Issue #71: https://github.com/duykhang68/khoahoctienghan/issues/71",
+          "GitHub — PR #65: https://github.com/duykhang68/khoahoctienghan/pull/65",
+          "GitHub — PR #61: https://github.com/duykhang68/khoahoctienghan/pull/61",
+          "GitHub Actions — Run 43593851717: https://github.com/duykhang68/khoahoctienghan/actions/runs/43593851717",
+          "GitHub Actions — Job 132444090422: https://github.com/duykhang68/khoahoctienghan/actions/runs/43593851717/job/132444090422",
+          "Engineering contract: https://github.com/duykhang68/khoahoctienghan/blob/main/AGENTS.md",
+          "Visual Editorial authoring: https://github.com/duykhang68/khoahoctienghan/blob/main/docs/techblog-visuals.md"
+        ]
+      }
+    ]
   }
 ]
