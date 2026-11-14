@@ -1,6 +1,7 @@
 ---
 import TechBlog from '../../layouts/TechBlog.astro';
 import TechCover from '../../components/TechCover.astro';
+import EditorialImage from '../../components/EditorialImage.astro';
 import '../../styles/techblog-article.css';
 import IssueEditorialVisual from '../../components/IssueEditorialVisual.astro';
 import TechVisual from '../../components/TechVisual.astro';
@@ -21,7 +22,7 @@ const category=inferCategory(post);
         <h1>{post.title}</h1>
       </header>
       <figure class="research-hero" data-cover-kind={cover?'image':'decorative'}>
-        {cover?<img src={cover} alt={post.coverAlt||''} width="1200" height="675" fetchpriority="high" decoding="async"/>:<div aria-hidden="true"><TechCover slug={post.slug} eager={true}/></div>}
+        {cover?<img src={cover} alt={post.coverAlt||''} width={post.cover?.startsWith("/media/editor/")?1600:1200} height={post.cover?.startsWith("/media/editor/")?900:675} fetchpriority="high" decoding="async"/>:<div aria-hidden="true"><TechCover slug={post.slug} eager={true}/></div>}
         {cover&&post.coverCaption&&<figcaption>{post.coverCaption}</figcaption>}
       </figure>
       <div class="research-reading-grid">
@@ -44,9 +45,9 @@ const category=inferCategory(post);
           {post.sections.map((section,i)=>isReferenceHeading(section.heading)?
             <details class="article-disclosure article-references">
               <summary><h2 id={'section-'+i}>{section.heading}</h2><span class="disclosure-count">{section.paragraphs.length}</span><svg class="disclosure-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary>
-              <div class="disclosure-content"><TechReferences paragraphs={section.paragraphs}/></div>
+              <div class="disclosure-content"><TechReferences paragraphs={section.paragraphs}/>{section.images?.map(image=><EditorialImage {image}/>)}</div>
             </details>:
-            <section aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{section.paragraphs.map(p=><TechParagraph value={p}/>)}{section.visuals?.map(visual=>post.slug==='nhung-loi-dau-tien-cua-tri-thuc-han-quoc'&&[0,1,8].includes(i)&&!('variant' in visual)&&!('title' in visual)?<IssueEditorialVisual visual={visual} section={i}/>:<TechVisual visual={visual}/>)}</section>)}
+            <section aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{section.paragraphs.map(p=><TechParagraph value={p}/>)}{section.visuals?.map(visual=>post.slug==='nhung-loi-dau-tien-cua-tri-thuc-han-quoc'&&[0,1,8].includes(i)&&!('variant' in visual)&&!('title' in visual)?<IssueEditorialVisual visual={visual} section={i}/>:<TechVisual visual={visual}/>)}{section.images?.map(image=><EditorialImage {image}/>)}</section>)}
           {post.issues.length>0&&<details class="article-disclosure article-issues">
             <summary><h2>Issue tham khảo</h2><span class="disclosure-count">{post.issues.length}</span><svg class="disclosure-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg></summary>
             <div class="disclosure-content"><ul>{post.issues.map(number=><li><a href={'https://github.com/duykhang68/khoahoctienghan/issues/'+number}>Issue #{number}</a></li>)}</ul></div>

@@ -25,3 +25,11 @@ const knowledgeVisuals=JSON.parse(await readFile('src/data/knowledge-visuals.jso
 const knowledgePages=await Promise.all(paths.map(async path=>({path,content:await readFile(root+'/'+path,'utf8')})));
 const visualCount=validateKnowledgeVisuals(knowledgeVisuals,knowledgePages);
 console.log('Validated '+visualCount+' Knowledge Base visual references');
+
+const {MEDIA_INDEX,mediaPath,validateMedia,validateMediaIndex}=await import('../src/lib/editor-media.mjs');
+const mediaIndex=JSON.parse(await readFile(MEDIA_INDEX,'utf8'));
+const mediaFiles=await readdir('public/media/editor').catch(e=>{if(e.code==='ENOENT')return [];throw e});
+const dimensions=new Map();
+for(const name of mediaFiles){const path='public/media/editor/'+name;assert(mediaPath(path),'Unexpected editor media path');dimensions.set(path,validateMedia(path,(await readFile(path)).toString('base64')));}
+validateMediaIndex(mediaIndex,techPosts,routes,p=>dimensions.get(p));
+console.log('Validated '+dimensions.size+' editor WebP assets and references');

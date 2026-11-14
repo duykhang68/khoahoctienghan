@@ -17,12 +17,13 @@ export type TechVisual = {
   language?: string;
   code?: string;
 };
+export type EditorImage = {src:string;alt:string;caption:string;width:number;height:number};
 export type TechPost = {
   slug: string;
   title: string;
   summary: string;
   date: string;
-  sections: { heading: string; paragraphs: string[]; visuals?: TechVisual[] }[];
+  sections: { heading: string; paragraphs: string[]; visuals?: TechVisual[]; images?: EditorImage[] }[];
   issues: number[];
   author?: string;
   cover?: string;

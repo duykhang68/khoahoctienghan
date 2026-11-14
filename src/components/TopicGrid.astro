@@ -1,12 +1,15 @@
 ---
 import {topics} from '../lib/knowledge-topics';
 import TechCover from './TechCover.astro';
+import records from '../data/editor-images.json';
+import type {EditorImage} from '../lib/techblog';
+const covers=records as Record<string,{cover?:EditorImage}>;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
 <div class="not-content index-archive" aria-label="Các chuyên mục tri thức">
  <div class="index-grid feed-list" id="tech-post-list" data-layout="grid">
  {topics.map(topic=><article class="index-card feed-post" data-knowledge-topic>
-  <a class="index-card-visual" href={base+'/'+topic.id+'/'} tabindex="-1" aria-hidden="true"><TechCover slug={topic.id}/></a>
+  <a class="index-card-visual" href={base+'/'+topic.id+'/'} tabindex="-1" aria-hidden="true"><TechCover slug={topic.id} cover={covers[topic.id]?.cover?base+covers[topic.id].cover!.src:undefined}/></a>
   <div class="index-card-copy"><div class="post-meta">Tri thức Hàn Quốc</div><h3><a class="knowledge-card" href={base+'/'+topic.id+'/'}>{topic.title}</a></h3><p class="post-summary">{topic.desc}</p></div>
  </article>)}
  </div>

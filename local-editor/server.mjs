@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {allowed,digest,applyChanges} from './core.mjs';
+import {mediaPath} from '../src/lib/editor-media.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const REPO='duykhang68/khoahoctienghan', API='https://api.github.com', prefix='/repos/'+REPO;
 const PORT=4317,hosts=new Set(['127.0.0.1:'+PORT,'localhost:'+PORT]);
@@ -12,7 +13,7 @@ let token=null,login=null,writing=false;
 const git=(...args)=>execFileSync('git',args,{cwd:ROOT,encoding:'utf8',maxBuffer:16*1024*1024});
 function local(){
  const sha=git('rev-parse','HEAD').trim(),paths=git('ls-tree','-r','--name-only',sha).split('\n').filter(allowed);
- return {sha,files:Object.fromEntries(paths.map(p=>{const content=git('show',sha+':'+p);return [p,{content,hash:digest(content)}];}))};
+ return {sha,files:Object.fromEntries(paths.map(p=>{const content=mediaPath(p)?execFileSync('git',['show',sha+':'+p],{cwd:ROOT,maxBuffer:2_000_000}).toString('base64'):git('show',sha+':'+p);return [p,{content,hash:digest(content)}];}))};
 }
 async function gh(path,method='GET',body,credential=token){
  if(!credential)throw Error('Cần Connect GitHub trước');
@@ -31,7 +32,7 @@ async function remote(){
   if(e.size>2_000_000)throw Error('Tệp vượt giới hạn');
   const blob=await gh(prefix+'/git/blobs/'+e.sha);
   if(blob.encoding!=='base64')throw Error('Định dạng blob không hỗ trợ');
-  const content=Buffer.from(blob.content,'base64').toString('utf8');
+  const bytes=Buffer.from(blob.content,'base64');const content=mediaPath(e.path)?bytes.toString('base64'):bytes.toString('utf8');
   files[e.path]={content,hash:digest(content)};
  }));
  return {sha,tree:commit.tree.sha,files};
@@ -79,7 +80,12 @@ const server=http.createServer(async(req,res)=>{
     if(!diff.length)throw Error('Không có thay đổi mới');
     const base=(await gh(prefix+'/git/ref/heads/main')).object.sha;
     if(base!==snap.sha)throw Error('Main vừa thay đổi; Pull lại trước khi Sync');
-    const tree=await gh(prefix+'/git/trees','POST',{base_tree:snap.tree,tree:diff.map(c=>({path:c.path,mode:'100644',type:'blob',content:c.content}))});
+    const entries=[];
+    for(const c of diff){
+     if(mediaPath(c.path)){const blob=await gh(prefix+'/git/blobs','POST',{content:c.content,encoding:'base64'});entries.push({path:c.path,mode:'100644',type:'blob',sha:blob.sha})}
+     else entries.push({path:c.path,mode:'100644',type:'blob',content:c.content});
+    }
+    const tree=await gh(prefix+'/git/trees','POST',{base_tree:snap.tree,tree:entries});
     const menuOnly=diff.every(c=>c.path==='src/data/knowledge-menu.json');
     const title=menuOnly?'content: update knowledge navigation':'content: update knowledge content and menus';
     const commit=await gh(prefix+'/git/commits','POST',{message:title,tree:tree.sha,parents:[base]});

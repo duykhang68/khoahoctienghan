@@ -2,22 +2,26 @@
 import EditorialHeader from './EditorialHeader.astro';
 import EditorialFooter from './EditorialFooter.astro';
 import TechCover from './TechCover.astro';
+import EditorialImage from './EditorialImage.astro';
+import records from '../data/editor-images.json';
+import type {EditorImage} from '../lib/techblog';
 import {topics} from '../lib/knowledge-topics';
 const {entry}=Astro.locals.starlightRoute;
 const {title}=entry.data;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const path=Astro.url.pathname.slice(base.length).replace(/^\/|\/$/g,'');
 const isHome=!path;
+const media=(records as Record<string,{cover?:EditorImage;images:EditorImage[]}>)[path];
 const topic=topics.find(t=>t.id===path.split('/')[0]);
 const permalink=base+'/'+(path?path+'/':'');
 ---
 <EditorialHeader {title} knowledgeHome={true} indexPage={isHome} article={!isHome}/>
 {isHome?<div class="knowledge-editorial-shell engineering-index-page">
- <div id="content"><div class="engineering-index"><slot/></div></div>
+ <div id="content"><div class="engineering-index"><slot/>{media?.images.map(image=><EditorialImage {image}/>)}</div></div>
 </div>:<div class="knowledge-editorial-shell research-article-page">
  <div id="content"><div class="research-article-shell"><article class="article research-article">
   <header class="article-heading research-heading"><h1 id="_top">{title}</h1></header>
-  <figure class="research-hero" data-cover-kind="decorative"><div aria-hidden="true"><TechCover slug={path} eager={true}/></div></figure>
+  <figure class="research-hero" data-cover-kind={media?.cover?'image':'decorative'}>{media?.cover?<><img src={base+media.cover.src} alt={media.cover.alt} width={media.cover.width} height={media.cover.height} fetchpriority="high" decoding="async"/>{media.cover.caption&&<figcaption>{media.cover.caption}</figcaption>}</>:<div aria-hidden="true"><TechCover slug={path} eager={true}/></div>}</figure>
   <div class="research-reading-grid">
    <aside class="research-meta" aria-label="Thông tin bài viết">
     <dl class="post-meta"><div><dt>Nhóm</dt><dd><a href={base+'/'}>Tri thức Hàn Quốc</a></dd></div>
@@ -28,7 +32,7 @@ const permalink=base+'/'+(path?path+'/':'');
      <span class="share-status" role="status" aria-live="polite"></span>
     </div>
    </aside>
-   <div class="article-body"><slot/></div>
+   <div class="article-body"><slot/>{media?.images.map(image=><EditorialImage {image}/>)}</div>
   </div>
  </article></div></div>
 </div>}

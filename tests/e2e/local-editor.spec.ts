@@ -70,5 +70,23 @@ test('local studio edits rendered documents and retains original structured visu
  await page.locator('#save').click();
  const all=await page.evaluate(path=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}')[path]?.content,posts);
  expect(JSON.parse(all)[0].sections[0].visuals.map((v:{kind:string})=>v.kind)).toEqual(['flow','swatches','buttons','type','spacing','wireframe','table','flow','bars','code']);
+ // Inject a real PNG through the browser file picker; the editor must produce local WebP bytes and a section reference.
+ await page.locator('.media summary').click();
+ const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=32;c.height=24;const g=c.getContext('2d')!;g.fillStyle='#2459a6';g.fillRect(0,0,32,24);return c.toDataURL('image/png').split(',')[1]});
+ await page.locator('#image-file').setInputFiles({name:'fixture.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+ await expect(page.locator('#image-info')).toContainText('32 × 24 px');
+ await page.getByLabel('Mô tả ảnh',{exact:true}).fill('Ảnh minh họa');
+ await page.getByLabel('Chú thích ảnh (tùy chọn)',{exact:true}).fill('Ảnh đã chèn');
+ await page.locator('#image-insert').click();
+ await expect(page.locator('#visual-editor .editor-image-card img')).toBeVisible();
+ const mediaDrafts=await page.evaluate(()=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}'));
+ const asset=Object.keys(mediaDrafts).find(p=>p.startsWith('public/media/editor/'))!;
+ expect(asset).toMatch(/\.webp$/);expect(Buffer.from(mediaDrafts[asset].content,'base64').toString('ascii',8,12)).toBe('WEBP');
+ expect(JSON.parse(mediaDrafts[posts].content)[0].sections[0].images[0]).toMatchObject({src:asset.slice(6),alt:'Ảnh minh họa',width:32,height:24});
+ await page.locator('#files .file').filter({hasText:'Hangul và cấu trúc âm tiết'}).click();
+ await page.locator('#image-insert').click();
+ await expect(page.locator('#visual-editor .editor-image-card img')).toBeVisible();
+ const kb=await page.evaluate(()=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}'));
+ expect(JSON.parse(kb['src/data/editor-images.json'].content)['ngon-ngu/hangul'].images[0].src).toBe(asset.slice(6));
  expect(errors).toEqual([]);
 });

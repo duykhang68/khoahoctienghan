@@ -1,0 +1,14 @@
+---
+import type {EditorImage} from '../lib/techblog';
+const {image}=Astro.props as {image:EditorImage};
+const src=import.meta.env.BASE_URL.replace(/\/$/,'')+image.src;
+---
+<figure class="editorial-body-image" data-editor-image>
+ <img {src} alt={image.alt} width={image.width} height={image.height} loading="lazy" decoding="async"/>
+ {image.caption&&<figcaption>{image.caption}</figcaption>}
+</figure>
+<style>
+ .editorial-body-image{margin:24px 0;min-width:0}
+ .editorial-body-image img{display:block;max-width:100%;height:auto;margin:auto;border-radius:8px}
+ .editorial-body-image figcaption{margin:8px 0 0;text-align:center;color:#626262;font-size:.85rem;line-height:1.5}
+</style>

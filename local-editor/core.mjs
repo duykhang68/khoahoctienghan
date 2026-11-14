@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {validateMenu,routesFromPaths} from '../src/lib/knowledge-menu.mjs';
 import {validateVisual} from '../src/lib/tech-visual-validation.mjs';
+import {MEDIA_INDEX,mediaPath,validateMedia,validateMediaIndex} from '../src/lib/editor-media.mjs';
 export const MENU='src/data/knowledge-menu.json';
 export const POSTS='src/data/techblog/posts.json';
 export const VISUALS='src/data/knowledge-visuals.json';
-export const allowed=p=>typeof p==='string'&&([MENU,POSTS,VISUALS].includes(p)||/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/.test(p));
+export const allowed=p=>typeof p==='string'&&([MENU,POSTS,VISUALS,MEDIA_INDEX].includes(p)||mediaPath(p)||/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/.test(p));
 export const digest=s=>s===null?null:createHash('sha256').update(s).digest('hex');
 export function applyChanges(files,changes){
  assert(Array.isArray(changes)&&changes.length>0&&changes.length<=100,'Không có thay đổi hoặc quá 100 tệp');
@@ -16,6 +17,7 @@ export function applyChanges(files,changes){
   const old=files.get(c.path)??null;
   assert(digest(old)===c.before,'Xung đột nội dung tại '+c.path+'; Pull và đối chiếu trước khi đồng bộ');
   assert(typeof c.content==='string'&&c.content.length>0&&Buffer.byteLength(c.content)<=2_000_000,'Nội dung trống hoặc vượt giới hạn');
+  if(mediaPath(c.path)){validateMedia(c.path,c.content);assert(old===null||old===c.content,'Cannot overwrite immutable WebP');}
   next.set(c.path,c.content);
  }
  const posts=JSON.parse(next.get(POSTS));
@@ -36,7 +38,11 @@ export function applyChanges(files,changes){
   const slug=p.replace(/\.mdx?$/,'');assert(!docs.has(slug),'Trùng tên Markdown/MDX: '+p);docs.add(slug);
   assert(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(v)&&/^title:\s*\S.+/m.test(v)&&/^description:\s*\S.+/m.test(v),'Thiếu title/description: '+p);
  }
- validateMenu(JSON.parse(next.get(MENU)),routesFromPaths(next.keys(),posts));
+ const routes=routesFromPaths(next.keys(),posts);
+ validateMenu(JSON.parse(next.get(MENU)),routes);
+ const knowledgeRoutes=routesFromPaths(next.keys(),[]);knowledgeRoutes.delete('/techblog/');
+ const used=validateMediaIndex(JSON.parse(next.get(MEDIA_INDEX)||'{}'),posts,knowledgeRoutes,p=>next.has(p)?validateMedia(p,next.get(p)):null);
+ for(const c of changes)if(mediaPath(c.path))assert(used.has(c.path),'Ảnh chưa được chèn vào bài viết');
  return next;
 }
 export function reconcile(local,remote,drafts){
