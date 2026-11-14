@@ -6,6 +6,7 @@ export function validateVisual(v){
  assert(v&&kinds.has(v.kind)&&str(v.caption),'Invalid visual kind/caption');
  if(v.variant!==undefined)assert((v.kind==='bars'&&v.variant==='summary')||(v.kind==='flow'&&v.variant==='cycle'),'Invalid visual variant');
  if(v.variant==='cycle')assert(v.items?.length===5,'Cycle requires five stages');
+ if(v.centerLabel!==undefined)assert(v.variant==='cycle'&&Array.isArray(v.centerLabel)&&v.centerLabel.length===2&&v.centerLabel.every(t=>str(t)&&Array.from(t).length<=18),'Cycle center requires two short text lines');
  if(v.variant==='summary')assert(v.items?.length>=2&&v.items.length<=5,'Summary requires 2–5 metrics');
  if(v.kind==='wireframe'){assert(['listing','article','responsive'].includes(v.layout),'Unknown wireframe');return;}
  if(v.kind==='code'){assert(str(v.code)&&str(v.language),'Code requires language and content');return;}

@@ -7,6 +7,7 @@ export type TechVisual = {
   caption: string;
   variant?: 'summary'|'cycle';
   title?: string;
+  centerLabel?: [string,string];
   items?: {label:string;icon?:string;value?:string;detail?:string;color?:string;foreground?:string;hover?:string;size?:number;weight?:number}[];
   layout?: 'listing'|'article'|'responsive';
   columns?: string[];

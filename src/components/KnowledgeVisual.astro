@@ -1,0 +1,13 @@
+---
+import TechVisual from './TechVisual.astro';
+import records from '../data/knowledge-visuals.json';
+import type {TechVisual as Visual} from '../lib/techblog';
+import {validateVisual} from '../lib/tech-visual-validation.mjs';
+const {id}=Astro.props as {id:string};
+if(typeof id!=='string'||!Object.hasOwn(records,id))throw new Error('Unknown KnowledgeVisual ID: '+id);
+const visual=(records as Record<string,Visual>)[id];
+validateVisual(visual);
+---
+<div class="not-content knowledge-visual" data-knowledge-visual={id}>
+ <TechVisual visual={visual} />
+</div>
