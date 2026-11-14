@@ -24,6 +24,7 @@ export function mountSheetBlog(root){
   $('[data-route]').textContent=selected&&kind&&(kind!=='knowledge'||cat)?base+'/'+(kind==='tech'?'techblog':cat)+'/'+slugify(selected.title)+'/':'';
   $('[data-submit]').disabled=!google||!github||!selectedRow||!$('[data-consent]').checked||!kind||(kind==='knowledge'&&!cat)||sending;
   $('[data-close]').disabled=sending;
+  $('[data-dialog-connect]').hidden=!!github;$('[data-dialog-connect]').disabled=sending;
  };
  function validClient(value){return /^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(value)}
  function render(){
@@ -33,21 +34,24 @@ export function mountSheetBlog(root){
   $('[data-count]').textContent=google?matches.length+' bài viết tiếng Việt':'Chưa tải danh sách';
   const area=$('[data-rows]');area.replaceChildren();
   for(const item of matches.slice((page-1)*10,page*10)){
-   const card=make('article',undefined,'sb-row'),copy=make('div'),button=make('button','Viết bài');button.type='button';
+   const card=make('article',undefined,'sb-row'),copy=make('div'),button=make('button','Đăng bài','sb-publish');button.type='button';button.dataset.publishRow=String(item.row);
    copy.append(make('small','VN · Dòng '+item.row+(item.topic?' · '+item.topic:'')),make('h3',item.title));
-   if(submitted.has(item.row)){const link=make('a','Đã gửi commit');link.href=submitted.get(item.row).commitUrl;link.target='_blank';link.rel='noopener noreferrer';copy.append(link);button.disabled=true;}
-   else button.addEventListener('click',()=>choose(item));card.append(copy,button);area.append(card);
+   if(item.id){
+    const state=make('span','Đã có Content ID','sb-row-state');copy.append(state);button.textContent='Đã có Content ID';button.disabled=true;
+   }else if(submitted.has(item.row)){const link=make('a','Đã gửi commit');link.href=submitted.get(item.row).commitUrl;link.target='_blank';link.rel='noopener noreferrer';copy.append(link);button.disabled=true;button.textContent='Đã gửi FIFO';}
+   else{copy.append(make('span','Chưa đăng','sb-row-state sb-row-pending'));button.addEventListener('click',()=>choose(item))}
+   card.append(copy,button);area.append(card);
   }
   if(!matches.length)area.append(make('p',google?'Không có tiêu đề phù hợp.':'Đăng nhập Google để xem danh sách bài.'));
   $('[data-pages]').hidden=pages===1;$('[data-page]').textContent='Trang '+page+' / '+pages;$('[data-prev]').disabled=page===1;$('[data-next]').disabled=page===pages;
  }
  async function refresh(){
   if(!google||loading||sending)return;const client=google,epoch=googleEpoch;loading=true;update();set('Đang đọc tiêu đề từ tab VN…');
-  try{const result=await client.list();if(google!==client||epoch!==googleEpoch)return;rows=result;page=1;render();set('Đã tải danh sách. Chọn Viết bài để xem chính xác nội dung trước khi gửi.')}
+  try{const result=await client.list();if(google!==client||epoch!==googleEpoch)return;rows=result;page=1;render();set('Đã tải danh sách. Nhấn Đăng bài bên cạnh tiêu đề để xem nội dung và gửi vào FIFO.')}
   catch(e){if(google===client){rows=[];render();set(e.message)}}finally{loading=false;update()}
  }
  async function choose(item){
-  if(!google||loading||sending)return;const client=google;loading=true;update();set('Đang đọc nội dung cột C của bài đã chọn…');
+  if(!google||loading||sending||item.id||submitted.has(item.row))return;const client=google;loading=true;update();set('Đang đọc nội dung cột C của bài đã chọn…');
   try{
    const row=await client.read(item.row);if(google!==client)return;
    if(String(row[1]??'').trim()!==item.title||String(row[0]??'').trim()!==item.id||String(row[3]??'').trim()!==item.group||String(row[4]??'').trim()!==item.topic)throw Error('Dòng nguồn đã thay đổi. Tải lại danh sách.');
@@ -55,7 +59,7 @@ export function mountSheetBlog(root){
    selected=item;selectedRow=row;const recommended=recommendDestination(item,topics);
    $('[data-preview-title]').textContent=item.title;$('[data-preview-meta]').textContent='VN · Dòng '+item.row+' · '+[item.group,item.topic].filter(Boolean).join(' / ');
    $('[data-preview]').textContent=String(row[2]);$('[data-kind]').value=recommended.kind;$('[data-category]').value=recommended.category;
-   $('[data-consent]').checked=false;$('[data-dialog-status]').textContent=github?'Kiểm tra nội dung trước khi gửi.':'Kết nối GitHub trước khi gửi bài.';
+   $('[data-consent]').checked=false;$('[data-dialog-status]').textContent=github?'Kiểm tra nội dung trước khi gửi.':'Chưa kết nối GitHub. Nhấn Kết nối GitHub bên dưới để tiếp tục.';
    dialog.showModal();set('Đã đọc nội dung bài đã chọn.');
   }catch(e){set(e.message)}finally{loading=false;update()}
  }
@@ -89,6 +93,7 @@ export function mountSheetBlog(root){
  $('[data-gh-logout]').addEventListener('click',()=>{if(!sending){github=null;$('[data-github-state]').textContent='Chưa kết nối';update()}});
  for(const key of ['[data-kind]','[data-category]','[data-consent]'])$(key).addEventListener('change',update);
  $('[data-close]').addEventListener('click',()=>{if(!sending)dialog.close()});
+ $('[data-dialog-connect]').addEventListener('click',()=>{if(!sending){dialog.close();$('[data-gh-token]').focus();set('Kết nối GitHub rồi nhấn Đăng bài cạnh tiêu đề để tiếp tục.')}});
  dialog.addEventListener('cancel',e=>{if(sending)e.preventDefault()});
  dialog.addEventListener('close',()=>{selected=null;selectedRow=null;$('[data-preview]').textContent='';update()});
  $('[data-submit]').addEventListener('click',async()=>{
