@@ -8,6 +8,9 @@
 - Vietnamese content; Light Mode; accessible, responsive; explicit slugs, GMT+7 with seconds for publication dates. Preserve existing content.
 - Read engineering/lessons before making changes. Check installed dependency versions and official migration docs. Reuse regression tests.
 
+## P0.1 Back Office security gate
+- Before P1, isolate all administrative pages/APIs (including Engineering Foundation and Google Sheets publisher) from GitHub Pages. Require server-side Google identity authentication plus explicit administrator authorization; deny by default. No client-side-only locks or OAuth secrets in public assets. Verify anonymous, unauthorized, authorized, logout, direct route and preview behavior before declaring production ready. Public learning and future student interfaces are separate from Back Office.
+
 ## CI and CD
 - Automated branch updates and known-fixer writes use the dedicated repository-scoped GitHub App token only; defer if absent. Require native pull_request CI, not dispatch-only CI. Never expose keys or give the App ruleset bypass.
 - Low-privilege PR CI: content, regression, full build, static smoke tests and secret-pattern check. Fail closed; never remove or weaken a gate to make it green.
