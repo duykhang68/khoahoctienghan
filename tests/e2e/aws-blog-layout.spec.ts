@@ -40,7 +40,10 @@ test('Source Sans 3 and IBM Plex Mono are served as self-hosted WOFF2, with Viet
  const {nodeId}=await session.send('DOM.querySelector',{nodeId:root.nodeId,selector:'#viet-font-probe'});
  const {fonts}=await session.send('CSS.getPlatformFontsForNode',{nodeId});
  expect(fonts.length).toBeGreaterThan(0);
- expect(fonts.every(f=>f.isCustomFont&&/Source Sans 3/i.test(f.familyName))).toBe(true);
+ // Adobe's CFF2 variable face has internal family name SourceSans3VF
+ // (name IDs 1 and 4), rather than the human-readable product name.
+ const isSourceSans3=(name:string)=>/^sourcesans3(?:vf)?$/i.test(name.replace(/[\s-]/g,''));
+ expect(fonts.every(f=>f.isCustomFont&&isSourceSans3(f.familyName)),JSON.stringify(fonts)).toBe(true);
  await page.locator('#viet-font-probe').evaluate(el=>el.remove());
  await expect(page.locator('.blog-name')).toHaveCSS('font-weight','300');
  await page.locator('[data-tech-post]').first().locator('h3 a').click();
