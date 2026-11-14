@@ -30,7 +30,27 @@ test('self-hosted typography loads Vietnamese and share controls are available i
  await expect(first.locator('[data-copy-permalink]')).toBeVisible();
  await first.locator('h3 a').click();
  await expect(page.locator('.article-heading h1')).toHaveCSS('font-weight','300');
- await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','400');
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','300');
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
+});
+
+
+test('licensed Ember webfonts load without depending on locally installed fonts',async({page})=>{
+ await page.goto('./techblog/');
+ const fonts=await page.evaluate(async()=>{
+  const specs=['300 20px "Amazon Ember Display Web"','300 18px "Amazon Ember Web"','400 16px "Amazon Ember Web"','700 18px "Amazon Ember Web"','italic 300 18px "Amazon Ember Web"','400 16px "Amazon Ember Mono Web"'];
+  const faces=await Promise.all(specs.map(spec=>document.fonts.load(spec,'Engineering 123')));
+  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,heading:getComputedStyle(document.querySelector('.blog-name')!).fontFamily,resources:performance.getEntriesByType('resource').filter(e=>/Ember-[^/]*\\.ttf(?:\\?|$)/i.test(e.name)).map(e=>({sameOrigin:new URL(e.name).origin===location.origin}))};
+ });
+ expect(fonts.loaded).toBe(true);
+ expect(fonts.family).toContain('Amazon Ember Web');
+ expect(fonts.heading).toContain('Amazon Ember Display Web');
+ expect(fonts.resources.length).toBeGreaterThan(0);
+ expect(fonts.resources.every(r=>r.sameOrigin)).toBe(true);
+ const first=page.locator('[data-tech-post]').first();
+ await first.locator('h3 a').click();
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','300');
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
 });

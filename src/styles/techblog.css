@@ -1,9 +1,15 @@
-/* Open Sans: OFL 1.1; upstream googlefonts/opensans at bd7e37632246368c60fdcbd374dbf9bad11969b6. License: /techblog-fonts/OFL.txt. No proprietary Amazon font binaries. */
+@font-face{font-family:"Amazon Ember Display Web";src:url("../assets/techblog-fonts/Ember-Display-Light.ttf") format("truetype");font-style:normal;font-weight:300;font-display:swap}
+@font-face{font-family:"Amazon Ember Web";src:url("../assets/techblog-fonts/Ember-Light.ttf") format("truetype");font-style:normal;font-weight:300;font-display:swap}
+@font-face{font-family:"Amazon Ember Web";src:url("../assets/techblog-fonts/Ember-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:"Amazon Ember Web";src:url("../assets/techblog-fonts/Ember-Bold.ttf") format("truetype");font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:"Amazon Ember Web";src:url("../assets/techblog-fonts/Ember-Light-Italic.ttf") format("truetype");font-style:italic;font-weight:300;font-display:swap}
+@font-face{font-family:"Amazon Ember Mono Web";src:url("../assets/techblog-fonts/Ember-Mono.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
+/* Open Sans: OFL 1.1; upstream googlefonts/opensans at bd7e37632246368c60fdcbd374dbf9bad11969b6. License: /techblog-fonts/OFL.txt. Open Sans supplies glyphs missing from licensed Ember faces. */
 @font-face{font-family:"Open Sans Web";src:url("../assets/techblog-fonts/OpenSans-Light.ttf") format("truetype");font-style:normal;font-weight:300;font-display:swap}
 @font-face{font-family:"Open Sans Web";src:url("../assets/techblog-fonts/OpenSans-Regular.ttf") format("truetype");font-style:normal;font-weight:400;font-display:swap}
 @font-face{font-family:"Open Sans Web";src:url("../assets/techblog-fonts/OpenSans-Bold.ttf") format("truetype");font-style:normal;font-weight:700;font-display:swap}
 /* AWS Architecture Blog-inspired editorial system; independent Korean KB brand. */
-:root{color-scheme:light;--ink:#16191f;--navy:#232f3e;--navy-deep:#161e2d;--muted:#545b64;--accent:#ec7211;--link:#006ce0;--link-hover:#004f9e;--line:#d5dbdb;--soft:#f2f3f3;--surface:#fff;--sans:"Amazon Ember","Open Sans Web","Open Sans","Noto Sans",Arial,sans-serif;--display:"Amazon Ember Display","Amazon Ember","Open Sans Web","Open Sans","Noto Sans",Arial,sans-serif;--mono:"Amazon Ember Mono",Menlo,Consolas,monospace;--max:1240px;--pad:clamp(16px,3.2vw,40px)}
+:root{color-scheme:light;--ink:#16191f;--navy:#232f3e;--navy-deep:#161e2d;--muted:#545b64;--accent:#ec7211;--link:#006ce0;--link-hover:#004f9e;--line:#d5dbdb;--soft:#f2f3f3;--surface:#fff;--sans:"Amazon Ember Web","Amazon Ember","Open Sans Web","Open Sans","Noto Sans",Arial,sans-serif;--display:"Amazon Ember Display Web","Amazon Ember Web","Amazon Ember Display","Amazon Ember","Open Sans Web","Open Sans","Noto Sans",Arial,sans-serif;--mono:"Amazon Ember Mono Web","Amazon Ember Mono",Menlo,Consolas,monospace;--max:1240px;--pad:clamp(16px,3.2vw,40px)}
 *{box-sizing:border-box}html{background:var(--surface);color:var(--ink);font-family:var(--sans);scroll-behavior:smooth}body{margin:0;line-height:1.55;font-size:16px}a{color:var(--link);text-decoration:none}a:hover{color:var(--link-hover);text-decoration:underline}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #0073bb;outline-offset:4px}button,input{font:inherit}img{display:block;max-width:100%;height:auto}h1,h2,h3{line-height:1.24;letter-spacing:0;overflow-wrap:anywhere;margin:0;color:var(--ink);font-weight:700}p{overflow-wrap:anywhere;margin:0 0 1.1em}ul,ol{overflow-wrap:anywhere}[hidden]{display:none!important}.muted{color:var(--muted);font-size:.94rem}.skip,.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.skip:focus{width:auto;height:auto;clip:auto;top:1rem;left:1rem;background:white;padding:.5rem;z-index:10}
 .engineering-header{background:var(--navy-deep);color:white}.engineering-nav{max-width:var(--max);margin:auto;padding:16px var(--pad);display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.engineering-brand{color:white;font-size:1.25rem;font-weight:700;line-height:1.2;border-bottom:3px solid #ff9900;padding:4px 0 6px;white-space:normal}.engineering-brand:hover{color:white;text-decoration:none}.nav-links{display:flex;align-items:center;gap:clamp(16px,2.5vw,32px);flex-wrap:wrap}.nav-links a{color:#fff;font-size:.94rem;font-weight:400}.nav-links a[aria-current=true]{color:#ffb65d}.nav-search{display:inline-flex;align-items:center}
 .blog-navigation{background:var(--soft);border-bottom:1px solid var(--line)}.blog-nav-inner{max-width:var(--max);margin:auto;padding:12px var(--pad);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:.875rem}.blog-breadcrumb{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted)}.blog-breadcrumb>span[aria-hidden]{color:#879196}.blog-edition{font-size:.85rem}.blog-masthead{background:var(--surface);border-bottom:1px solid var(--line)}.masthead-inner{max-width:var(--max);margin:auto;padding:24px var(--pad) 22px}.blog-name{display:inline-block;font-size:clamp(1.8rem,3.1vw,2.5rem);font-weight:700;line-height:1.2;color:var(--navy);letter-spacing:0}.blog-name:hover{color:var(--navy)}
@@ -44,3 +50,18 @@ h1,h2,h3,.blog-name{font-family:var(--display)}
 .post-meta .share-link:hover{color:var(--link-hover)}
 .sidebar-section h2{font-family:var(--sans);font-size:1.125rem;font-weight:700}
 @media(max-width:480px){.post-meta{font-size:.82rem}.article-heading h1{text-wrap:initial}.article-body{line-height:1.68}}
+
+/* Alexa/Echo typography adapted for a Vietnamese editorial blog. Preserve the owner's justified prose rule; navigation and references remain start-aligned. */
+html{font-kerning:normal}
+.blog-name,.article-heading h1,.feed-copy h3{font-family:var(--display);font-weight:300;letter-spacing:0;line-height:1.3}
+.article-heading h1{margin-bottom:.5em}
+h2,h3,.sidebar-section h2,.filter-line h2,.article-body h2,.article-body h3{font-family:var(--sans);font-weight:700;letter-spacing:0}
+.article-body h2{font-size:clamp(1.25rem,1.7vw,1.4rem);line-height:1.35}
+.article-body h3{font-size:1.15rem;line-height:1.35}
+.article-body,.article-body .article-lead,.feed-copy p{font-family:var(--sans);font-weight:300;line-height:1.65;letter-spacing:0}
+.article-body p,.article-body li,.feed-copy p{font-weight:300}
+.article-body strong,.feed-copy strong,.read-link{font-weight:700}
+.nav-links,.post-meta,.sidebar-section,.footer-inner{font-family:var(--sans);font-weight:400}
+.article-body .reference-list li,.article-body .reference-list p{font-weight:400;text-align:start}
+.article-body code,.article-body pre{font-family:var(--mono)}
+@media(max-width:480px){.article-body,.feed-copy p{line-height:1.65}}
