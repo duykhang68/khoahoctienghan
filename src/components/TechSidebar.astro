@@ -1,0 +1,24 @@
+---
+import {posts,archiveYears,dateLabel,yearLabel,readingMinutes} from '../lib/techblog';
+const {currentSlug=''}=Astro.props;
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const latest=posts.filter(p=>p.slug!==currentSlug).slice(0,5);
+---
+<aside class="tech-sidebar" aria-label="Khám phá Engineering">
+  <section class="sidebar-section" id="search">
+    <h2>Tìm kiếm</h2>
+    <form class="search-box" method="get" action={base+'/techblog/'}>
+      <label class="sr-only" for="tech-query">Tìm kiếm bài viết</label>
+      <input id="tech-query" name="q" type="search" placeholder="Tìm bài viết..." />
+      <button type="submit" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+    </form>
+  </section>
+  <section class="sidebar-section">
+    <h2>Bài viết mới nhất</h2>
+    {latest.length ? <ul class="latest-list">{latest.map(p=><li><div class="post-meta"><time datetime={p.date}>{dateLabel(p.date)}</time><span>{readingMinutes(p)} phút đọc</span></div><a href={base+'/techblog/'+p.slug+'/'}>{p.title}</a></li>)}</ul> : <p class="muted">Chưa có bài viết khác.</p>}
+  </section>
+  <section class="sidebar-section">
+    <h2>Lưu trữ</h2>
+    {archiveYears.length ? <ul class="archive-list">{archiveYears.map(year=><li><a href={base+'/techblog/?year='+year}>{year}</a><span>{posts.filter(p=>yearLabel(p.date)===year).length}</span></li>)}</ul> : <p class="muted">Chưa có bài viết lưu trữ.</p>}
+  </section>
+</aside>
