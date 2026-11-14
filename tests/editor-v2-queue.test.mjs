@@ -27,7 +27,7 @@ test('immutable draft validation and projections respect native Astro schema',as
  assert.deepEqual(m.labels,['TOPIK','Hangul']);assert.equal(m.series.part,1);assert.equal(m.date,'2026-11-14T21:00:00+07:00');
  const tech=await prepareQueued({...draft,kind:'tech'},snapshot,date);const post=JSON.parse(tech.changes.get('src/data/techblog/posts.json').text)[0];assert.deepEqual(normalizeDocument(post.studioBody),post.studioBody);
  assert.equal(post.date,m.date);
- await assert.rejects(prepareQueued({...draft,title:'Editor V2',kind:'tech'},snapshot,date),/URL/);
+ await assert.rejects(prepareQueued({...draft,title:'EditorV2',kind:'tech'},snapshot,date),/URL/);
 });
 
 import {githubClient} from '../src/lib/editor-v2/github.mjs';
