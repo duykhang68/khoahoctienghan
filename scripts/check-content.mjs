@@ -11,3 +11,6 @@ for(const p of paths){
  for(const m of s.matchAll(/\]\((\/[^)#\s]*)\)/g)) assert(routes.has(m[1]),p+' broken link '+m[1]);
 }
 console.log('Validated '+paths.length+' content files');
+
+const config = await readFile('astro.config.mjs','utf8');
+assert(!/label:[^\n]+,\s*autogenerate:/.test(config), 'Legacy Starlight sidebar group: wrap autogenerate in items');
