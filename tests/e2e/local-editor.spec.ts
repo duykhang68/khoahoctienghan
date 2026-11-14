@@ -11,6 +11,7 @@ const entry=(content:string)=>({content,hash:createHash('sha256').update(content
 const assets:Record<string,string>={'/':'index.html','/app.js':'app.js','/style.css':'style.css'};
 const sample=[{slug:'visual-fixture',title:'Bài kiểm thử',summary:'Mô tả thử',date:'2026-11-14T12:00:00+07:00',issues:[],sections:[{heading:'Kiến trúc',paragraphs:['Nội dung ban đầu'],visuals:[{kind:'flow',caption:'Quy trình thử',items:[{label:'Bắt đầu'},{label:'Kết thúc'}]}]}]}];
 test('local studio edits rendered documents and retains original structured visuals',async({page})=>{
+ test.setTimeout(90000);
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  const snapshot={sha:'0123456789abcdef',files:{[docs]:entry(source),[menu]:entry(read(menu)),[visuals]:entry(read(visuals)),[posts]:entry(JSON.stringify(sample,null,2)+'\n')}};
  await page.route(route+'**',async req=>{
@@ -58,6 +59,10 @@ test('local studio edits rendered documents and retains original structured visu
   await page.getByRole('button',{name:'+ Thêm minh họa',exact:true}).click();
   const dialog=page.getByRole('dialog');
   await dialog.getByLabel('Chú thích',{exact:true}).fill('Minh họa '+kind);
+  if(kind==='wireframe'){await dialog.getByLabel('Bố cục',{exact:true}).selectOption('responsive');await expect(dialog.locator('.wire-devices .wire-preview')).toHaveCount(3)}
+  if(kind==='buttons'){await dialog.getByLabel('Nhãn nút 1',{exact:true}).fill('Đọc thêm');await expect(dialog.locator('.visual-live svg[aria-label="Hover Đọc thêm"]')).toBeVisible()}
+  if(kind==='table'){await dialog.getByRole('button',{name:'+ Dòng',exact:true}).click();await expect(dialog.locator('.visual-live tr')).toHaveCount(3)}
+
   await expect(dialog.locator('.visual-live figcaption')).toHaveText('Minh họa '+kind);
   await dialog.getByRole('button',{name:'Áp dụng',exact:true}).click();
  }
