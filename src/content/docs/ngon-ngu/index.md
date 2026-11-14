@@ -24,3 +24,5 @@ Hangul, ngữ pháp, từ vựng và TOPIK. Đây là trang tổng quan của ch
 - [Ngày chữ Hàn  : lịch sử và ý nghĩa của ngày lễ Hangul](/khoahoctienghan/ngon-ngu/ngay-chu-han-lich-su-va-y-nghia-cua-ngay-le-hangul/)
 
 - [Tiếng Jeju (제주어): Ngôn ngữ riêng trên hòn đảo Hàn Quốc](/khoahoctienghan/ngon-ngu/tieng-jeju-jejueo/)
+
+- [6 vùng phương ngữ tiếng Hàn: Từ Seoul, Busan đến đảo Jeju](/khoahoctienghan/ngon-ngu/sau-vung-phuong-ngu-tieng-han/)
