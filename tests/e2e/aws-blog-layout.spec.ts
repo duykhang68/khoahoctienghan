@@ -8,9 +8,9 @@ test('AWS-inspired editorial shell keeps navigation, heading and metadata in rea
  await expect(first.locator('.post-meta time')).toBeVisible();
  await first.locator('h3 a').click();
  await expect(page.locator('h1')).toHaveCount(1);
- await expect(page.locator('.article-heading h1 + .post-meta')).toBeVisible();
- await expect(page.locator('.article-heading .topic-link')).toBeVisible();
- await expect(page.locator('.article-heading [data-copy-permalink]')).toBeVisible();
+ await expect(page.locator('.research-meta .post-meta')).toBeVisible();
+ await expect(page.locator('.research-meta .topic-link')).toBeVisible();
+ await expect(page.locator('.research-share [data-copy-permalink]')).toBeVisible();
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
  await expect(page.locator('.blog-breadcrumb a').last()).toHaveText('Engineering Blog');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
@@ -53,6 +53,6 @@ test('Source Sans 3 and IBM Plex Mono are served as self-hosted WOFF2, with Viet
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('line-height','33.25px');
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
  await expect(page.locator('.blog-breadcrumb')).toHaveCSS('font-size','14px');
- await expect(page.locator('.article-heading [data-copy-permalink]')).toBeVisible();
+ await expect(page.locator('.research-share [data-copy-permalink]')).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
 });

@@ -20,7 +20,7 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   {cover && <meta property="og:image" content={new URL(cover,Astro.site).toString()}/>}
   <link rel="icon" href={base+'/favicon.svg'}/>
 </head>
-<body class:list={[indexPage&&'engineering-index-page']}>
+<body class:list={[indexPage&&'engineering-index-page',article&&'research-article-page']}>
   <a class="skip" href="#content">Bỏ qua điều hướng</a>
   <header class="engineering-header">
     <div class="utility-band"><div class="utility-inner"><span>Tri thức Hàn Quốc</span><nav aria-label="Liên kết hỗ trợ"><a href="https://github.com/duykhang68/khoahoctienghan">GitHub</a><a href="https://github.com/duykhang68/khoahoctienghan/issues">Issues</a></nav></div></div>
@@ -48,7 +48,7 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
     {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">Engineering Blog</span>}
     {article&&<><span class="crumb-divider" aria-hidden="true">›</span><span class="current-crumb" aria-current="page">{title}</span></>}
   </nav></div>
-  <div class="blog-masthead"><div class="masthead-inner">{article?<a class="blog-name" href={base+'/techblog/'}>Engineering Blog</a>:<h1 class="blog-name">Engineering Blog</h1>}</div></div>
+  {!article&&<div class="blog-masthead"><div class="masthead-inner"><h1 class="blog-name">Engineering Blog</h1></div></div>}
   <main id="content"><slot/></main>
   <footer class="engineering-footer"><div class="footer-inner">
     <section class="footer-intro"><a class="footer-brand" href={base+'/techblog/'}>Engineering Blog</a><p>Ghi lại những điều học được khi xây dựng phần mềm.</p><a class="aws-button footer-cta" href={base+'/'}>Khám phá kho tri thức</a></section>
