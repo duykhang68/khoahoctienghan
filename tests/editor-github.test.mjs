@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
-import {createServer} from 'node:http';
+import {createServer,request} from 'node:http';
 import {createLocalApi} from '../editor-github/local-api.mjs';
 import {overlayApp} from '../editor-github/overlay.mjs';
 test('pinned original editor preserves the compose tools with an independent GitHub header',()=>{
@@ -19,8 +19,11 @@ test('loopback API reports disconnected Blogger, independent GitHub session, CSR
  const server=createServer((req,res)=>handler(req,res,()=>{res.statusCode=404;res.end()}));await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base='http://127.0.0.1:'+server.address().port;
  try{
-  const q=async(path,opts={})=>fetch(base+path,{...opts,headers:{Host:'localhost:5173',...opts.headers}});
-  // Undici sets host from the URL on some releases; exercise with node:http if needed.
+  const q=(path,opts={})=>new Promise((resolve,reject)=>{
+   const req=request(base+path,{method:opts.method||'GET',headers:{Host:'localhost:5173',...opts.headers}},res=>{
+    let text='';res.setEncoding('utf8');res.on('data',chunk=>text+=chunk);res.on('end',()=>resolve({status:res.statusCode,headers:{get:name=>Array.isArray(res.headers[name])?res.headers[name][0]:res.headers[name]},json:async()=>JSON.parse(text)}));res.on('error',reject);
+   });req.on('error',reject);req.end(opts.body);
+  });
   const status=await q('/api/status');assert.equal(status.status,200);assert.equal((await status.json()).connected,false);
   assert.equal((await q('/api/drive-client-config')).status,200);
   const path='/api/github-editor/session',s=await q(path).then(r=>r.json());assert.equal(s.connected,false);
