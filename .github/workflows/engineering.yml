@@ -6,7 +6,7 @@ on:
     workflows: ['P0 · Knowledge Base CI','CD · Public Knowledge Base']
     types: [completed]
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review, edited, closed]
     branches: [main]
   schedule:
     - cron: '32 * * * *'
