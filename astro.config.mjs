@@ -16,8 +16,9 @@ export default defineConfig({
     },
     tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
     sidebar: [
-      { label: 'Tech Blog', link: '/khoahoctienghan/techblog/' },
-      { label: 'Khám phá', link: '/khoahoctienghan/' },
+      // Starlight adds Astro's base to manual sidebar links.
+      { label: 'Tech Blog', link: '/techblog/' },
+      { label: 'Khám phá', link: '/' },
       { label: "Ngôn ngữ Hàn Quốc", collapsed: true, items: [{ autogenerate: { directory: 'ngon-ngu' } }] },
       { label: "Lịch sử Hàn Quốc", collapsed: true, items: [{ autogenerate: { directory: 'lich-su' } }] },
       { label: "Văn hóa và xã hội", collapsed: true, items: [{ autogenerate: { directory: 'van-hoa' } }] },
