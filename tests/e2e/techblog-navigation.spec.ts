@@ -12,7 +12,13 @@ test('all knowledge pages navigate to the canonical Tech Blog URL',async({page})
  }
  await page.goto('./ngon-ngu/');
  const link=page.locator('.sidebar-pane a').filter({hasText:/^\s*Tech Blog\s*$/}).first();
- if(!await link.isVisible())await page.locator('starlight-menu-button button').click();
+ // Starlight 0.42 uses a native popover trigger, not the old custom element.
+ const menu=page.locator('button[popovertarget="starlight__sidebar"]');
+ if(await menu.isVisible()){
+  await expect(menu).toHaveCount(1);
+  await menu.click();
+  await expect(page.locator('#starlight__sidebar:popover-open')).toBeVisible();
+ }
  await expect(link).toBeVisible();
  await link.click();
  await expect(page).toHaveURL(/\/khoahoctienghan\/techblog\/$/);
