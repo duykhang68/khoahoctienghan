@@ -1,1 +1,106 @@
-[]
+[
+  {
+    "slug": "engineering-culture-2-0-tu-commit-den-production",
+    "title": "Engineering Culture 2.0: Từ commit đầu tiên đến một bản phát hành đáng tin cậy",
+    "summary": "Một dấu tích xanh trên GitHub chưa đồng nghĩa với phần mềm đã sẵn sàng cho người dùng. Từ những sự cố đầu tiên của dự án Tri thức Hàn Quốc, chúng tôi đề xuất một quy trình phát triển lấy GitHub Flow, kiểm thử tự động, Continuous Delivery và khả năng học hỏi từ lỗi làm nền tảng.",
+    "date": "2026-11-14T14:56:00+07:00",
+    "issues": [
+      2,
+      3
+    ],
+    "sections": [
+      {
+        "heading": "01 — Vì sao một kho tri thức cần văn hóa kỹ thuật?",
+        "paragraphs": [
+          "Khi bắt đầu xây dựng Tri thức Hàn Quốc, mục tiêu của chúng tôi là xuất bản kiến thức bằng một website tĩnh nhanh, dễ đọc và dễ bảo trì. Nhưng ngay cả một website không có database cũng có chuỗi phụ thuộc: trình tạo trang, theme, Node.js, thư viện, GitHub Actions và môi trường GitHub Pages. Một thay đổi nhỏ ở bất kỳ mắt xích nào có thể khiến bản phát hành không đến được người đọc.",
+          "Văn hóa kỹ thuật không phải là số lượng workflow, số dòng cấu hình hay số lần tự động retry. Đó là cách nhóm đặt ra các nguyên tắc có thể kiểm chứng: thay đổi có phạm vi rõ ràng, chất lượng được đánh giá bằng kiểm thử, quyền triển khai được bảo vệ và kết quả cuối cùng được xác minh ở nơi người dùng thực sự truy cập.",
+          "Engineering Culture 2.0 là đề xuất nâng cấp quy trình hiện có của dự án, không phải tuyên bố rằng mọi thành phần đã được triển khai. Chúng tôi muốn GitHub thực thi những quy tắc mà GitHub có thể đảm nhiệm, còn công cụ tự động hóa riêng tập trung vào vấn đề đặc thù: nghiên cứu lỗi, khôi phục an toàn và lưu giữ tri thức."
+        ]
+      },
+      {
+        "heading": "02 — Atomic commit và Pull Request có phạm vi rõ ràng",
+        "paragraphs": [
+          "GitHub Flow bắt đầu bằng một nhánh ngắn hạn được tạo từ main. Mỗi commit nên diễn đạt một ý định kỹ thuật có thể hiểu được, chẳng hạn bổ sung tìm kiếm, sửa cách hiển thị trên mobile hoặc thêm kiểm thử hồi quy. Không nên trộn một thay đổi giao diện với việc thay đổi quyền deployment hay nâng cấp dependency không liên quan.",
+          "Một Pull Request đại diện cho một thay đổi logic, nhưng có thể chứa nhiều commit. Ví dụ, PR triển khai tìm kiếm có thể gồm commit xây dựng giao diện, sửa lỗi bàn phím, bổ sung kiểm thử và điều chỉnh responsive. Những commit này cung cấp lịch sử quá trình phát triển; chúng không bắt buộc phải trở thành bốn bản phát hành độc lập.",
+          "Chúng tôi đề xuất Squash Merge cho các PR thông thường. Khi PR hoàn tất, các commit liên quan được hợp nhất thành một commit có ý nghĩa trên main, giúp truy vết và revert theo tính năng. Revert cũng là một thay đổi cần kiểm thử, không phải lý do để sửa lại lịch sử main."
+        ]
+      },
+      {
+        "heading": "03 — CI là bằng chứng, không phải nghi thức",
+        "paragraphs": [
+          "Continuous Integration phải trả lời một câu hỏi: thay đổi dự kiến có tương thích với trạng thái hiện tại của hệ thống hay không? Với Astro và Starlight, bộ kiểm tra hiện tại gồm kiểm tra nội dung, mẫu bí mật trong file theo dõi, build toàn bộ website và kiểm tra sự tồn tại của các trang cùng chỉ mục tìm kiếm. Kiểm tra mẫu bí mật cơ bản không thay thế một hệ thống quét bảo mật chuyên dụng.",
+          "Một PR có thể từng đỏ rồi xanh sau khi sửa. Không có lý do buộc mọi commit trung gian trong lịch sử phải được chạy lại đến khi xanh. Điều cần thiết là kết quả kiểm thử thành công phải tương ứng với phiên bản cuối cùng và trạng thái tích hợp với nhánh đích. Nếu main thay đổi sau khi CI chạy, cần xác minh lại kết hợp mới trước khi merge.",
+          "Để chất lượng không phụ thuộc vào thiện chí của người viết code hay bot, hướng nâng cấp là bảo vệ main bằng Branch Protection hoặc Rulesets và Required Status Checks. Các kiểm tra bắt buộc phải phản ánh chất lượng thực, không được bỏ qua hay thay đổi tên tùy tiện để mở đường merge. Với những thay đổi nhạy cảm như workflow, quyền truy cập và cấu hình bảo mật, vẫn cần quy trình phê duyệt có thẩm quyền."
+        ]
+      },
+      {
+        "heading": "04 — Vì sao ưu tiên GitHub-native Auto Merge?",
+        "paragraphs": [
+          "Bộ điều phối hiện tại kiểm tra PR, SHA, kết quả CI và tình trạng production trước khi gọi API merge. Cách này hữu ích trong giai đoạn đầu, nhưng cũng đưa một phần trách nhiệm kiểm soát chất lượng vào mã tự viết. Mỗi điều kiện và mỗi lệnh API thêm vào đều mở rộng diện tích phải kiểm thử.",
+          "GitHub Auto Merge kết hợp những điều kiện bắt buộc do nền tảng thực thi. Khi được bật và cấu hình đầy đủ, PR đủ điều kiện có thể tự merge mà không cần một tác vụ lặp liên tục chỉ để tìm dấu tích xanh. Đối với dự án cá nhân, kiểm tra nhánh phải cập nhật với main là lựa chọn an toàn hơn so với tự tạo một merge queue phức tạp.",
+          "Native Merge Queue và Auto Merge là hai khả năng khác nhau. Merge Queue có thể kiểm tra các PR trên trạng thái tích hợp dự kiến, nhưng phụ thuộc vào điều kiện repository và gói GitHub. Chúng tôi không coi nó là yêu cầu bắt buộc cho dự án này. Tại thời điểm bài viết, việc bật bảo vệ nhánh, cấu hình required checks và chuyển quyền quyết định merge sang cơ chế native vẫn là công việc cần thực hiện."
+        ]
+      },
+      {
+        "heading": "05 — Tách thứ tự merge khỏi thứ tự phát hành",
+        "paragraphs": [
+          "Một nguyên tắc từng được áp dụng là đợi PR trước lên production rồi mới merge PR tiếp theo. Mô hình này dễ truy vết và phù hợp khi mỗi thay đổi cần một bản phát hành riêng. Đổi lại, lỗi môi trường hoặc thời gian chờ CDN có thể giữ lại cả những PR độc lập đã đủ điều kiện kiểm thử.",
+          "Với một website tĩnh, chúng tôi đề xuất Latest Verified Main. Nhiều PR độc lập có thể lần lượt merge khi đáp ứng các điều kiện tích hợp; hệ thống triển khai phiên bản main mới nhất đã vượt qua các gate. Những PR phụ thuộc nhau vẫn phải tuân thủ thứ tự logic. Nếu production thực sự gặp lỗi, hệ thống có thể tạm dừng phát hành và ưu tiên khắc phục.",
+          "Một bản phát hành đang chờ có thể không còn cần thiết nếu một phiên bản mới hơn đã thay thế nó. GitHub Actions hỗ trợ concurrency để kiểm soát chạy đồng thời, nhưng cấu hình concurrency mặc định không bảo đảm giữ lại mọi lần chạy theo thứ tự commit. Nếu cần queue đầy đủ, phải chọn cấu hình queue phù hợp và hiểu giới hạn thứ tự đến hàng đợi. Với Latest Verified Main, điều quan trọng là không để phiên bản cũ ghi đè phiên bản mới, không phải buộc mọi SHA lên production."
+        ]
+      },
+      {
+        "heading": "06 — Merged, Deployed và Verified là ba trạng thái riêng",
+        "paragraphs": [
+          "Merged có nghĩa mã đã nằm trên main. Deployed có nghĩa dịch vụ triển khai đã tiếp nhận và phát hành bản build. Verified có nghĩa một phép kiểm tra độc lập xác nhận website công khai đang trả đúng phiên bản và các đường dẫn trọng yếu hoạt động. Ba trạng thái này không thể thay thế cho nhau.",
+          "Dự án hiện tạo release-sha.json trong artifact, ghi SHA của mã nguồn đã build. Sau deployment, workflow đối chiếu SHA công khai và truy cập trang chủ, bài Hangul mẫu, trang Engineering Blog. Cơ chế này giúp phân biệt bản build thành công với một website thật sự có thể truy cập. Smoke test không chứng minh rằng mọi hành vi giao diện đều đúng; kiểm thử trình duyệt vẫn cần bổ sung.",
+          "Trong một lần phát hành, bước Reject stale release từ chối deploy vì main đã tiến lên commit khác. Việc từ chối bản cũ là mong muốn đúng đắn, nhưng dùng exit code lỗi khiến hệ thống có thể ghi nhận nhầm thành sự cố. Đề xuất của chúng tôi là biểu diễn SUPERSEDED hoặc DEFERRED riêng, không đánh đồng chúng với lỗi build hay deployment thực sự."
+        ]
+      },
+      {
+        "heading": "07 — Build có thể tái lập và bảo mật chuỗi cung ứng",
+        "paragraphs": [
+          "Một bản build chạy tốt hôm nay có thể khác ngày mai nếu cây dependency được giải quyết lại. Ghim phiên bản dependency trực tiếp chưa đủ để cố định dependency bắc cầu. Vì vậy cần commit package-lock.json và sử dụng npm ci trong CI/CD, kiểm tra sự nhất quán giữa manifest và lockfile.",
+          "Mã của GitHub Actions cũng là dependency. Tham chiếu bằng tag thuận tiện nhưng tag có thể thay đổi. Ghim commit SHA đầy đủ đã được kiểm chứng hoặc dùng workflow dependency lockfile được nền tảng hỗ trợ giúp khóa mã action đã được đánh giá. Cơ chế cập nhật dependency cần đi qua PR và CI thay vì nâng cấp âm thầm.",
+          "Chúng tôi ưu tiên quyền tối thiểu: PR CI không cần token ghi hoặc bí mật production; job deployment mới có pages: write và id-token: write; bộ nghiên cứu lỗi có quyền giới hạn theo nhiệm vụ. Không thực thi mã PR chưa tin cậy bằng workflow đặc quyền. Khi khả thi, nên tái sử dụng artifact đã kiểm thử từ chính SHA sẽ triển khai thay vì build lại nhiều lần; không đưa artifact từ PR chưa tin cậy thẳng lên production."
+        ]
+      },
+      {
+        "heading": "08 — Từ lỗi Starlight đến một quy tắc hồi quy",
+        "paragraphs": [
+          "Sự cố kỹ thuật đầu tiên của dự án xuất hiện khi cấu hình sidebar theo cú pháp cũ không tương thích với Starlight phiên bản mới. CI dừng ngay ở bước Astro build. Log chỉ rõ rằng kiểu nhóm sidebar chứa đồng thời label và autogenerate đã bị loại bỏ từ Starlight v0.39; cách thay thế là đặt mục autogenerate bên trong mảng items của nhóm.",
+          "Thay vì thử sửa ngẫu nhiên, bản sửa chuyển sang cấu trúc được tài liệu Starlight hỗ trợ. Một regression check được bổ sung để phát hiện dạng cấu hình cũ, và CI của commit sửa lỗi đã thành công. Issue #2 lưu bằng chứng cùng nguyên nhân và cách sửa; bài học được đưa vào engineering/lessons để lần sau agent đọc trước khi thay đổi cấu hình.",
+          "Một sự cố khác đến từ môi trường github-pages vẫn chưa cho phép main triển khai sau khi đổi tên nhánh. Build hoàn thành nhưng deployment bị chặn bởi chính sách môi trường. Sau khi chỉnh quyền triển khai cho main, lần chạy thứ ba thành công. Đây là lý do không nên cố sửa Astro khi lỗi nằm ở quyền hạ tầng, cũng không nên vô hiệu hóa protection để vượt qua một lỗi cấu hình."
+        ]
+      },
+      {
+        "heading": "09 — Self-healing không có nghĩa là tự sửa mọi thứ",
+        "paragraphs": [
+          "Vòng lặp kỹ thuật mong muốn là Detect → Research → Fix → Regression Test → Verify → Record Knowledge. Khi CI thất bại, hệ thống lưu định danh workflow, job và SHA, phân loại dấu hiệu rồi tạo hoặc cập nhật issue tương ứng. Researcher đọc log thực tế và tài liệu chính thức theo đúng phiên bản trước khi đề xuất bản vá nhỏ nhất.",
+          "Một lỗi mạng tạm thời có thể retry có giới hạn; một lỗi cú pháp hoặc kiểm thử thất bại cần nghiên cứu và sửa code. Với xung đột ngữ nghĩa, không được tự chọn toàn bộ ours hoặc theirs chỉ để Git hết báo conflict. Một fixer chỉ nên tự áp dụng những phép biến đổi đã được giới hạn và có kiểm thử; lỗi chưa biết phải giữ ở trạng thái BLOCKED cho đến khi đủ bằng chứng.",
+          "Mỗi bài học cần có nguyên nhân, cách tái hiện, bản sửa, regression và SHA xác minh. Chúng tôi dự kiến xem xét tổng hợp mỗi nhóm năm issue kỹ thuật đã xác minh thành một bài hồi cứu có giá trị. Bài viết mở đầu này là bài định hướng độc lập, không phải báo cáo giả lập năm incident đã xử lý. Không đưa log thô, token hoặc thông tin học viên lên kho tri thức công khai."
+        ]
+      },
+      {
+        "heading": "10 — Ba workflow, một bộ tiêu chuẩn",
+        "paragraphs": [
+          "Thay vì phát triển hàng chục workflow cho những nhiệm vụ nhỏ, kiến trúc đề xuất giữ ba luồng: ci.yml kiểm thử và đánh giá chất lượng; release.yml xây dựng hoặc tiếp nhận artifact tin cậy, triển khai và xác minh; engineering.yml điều phối sự cố, tri thức kỹ thuật và các tác vụ hỗ trợ. Researcher định kỳ là lớp dự phòng cho những tình huống cần nghiên cứu sâu hơn, không phải cơ chế thay thế CI.",
+          "Các nâng cấp tiếp theo gồm khóa dependency, bảo vệ main, giảm build trùng lặp, kiểm thử Playwright cho các hành vi quan trọng, chuẩn hóa trạng thái phát hành và kiểm thử bộ tự sửa. Chúng tôi sẽ đánh giá hiệu quả bằng thời gian từ commit đến production, tỷ lệ phát hành lỗi, thời gian khôi phục và tỷ lệ lỗi tái diễn, thay vì đặt ra những con số cải thiện chưa được đo.",
+          "Một hệ thống tự động đáng tin không phải hệ thống luôn báo xanh. Đó là hệ thống biết dừng khi không đủ bằng chứng, giải thích được tại sao nó dừng, và biến mỗi sự cố đã được xử lý thành kinh nghiệm cho lần phát triển tiếp theo."
+        ]
+      },
+      {
+        "heading": "Tài liệu tham khảo",
+        "paragraphs": [
+          "GitHub Docs — GitHub Flow: https://docs.github.com/en/get-started/using-github/github-flow",
+          "GitHub Docs — About protected branches: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches",
+          "GitHub Docs — Control the concurrency of workflows and jobs: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency",
+          "GitHub Docs — Workflow dependency lockfiles: https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles",
+          "npm Docs — npm ci: https://docs.npmjs.com/cli/commands/npm-ci",
+          "Starlight — Sidebar: https://starlight.astro.build/guides/sidebar/",
+          "Mã nguồn và lịch sử CI/CD của dự án: https://github.com/duykhang68/khoahoctienghan"
+        ]
+      }
+    ]
+  }
+]
