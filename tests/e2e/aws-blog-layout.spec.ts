@@ -18,39 +18,41 @@ test('AWS-inspired editorial shell keeps navigation, heading and metadata in rea
  await expect(page.locator('.blog-masthead h1')).toHaveText('Engineering Blog');
 });
 
-test('self-hosted typography loads Vietnamese and article share controls remain available',async({page})=>{
+test('Source Sans 3 and IBM Plex Mono are served as self-hosted WOFF2, with Vietnamese glyphs',async({page})=>{
  await page.goto('./techblog/');
- const fontState=await page.evaluate(async()=>{
-  const sample='Tiếng Việt: Tri thức Hàn Quốc, kỹ thuật, dữ liệu';
-  const faces=await Promise.all([300,400,700].map(w=>document.fonts.load(w+' 18px "Open Sans Web"',sample)));
-  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,weight:getComputedStyle(document.querySelector('.blog-name')!).fontWeight,local:performance.getEntriesByType('resource').filter(e=>/OpenSans[^/]*\.ttf$/i.test(new URL(e.name).pathname)).every(e=>new URL(e.name).origin===location.origin)};
+ const result=await page.evaluate(async()=>{
+  const sample='Tiếng Việt: Trường đại học, kỹ thuật, dữ liệu, Nguyễn, Ắ ằ ặ ẵ ễ ệ ố ồ ộ ỡ ợ ứ ừ ự ỵ ỹ Đ đ';
+  const specs=[...([300,400,500,600].map(w=>w+' 19px "Source Sans 3 Web"')),'italic 400 19px "Source Sans 3 Web"','400 15px "IBM Plex Mono Web"'];
+  const faces=await Promise.all(specs.map(spec=>document.fonts.load(spec,sample)));
+  const probe=document.createElement('span');probe.id='viet-font-probe';probe.style.cssText='font:400 19px "Source Sans 3 Web";display:block';probe.textContent=sample;document.body.append(probe);
+  await document.fonts.ready;
+  const resources=performance.getEntriesByType('resource').filter(e=>/SourceSans3-|IBMPlexMono-/.test(e.name)).map(e=>({local:new URL(e.name).origin===location.origin,woff2:new URL(e.name).pathname.endsWith('.woff2')}));
+  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,resources};
  });
- expect(fontState.loaded).toBe(true);expect(fontState.family).toContain('Open Sans Web');expect(fontState.weight).toBe('300');expect(fontState.local).toBe(true);
- const first=page.locator('[data-tech-post]').first();
- await first.locator('h3 a').click();
+ expect(result.loaded).toBe(true);
+ expect(result.family).toContain('Source Sans 3 Web');
+ expect(result.resources.length).toBeGreaterThanOrEqual(3);
+ expect(result.resources.every(r=>r.local&&r.woff2)).toBe(true);
+ // Chromium reports the actual glyph-rendering font, not just the CSS family.
+ const session=await page.context().newCDPSession(page);
+ await session.send('DOM.enable');await session.send('CSS.enable');
+ const {root}=await session.send('DOM.getDocument');
+ const {nodeId}=await session.send('DOM.querySelector',{nodeId:root.nodeId,selector:'#viet-font-probe'});
+ const {fonts}=await session.send('CSS.getPlatformFontsForNode',{nodeId});
+ expect(fonts.length).toBeGreaterThan(0);
+ // Adobe's CFF2 variable face has internal family name SourceSans3VF
+ // (name IDs 1 and 4), rather than the human-readable product name.
+ const isSourceSans3=(name:string)=>/^sourcesans3(?:vf)?$/i.test(name.replace(/[\s-]/g,''));
+ expect(fonts.every(f=>f.isCustomFont&&isSourceSans3(f.familyName)),JSON.stringify(fonts)).toBe(true);
+ await page.locator('#viet-font-probe').evaluate(el=>el.remove());
+ await expect(page.locator('.blog-name')).toHaveCSS('font-weight','300');
+ await page.locator('[data-tech-post]').first().locator('h3 a').click();
+ await expect(page.locator('.article-heading h1')).toHaveCSS('font-weight','600');
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','400');
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-size','19px');
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('line-height','33.25px');
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
+ await expect(page.locator('.blog-breadcrumb')).toHaveCSS('font-size','14px');
  await expect(page.locator('.article-heading [data-copy-permalink]')).toBeVisible();
- await expect(page.locator('.article-heading h1')).toHaveCSS('font-weight','300');
- await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','300');
- await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
- await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
-});
-
-
-test('licensed Ember webfonts load without depending on locally installed fonts',async({page})=>{
- await page.goto('./techblog/');
- const fonts=await page.evaluate(async()=>{
-  const specs=['300 20px "Amazon Ember Display Web"','300 18px "Amazon Ember Web"','400 16px "Amazon Ember Web"','700 18px "Amazon Ember Web"','italic 300 18px "Amazon Ember Web"','400 16px "Amazon Ember Mono Web"'];
-  const faces=await Promise.all(specs.map(spec=>document.fonts.load(spec,'Engineering 123')));
-  return {loaded:faces.every(set=>set.length>0&&set.every(face=>face.status==='loaded')),family:getComputedStyle(document.body).fontFamily,heading:getComputedStyle(document.querySelector('.blog-name')!).fontFamily,resources:performance.getEntriesByType('resource').filter(e=>/Ember-[^/]*\.ttf$/i.test(new URL(e.name).pathname)).map(e=>({sameOrigin:new URL(e.name).origin===location.origin}))};
- });
- expect(fonts.loaded).toBe(true);
- expect(fonts.family).toContain('Amazon Ember Web');
- expect(fonts.heading).toContain('Amazon Ember Display Web');
- expect(fonts.resources.length).toBeGreaterThan(0);
- expect(fonts.resources.every(r=>r.sameOrigin)).toBe(true);
- const first=page.locator('[data-tech-post]').first();
- await first.locator('h3 a').click();
- await expect(page.locator('.article-body .article-lead')).toHaveCSS('font-weight','300');
- await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
 });

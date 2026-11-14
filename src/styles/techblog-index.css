@@ -1,13 +1,13 @@
 /* Listing only: Anthropic Engineering's introduction / feature / article grid.
- * Keep the site's AWS navigation, independent branding and licensed Ember fonts.
+ * Keep the site's AWS navigation, independent branding and Source Sans 3 / IBM Plex Mono.
  * Decorative motifs are original CSS, not downloaded editorial images. */
 .engineering-index-page .blog-masthead{background:#faf9f5}
 .engineering-index-page .masthead-inner{max-width:1240px;padding:43px var(--pad) 10px}
-.engineering-index-page .blog-name{font-size:clamp(38px,5vw,64px);font-weight:300;line-height:1.06;letter-spacing:-.025em;color:#181818}
+.engineering-index-page .blog-name{font-size:var(--type-masthead);font-weight:300;line-height:1.12;letter-spacing:0;color:#181818}
 .engineering-index-page #content{background:#faf9f5;color:#181818}
 .engineering-index{max-width:1240px;margin:auto;padding:0 var(--pad) 80px}
 .engineering-index .index-intro{max-width:850px;padding:12px 0 32px}
-.engineering-index .index-intro p{font-size:clamp(20px,2.1vw,27px);font-weight:300;line-height:1.45;margin:0;text-align:start;color:#343431}
+.engineering-index .index-intro p{font-size:var(--type-body);font-weight:400;line-height:var(--type-leading);margin:0;text-align:start;color:#343431}
 .engineering-index .index-feature{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:clamp(24px,4vw,55px);align-items:center;padding:0 0 52px;border-bottom:1px solid #c9c8c0}
 .engineering-index .feature-visual,.engineering-index .index-card-visual{display:block;min-width:0;border-radius:8px;overflow:hidden}
 .engineering-index .editorial-cover{display:block;position:relative;isolation:isolate;aspect-ratio:16/9;overflow:hidden;width:100%;background:#e5e3db;border-radius:8px}
@@ -34,17 +34,17 @@
 .engineering-index [data-motif=repair] .art-four{width:8%;height:13%;left:48%;top:45%;border-width:0 3px 3px 0;transform:rotate(40deg);background:transparent}
 .engineering-index .feature-story{min-width:0}
 .engineering-index .feature-kicker{display:flex;flex-wrap:wrap;gap:5px 10px;font-size:14px;color:#615f57;line-height:1.45}
-.engineering-index .feature-story h2{font-family:var(--display);font-size:clamp(28px,3.2vw,42px);font-weight:300;line-height:1.18;letter-spacing:-.015em;margin:12px 0}
+.engineering-index .feature-story h2{font-family:var(--display);font-size:var(--type-h2);font-weight:600;line-height:1.3;letter-spacing:0;margin:12px 0}
 .engineering-index .feature-story h2 a,.engineering-index .index-card h3 a{color:#181818;text-decoration:none}
 .engineering-index .feature-story h2 a:hover,.engineering-index .index-card h3 a:hover{text-decoration:underline;text-underline-offset:4px}
-.engineering-index .feature-story p{font-size:18px;line-height:1.5;font-weight:300;text-align:justify;margin:0 0 18px}
-.engineering-index .index-read{display:inline-flex;align-items:center;gap:10px;border:1px solid #393933;border-radius:5px;padding:10px 16px;color:#181818;font-weight:700}
+.engineering-index .feature-story p{font-size:var(--type-body);line-height:var(--type-leading);font-weight:400;text-align:justify;margin:0 0 18px}
+.engineering-index .index-read{display:inline-flex;align-items:center;gap:10px;border:1px solid #393933;border-radius:5px;padding:10px 16px;color:#181818;font-weight:600}
 .engineering-index .index-read:hover{background:#181818;color:#fff;text-decoration:none}
 .engineering-index .index-archive{padding-top:32px}
 .engineering-index .index-toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:0 0 13px;margin:0;border-bottom:1px solid #c9c8c0}
 .engineering-index .index-feed-title,.engineering-index .index-view-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .engineering-index .article-count{font-family:var(--display);font-size:36px;line-height:1;font-weight:300;color:#181818}
-.engineering-index #feed-heading{font-size:15px;line-height:1.4;font-weight:700;letter-spacing:.025em;color:#181818}
+.engineering-index #feed-heading{font-size:15px;line-height:1.4;font-weight:600;letter-spacing:0;color:#181818}
 .engineering-index .sort-label{font-size:14px;color:#615f57}
 .engineering-index .view-switch{display:flex;border:1px solid #aaa99f;border-radius:5px;overflow:hidden}
 .engineering-index .view-switch button{display:grid;place-items:center;width:42px;height:38px;border:0;background:transparent;color:#333;cursor:pointer}
@@ -63,13 +63,17 @@
 .engineering-index .index-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:34px 24px}
 .engineering-index .index-card{padding:0 0 20px;border:0;border-bottom:1px solid #c9c8c0;min-width:0;display:flex;flex-direction:column;gap:13px}
 .engineering-index .index-card:first-child{padding-top:0}
-.engineering-index .index-card .post-meta{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:baseline;color:#615f57;font-size:13px}
+.engineering-index .index-card .post-meta{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:baseline;color:#615f57;font-size:var(--type-small)}
 .engineering-index .index-card .topic-link{color:#615f57;text-decoration:underline}
-.engineering-index .index-card h3{font-family:var(--display);font-weight:300;font-size:clamp(21px,2vw,26px);line-height:1.26;margin:8px 0 0;overflow-wrap:anywhere}
+.engineering-index .index-card h3{font-family:var(--display);font-weight:600;font-size:var(--type-h3);line-height:1.3;margin:8px 0 0;overflow-wrap:anywhere}
 .engineering-index .index-grid[data-layout=list]{grid-template-columns:minmax(0,1fr);gap:0}
 .engineering-index .index-grid[data-layout=list] .index-card{display:grid;grid-template-columns:minmax(120px,220px) minmax(0,1fr);gap:24px;align-items:center;padding:20px 0}
 .engineering-index .index-more{text-align:center;margin:28px 0 0}
-.engineering-index .index-more button{background:transparent;border:1px solid #393933;border-radius:5px;padding:11px 22px;color:#181818;font:700 15px var(--sans);cursor:pointer}
+.engineering-index .index-more button{background:transparent;border:1px solid #393933;border-radius:5px;padding:11px 22px;color:#181818;font:600 var(--type-button) var(--sans);cursor:pointer}
 .engineering-index .index-more button:hover,.engineering-index .index-year-submit:hover{background:#e8e6de}
-@media(max-width:900px){.engineering-index .index-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.engineering-index .index-feature{gap:24px}.engineering-index .feature-story h2{font-size:30px}}
-@media(max-width:640px){.engineering-index-page .masthead-inner{padding-top:28px}.engineering-index .index-intro{padding-bottom:24px}.engineering-index .index-feature{grid-template-columns:minmax(0,1fr);padding-bottom:32px}.engineering-index .index-grid{grid-template-columns:minmax(0,1fr);gap:24px}.engineering-index .index-grid[data-layout=list] .index-card{grid-template-columns:minmax(82px,116px) minmax(0,1fr);gap:12px}.engineering-index .index-grid[data-layout=list] .index-card h3{font-size:19px}.engineering-index .index-filters{gap:12px}.engineering-index .index-search{max-width:none;flex:1 1 100%}.engineering-index .index-categories{flex-basis:100%}.engineering-index .article-count{font-size:30px}}
+@media(max-width:900px){.engineering-index .index-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.engineering-index .index-feature{gap:24px}}
+@media(max-width:640px){.engineering-index-page .masthead-inner{padding-top:28px}.engineering-index .index-intro{padding-bottom:24px}.engineering-index .index-feature{grid-template-columns:minmax(0,1fr);padding-bottom:32px}.engineering-index .index-grid{grid-template-columns:minmax(0,1fr);gap:24px}.engineering-index .index-grid[data-layout=list] .index-card{grid-template-columns:minmax(82px,116px) minmax(0,1fr);gap:12px}.engineering-index .index-filters{gap:12px}.engineering-index .index-search{max-width:none;flex:1 1 100%}.engineering-index .index-categories{flex-basis:100%}.engineering-index .article-count{font-size:30px}}
+
+.engineering-index .index-read,.engineering-index .index-more button,.engineering-index .index-year-submit{font-size:var(--type-button);font-weight:600;letter-spacing:0}
+.engineering-index .index-categories a{font-size:var(--type-nav);font-weight:500;letter-spacing:0}
+.engineering-index .index-card .post-meta,.engineering-index .feature-kicker{font-size:var(--type-small);font-weight:400;letter-spacing:0}
