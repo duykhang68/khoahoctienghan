@@ -12,3 +12,8 @@ Cover/thumbnail: 1600×900 (16:9) frame, contain/pad if necessary, no automatic 
 
 ## Acceptance gates
 Actual browser editing without source code; local crop/contain and upload/insert, references/metadata maintained; menu drag and keyboard reorder with live preview; save/reopen and conflict handling; existing public routes and content unchanged; no arbitrary executable markup, credentials in public assets, or direct main write. Run native exact-HEAD CI and explicit desktop/mobile local editor tests before marking ready. Draft means incomplete, not production.
+
+## E02 candidate — visual canvas
+- Direct on-canvas title, summary and prose editing for both workspaces; basic inline bold/italic/code selection for supported Knowledge Base Markdown; no raw source editor. Existing structured diagrams are rendered as local previews, including metric bars, cycle/flow, table, palette, spacing and wireframe previews. Advanced MDX, nested Markdown and unsupported Tech Blog blocks remain protected; no claim of lossless editing for those blocks yet.
+- Existing image export remains local-only. Shared production renderer parity, full structured visual editing, image insertion/upload and local browser acceptance remain pending. Do not mark ready or merge based solely on the public site build.
+- Adds an explicit browser-script syntax regression to the engineering suite. Candidate pending CI.

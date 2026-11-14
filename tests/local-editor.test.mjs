@@ -22,3 +22,7 @@ test('sync rejects stale revisions and invalid paths; accepts changed menu label
  assert.throws(()=>applyChanges(files,[{...change,path:'astro.config.mjs'}]),/không được phép/);
  assert.throws(()=>applyChanges(files,[{...change,content:'[]'}]),/Menu/);
 });
+
+import {readFileSync} from 'node:fs';
+import {Script} from 'node:vm';
+test('local editor browser script parses without executing',()=>{assert.doesNotThrow(()=>new Script(readFileSync(new URL('../local-editor/web/app.js',import.meta.url),'utf8')))});
