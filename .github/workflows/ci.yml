@@ -1,0 +1,33 @@
+name: P0 · Knowledge Base CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    name: Content and Astro build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: if test -f package-lock.json; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - run: node scripts/security-check.mjs
+      - run: npm run check
+      - run: npm run build
+      - run: node scripts/verify-build.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: knowledge-base-preview
+          path: dist/
