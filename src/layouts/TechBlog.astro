@@ -1,9 +1,12 @@
 ---
 import '../styles/techblog.css';
 import {categories} from '../lib/techblog';
-const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false,indexPage=false}=Astro.props;
+import {topics} from '../lib/knowledge-topics';
+const {title,description='Nhật ký kỹ thuật của đội ngũ phát triển Tri thức Hàn Quốc.',cover,article=false,indexPage=false,knowledgeHome=false}=Astro.props;
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const canonical=new URL(Astro.url.pathname,Astro.site);
+const brand=knowledgeHome?'Tri thức Hàn Quốc':'Engineering Blog';
+const home=base+(knowledgeHome?'/':'/techblog/');
 ---
 <!doctype html>
 <html lang="vi">
@@ -11,7 +14,7 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="theme-color" content="#000000"/>
-  <title>{title} | Engineering</title>
+  <title>{knowledgeHome?title:title+' | Engineering'}</title>
   <meta name="description" content={description}/>
   <link rel="canonical" href={canonical}/>
   <meta property="og:title" content={title}/>
@@ -24,28 +27,34 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   <a class="skip" href="#content">Bỏ qua điều hướng</a>
   <header class="engineering-header">
     <nav class="engineering-nav engineering-nav-minimal" aria-label="Điều hướng Engineering">
-      <a class="engineering-brand" href={base+'/techblog/'} aria-current={indexPage?'page':undefined}>Engineering Blog</a>
+      <a class="engineering-brand" href={home} aria-current={indexPage?'page':undefined}>{brand}</a>
     </nav>
   </header>
   <div class="blog-navigation blog-navigation-minimal">
-    <nav class="blog-nav-inner" aria-label="Chuyên mục Blog">
+    <nav class="blog-nav-inner" aria-label={knowledgeHome?'Chuyên mục tri thức':'Chuyên mục Blog'}>
       <details class="edition-menu">
         <summary>Chuyên mục <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></summary>
         <div class="edition-panel">
-          <a href={base+'/techblog/'}>Tất cả bài viết</a>
-          {categories.map(c=><a href={base+'/techblog/?category='+c.id}>{c.label}</a>)}
+          {knowledgeHome?<>
+            <a href={home}>Tất cả chủ đề</a>
+            {topics.map(t=><a href={base+'/'+t.id+'/'}>{t.title}</a>)}
+            <a href={base+'/techblog/'}>Engineering Blog</a>
+          </>:<>
+            <a href={base+'/techblog/'}>Tất cả bài viết</a>
+            {categories.map(c=><a href={base+'/techblog/?category='+c.id}>{c.label}</a>)}
+          </>}
         </div>
       </details>
     </nav>
   </div>
   <div class="breadcrumb-band"><nav class="blog-breadcrumb" aria-label="Đường dẫn">
-    {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">Engineering Blog</span>}
+    {article?<a href={base+'/techblog/'}>Engineering Blog</a>:<span aria-current="page">{brand}</span>}
     {article&&<><span class="crumb-divider" aria-hidden="true">›</span><span class="current-crumb" aria-current="page">{title}</span></>}
   </nav></div>
   <main id="content"><slot/></main>
   <footer class="engineering-footer"><div class="footer-inner">
-    <section class="footer-intro"><a class="footer-brand" href={base+'/techblog/'}>Engineering Blog</a><p>Ghi lại những điều học được khi xây dựng phần mềm.</p><a class="aws-button footer-cta" href={base+'/'}>Về kho tri thức Hàn Quốc</a></section>
-  </div><div class="footer-bottom"><div>Tri thức Hàn Quốc · Engineering</div></div></footer>
+    <section class="footer-intro"><a class="footer-brand" href={home}>{brand}</a><p>{knowledgeHome?'Kho tri thức mở về Hàn Quốc bằng tiếng Việt. Miễn phí, không cần tài khoản.':'Ghi lại những điều học được khi xây dựng phần mềm.'}</p><a class="aws-button footer-cta" href={base+(knowledgeHome?'/techblog/':'/')}>{knowledgeHome?'Engineering Blog':'Về kho tri thức Hàn Quốc'}</a></section>
+  </div><div class="footer-bottom"><div>{knowledgeHome?'Tri thức Hàn Quốc':'Tri thức Hàn Quốc · Engineering'}</div></div></footer>
 </body>
 </html>
 
