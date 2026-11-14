@@ -9,7 +9,7 @@ export function classify({run,jobs=[],logs='',main}){
  if(/ETIMEDOUT|EAI_AGAIN|ECONNRESET|runner.*lost communication/i.test(logs)&&!/AssertionError|TypeError|Invalid config (?:received|passed)|environment protection/i.test(logs))return 'TRANSIENT';
  return 'UNKNOWN';
 }
-export function trustedPR(p,repo){return p.user?.login==='duykhang68'&&p.head?.repo?.full_name===repo&&!p.draft&&/^(p\d+[/-]|fix\/|feat\/|ui\/|ux\/|docs\/|techblog\/)/.test(p.head.ref);}
+export function trustedPR(p,repo){return p.user?.login==='duykhang68'&&p.head?.repo?.full_name===repo&&!p.draft&&/^(p\d+[/-]|fix\/|feat\/|ui\/|ux\/|docs\/|techblog\/|perf\/)/.test(p.head.ref);}
 export function sensitiveFile(path=''){return /^(\.github\/|AGENTS\.md$|engineering\/|scripts\/|tests\/|playwright\.config\.|package(?:-lock)?\.json$|astro\.config\.|src\/content\.config\.)/.test(path);}
 export function nativePolicyReady(repo,rules){
  return repo.allow_auto_merge&&repo.allow_squash_merge&&rules.some(r=>r.type==='pull_request'&&r.parameters?.allowed_merge_methods?.includes('squash'))&&rules.some(r=>r.type==='non_fast_forward')&&rules.some(r=>r.type==='required_status_checks'&&r.parameters?.strict_required_status_checks_policy&&r.parameters.required_status_checks?.some(c=>c.context===checkName&&c.integration_id>0));
