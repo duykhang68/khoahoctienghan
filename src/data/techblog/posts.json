@@ -782,5 +782,348 @@
         ]
       }
     ]
+  },
+  {
+    "slug": "nhung-loi-dau-tien-cua-tri-thuc-han-quoc",
+    "title": "Khi một website gặp lỗi: Những bài học đầu tiên của Tri thức Hàn Quốc",
+    "summary": "Một chuyến tham quan hậu trường website dành cho cả người không biết lập trình: 10 issue trên GitHub, chuyện gì đã xảy ra, vì sao kiểm thử quan trọng và chúng ta học được gì từ những lần hệ thống không hoạt động như mong đợi.",
+    "date": "2026-11-14T18:49:00+07:00",
+    "issues": [
+      2,
+      3,
+      6,
+      19,
+      20,
+      30,
+      34,
+      44,
+      53,
+      58
+    ],
+    "sections": [
+      {
+        "heading": "01 — Một website cũng cần sổ theo dõi sự cố",
+        "paragraphs": [
+          "Hãy tưởng tượng bạn đang quản lý một thư viện. Mỗi khi một kệ sách bị sắp sai, cửa không mở được hoặc sách mới chưa được đưa ra ngoài, bạn ghi một phiếu để biết chuyện gì xảy ra và ai cần xử lý. GitHub Issues là cuốn sổ như vậy của một dự án phần mềm.",
+          "Tại thời điểm đọc dữ liệu ngày 14/11/2026, kho Tri thức Hàn Quốc có 10 issue thực sự, không tính các đề nghị thay đổi mã nguồn (pull request). Trong đó 9 còn mở và 1 đã đóng. Nhưng không phải cả 10 đều là lỗi độc lập: #20 là công việc viết bài về #2, không phải một sự cố mới. Issue mở không chứng minh website đang hỏng; issue đóng cũng không tự động chứng minh lỗi đã hết trên website công khai."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "caption": "Trạng thái 10 issue tại thời điểm khảo sát, không phải số lỗi đang ảnh hưởng người dùng.",
+            "unit": "issue",
+            "source": "GitHub Issues khoahoctienghan, 14/11/2026 GMT+7; loại trừ pull request",
+            "items": [
+              {
+                "label": "Đang mở",
+                "value": "9"
+              },
+              {
+                "label": "Đã đóng",
+                "value": "1"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Từ bản sửa đến website: vì sao có nhiều cửa kiểm tra?",
+        "paragraphs": [
+          "Một thay đổi giống như một cuốn sách mới. Người viết đưa bản thảo vào kho mã nguồn; nhóm kiểm tra chính tả và bố cục; sau đó sách mới được đặt lên kệ. Trong phần mềm, commit là bản ghi thay đổi, pull request là đề nghị đưa thay đổi vào bản chính, CI là hệ thống kiểm tra tự động, CD là quy trình đưa bản đã kiểm tra lên website. Production là nơi người đọc thật sự truy cập.",
+          "Một dấu xanh ở khâu kiểm tra không có nghĩa khâu phát hành cũng xanh. Vì vậy dự án cần đối chiếu mã nhận dạng phiên bản (SHA, tương tự số hiệu bản in) ở từng bước."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Hành trình một thay đổi từ bản thảo tới độc giả.",
+            "items": [
+              {
+                "label": "Bản sửa",
+                "detail": "Commit"
+              },
+              {
+                "label": "Đề nghị",
+                "detail": "Pull request"
+              },
+              {
+                "label": "Kiểm tra",
+                "detail": "CI"
+              },
+              {
+                "label": "Bản chính",
+                "detail": "Merge"
+              },
+              {
+                "label": "Đưa lên web",
+                "detail": "CD"
+              },
+              {
+                "label": "Đối chiếu",
+                "detail": "Production verification"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Lỗi menu: luật mới, cách khai báo cũ (#2, #58)",
+        "paragraphs": [
+          "Issue #2 xảy ra khi Starlight thay đổi cách tạo nhóm menu từ phiên bản 0.39. Giống như thư viện đổi mẫu phiếu nhập sách, mẫu cũ không còn được chấp nhận. Nhóm chuyển sang cách khai báo mới và bổ sung kiểm tra. Issue đã đóng; CI của bản sửa được xác nhận thành công, nhưng hồ sơ #2 không xác nhận production cho chính bản đó.",
+          "Issue #58 cũng liên quan menu nhưng là tình huống khác: bài kiểm tra trên điện thoại vẫn tìm một thành phần cũ sau khi Starlight 0.42.10 chuyển sang nút mở menu kiểu mới. Bình luận trong issue xác định nguyên nhân và ghi nhận bản sửa ở PR #57. Kiểm tra bản sửa và production vẫn đang chờ theo hồ sơ. Điều này không chứng minh menu thực tế đã hỏng; nó chứng minh bài kiểm tra không còn tương thích với giao diện mới."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Hai tình huống khác nhau khi nâng cấp công cụ",
+            "columns": [
+              "Issue",
+              "Điều xảy ra",
+              "Bằng chứng hiện có"
+            ],
+            "rows": [
+              [
+                "#2",
+                "Cấu hình menu cũ bị từ chối",
+                "CI bản sửa xanh; chưa xác nhận production riêng"
+              ],
+              [
+                "#58",
+                "Bài kiểm tra tìm sai nút trên mobile",
+                "Có bản sửa; chờ xác minh"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Cửa xuất bản đóng hoặc không tự mở (#3, #53)",
+        "paragraphs": [
+          "Issue #3 giống như sách đã in xong nhưng nhân viên không được phép đưa sách vào thư viện. Hồ sơ ghi nhận quy tắc bảo vệ khu vực xuất bản không cho nhánh main triển khai. Cần chủ quản cấu hình đúng quyền, không tháo bỏ khóa bảo mật. Chưa có xác minh hoàn tất trong issue.",
+          "Issue #53 lại giống như sách đã qua kiểm tra nhưng tín hiệu gọi người vận chuyển không xuất hiện. Bản thay đổi PR #52 đã merge, kiểm tra bản chính thành công, nhưng quy trình phát hành không tự kích hoạt tại thời điểm quan sát. Một lần kích hoạt thủ công sau đó được workflow xác nhận đã đưa đúng phiên bản lên production; chưa có kiểm tra giao diện độc lập trong hồ sơ. PR #54 đề xuất khắc phục lâu dài. Giới hạn chuỗi sự kiện tự động chỉ là giả thuyết, không phải nguyên nhân gốc đã được xác nhận."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Tình huống #53 theo hồ sơ: kiểm tra thành công nhưng thiếu tín hiệu phát hành tự động.",
+            "items": [
+              {
+                "label": "Merge",
+                "detail": "Đã xong"
+              },
+              {
+                "label": "Main CI",
+                "detail": "Thành công"
+              },
+              {
+                "label": "CD tự động",
+                "detail": "Không xuất hiện khi kiểm tra"
+              },
+              {
+                "label": "CD thủ công",
+                "detail": "Khôi phục"
+              },
+              {
+                "label": "Verify",
+                "detail": "Workflow xác nhận đúng SHA"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "05 — Hai người sửa chung một trang (#19)",
+        "paragraphs": [
+          "Khi hai người cùng chỉnh sửa một đoạn văn, bản sửa của người này có thể va chạm với bản của người kia. GitHub gọi đó là xung đột khi hợp nhất. Issue #19 ghi nhận xung đột PR #18; bình luận cho biết nhóm đã kết hợp hai phía, giữ chức năng gắn nhãn và kiểm thử, thay vì xóa sạch phần của một bên.",
+          "GitHub báo có thể hợp nhất sau bản xử lý, nhưng hồ sơ vẫn yêu cầu CI và các điều kiện review. Bài học: giải quyết xung đột không chỉ là khiến hệ thống hết báo đỏ; phải giữ đúng ý nghĩa của cả hai thay đổi."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Cách xử lý xung đột an toàn.",
+            "items": [
+              {
+                "label": "Thay đổi A",
+                "detail": "Giữ ý định"
+              },
+              {
+                "label": "Thay đổi B",
+                "detail": "Đọc khác biệt"
+              },
+              {
+                "label": "Kết hợp",
+                "detail": "Không ghi đè mù"
+              },
+              {
+                "label": "Kiểm tra",
+                "detail": "Xác nhận cả hai chức năng"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "06 — Chữ tiếng Việt và kết quả tìm kiếm (#30, #34)",
+        "paragraphs": [
+          "Issue #30 liên quan phép kiểm tra font chữ: tên bên trong tệp font Source Sans 3 có thể khác tên quảng bá. Hồ sơ nêu giả thuyết bộ kiểm tra đã so tên quá cứng, trong khi bảng ký tự của font chứa các dấu tiếng Việt được thử. Bản sửa đề xuất nhận diện đúng tên nội bộ mà vẫn kiểm tra font thật; chưa có xác nhận CI cuối trong issue. Không nên gọi đây là lỗi mất dấu tiếng Việt đã được chứng minh.",
+          "Issue #34 dễ hình dung hơn: tìm một cuốn sách, hệ thống tìm đúng nhưng sắp nó phía sau những cuốn không phù hợp đang bị ẩn. Bình luận xác định cách đưa kết quả lên trước trong cấu trúc trang và bổ sung kiểm thử. Việc sắp đúng cả trên màn hình lẫn trong cấu trúc giúp trải nghiệm dễ đoán hơn; hồ sơ vẫn chờ xác minh bản sửa."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Từ dấu hiệu đến điều cần kiểm tra",
+            "columns": [
+              "Issue",
+              "Dấu hiệu",
+              "Cách kiểm tra"
+            ],
+            "rows": [
+              [
+                "#30",
+                "Tên font không khớp phép thử",
+                "Font thực sự vẽ đủ ký tự tiếng Việt"
+              ],
+              [
+                "#34",
+                "Kết quả đúng đứng sau mục ẩn",
+                "Kết quả phù hợp xuất hiện đầu danh sách"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "07 — Khi chưa biết nguyên nhân (#6, #44)",
+        "paragraphs": [
+          "Hai issue #6 và #44 ghi nhận lần chạy thất bại nhưng hồ sơ công khai chưa giải thích được nguyên nhân gốc hay bản sửa đã kiểm chứng. Không thể suy ra đó là lỗi máy chủ, mạng, code hoặc bảo mật chỉ từ nhãn UNKNOWN.",
+          "Cách làm có trách nhiệm là tìm bước thất bại, tái hiện lỗi, thử bản sửa nhỏ và kiểm tra lại. Không bấm chạy lại vô hạn hay tắt một phép kiểm tra chỉ để có dấu xanh."
+        ],
+        "visuals": []
+      },
+      {
+        "heading": "08 — Bảng tổng hợp toàn bộ issue",
+        "paragraphs": [
+          "Bảng này là ảnh chụp tình trạng hồ sơ tại thời điểm khảo sát, không phải dashboard thời gian thực. Các trạng thái CI, merge và production độc lập với nhau. #20 chỉ là nhiệm vụ viết retrospective về #2; bài bugfix-issue-2 đã có trong dữ liệu Tech Blog, nhưng issue #20 vẫn mở khi kiểm tra."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "10 hồ sơ GitHub — 14/11/2026",
+            "columns": [
+              "Issue",
+              "Chủ đề",
+              "Tình trạng hồ sơ"
+            ],
+            "rows": [
+              [
+                "#2",
+                "Menu Starlight",
+                "Đóng; CI xác nhận"
+              ],
+              [
+                "#3",
+                "Quyền triển khai",
+                "Mở; cần xác minh"
+              ],
+              [
+                "#6",
+                "CI chưa rõ nguyên nhân",
+                "Mở; điều tra"
+              ],
+              [
+                "#19",
+                "Xung đột PR",
+                "Mở; đã có xử lý"
+              ],
+              [
+                "#20",
+                "Nhiệm vụ viết bài #2",
+                "Mở; không phải lỗi"
+              ],
+              [
+                "#30",
+                "Nhận diện font",
+                "Mở; bản sửa đề xuất"
+              ],
+              [
+                "#34",
+                "Thứ tự tìm kiếm",
+                "Mở; đã có bản sửa"
+              ],
+              [
+                "#44",
+                "CI chưa rõ nguyên nhân",
+                "Mở; điều tra"
+              ],
+              [
+                "#53",
+                "Thiếu kích hoạt CD",
+                "Mở; đã khôi phục thủ công"
+              ],
+              [
+                "#58",
+                "Kiểm thử menu mobile",
+                "Mở; đã có bản sửa"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "09 — Điều người đọc thực sự nhận được",
+        "paragraphs": [
+          "Không ai muốn website gặp lỗi. Nhưng một hệ thống đáng tin không phải hệ thống chưa từng lỗi, mà là hệ thống phát hiện được sai sót, không giấu chúng, sửa đúng nguyên nhân và bảo vệ người dùng khỏi những bản thay đổi chưa kiểm chứng. Các bài kiểm tra chính là lớp bảo vệ đó.",
+          "Đối với người học tiếng Hàn, mục tiêu rất đơn giản: mở bài nhanh, menu dễ dùng, chữ rõ ràng và nội dung mới xuất hiện đúng lúc. Đối với đội phát triển, mỗi issue là cơ hội để làm cho con đường tới mục tiêu này an toàn hơn.",
+          "Đây là bài tổng quan duy nhất theo yêu cầu biên tập, không thay thế các retrospective sự cố riêng đã có hoặc chính sách xác minh sự cố. Không đóng issue, sửa hệ thống hoặc tuyên bố đã khắc phục chỉ vì bài viết được đăng."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Vòng lặp học hỏi từ lỗi.",
+            "items": [
+              {
+                "label": "Phát hiện",
+                "detail": "Ghi issue"
+              },
+              {
+                "label": "Tìm hiểu",
+                "detail": "Có bằng chứng"
+              },
+              {
+                "label": "Sửa nhỏ",
+                "detail": "Không bỏ kiểm tra"
+              },
+              {
+                "label": "Xác minh",
+                "detail": "Đúng phiên bản"
+              },
+              {
+                "label": "Ghi nhớ",
+                "detail": "Tránh lặp lại"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Nguồn tham khảo",
+        "paragraphs": [
+          "Danh sách GitHub Issues (https://github.com/duykhang68/khoahoctienghan/issues)",
+          "Issue #2 (https://github.com/duykhang68/khoahoctienghan/issues/2)",
+          "Issue #3 (https://github.com/duykhang68/khoahoctienghan/issues/3)",
+          "Issue #6 (https://github.com/duykhang68/khoahoctienghan/issues/6)",
+          "Issue #19 (https://github.com/duykhang68/khoahoctienghan/issues/19)",
+          "Issue #20 (https://github.com/duykhang68/khoahoctienghan/issues/20)",
+          "Issue #30 (https://github.com/duykhang68/khoahoctienghan/issues/30)",
+          "Issue #34 (https://github.com/duykhang68/khoahoctienghan/issues/34)",
+          "Issue #44 (https://github.com/duykhang68/khoahoctienghan/issues/44)",
+          "Issue #53 (https://github.com/duykhang68/khoahoctienghan/issues/53)",
+          "Issue #58 (https://github.com/duykhang68/khoahoctienghan/issues/58)",
+          "Bài học Starlight trong repository (https://github.com/duykhang68/khoahoctienghan/blob/main/engineering/lessons/starlight-sidebar-039.md)",
+          "Starlight Sidebar (https://starlight.astro.build/guides/sidebar/)",
+          "GitHub deployment environments (https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)"
+        ],
+        "visuals": []
+      }
+    ]
   }
 ]
