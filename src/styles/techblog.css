@@ -138,3 +138,6 @@ h1,h2,h3,.blog-name{font-family:var(--sans);letter-spacing:0;font-weight:600}
 /* Minimal footer: no empty columns after removing exploration/resource groups. */
 .engineering-footer .footer-inner{grid-template-columns:minmax(0,1fr)}
 .engineering-footer .footer-intro{grid-column:auto;min-width:0}
+
+/* Footer signature: right aligned, bold amber on the existing dark surface. */
+.engineering-footer .footer-bottom>div{color:#ffcc00;font-weight:700;text-align:right}

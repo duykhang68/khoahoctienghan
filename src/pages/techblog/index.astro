@@ -4,22 +4,10 @@ import TechCover from '../../components/TechCover.astro';
 import '../../styles/techblog-index.css';
 import {posts,dateLabel,yearLabel,coverURL,inferCategory,categories,archiveYears} from '../../lib/techblog';
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
-const latest=posts[0];
-const featureCover=latest?coverURL(latest.cover,base):undefined;
-const featureHref=latest?base+'/techblog/'+latest.slug+'/':'';
 ---
 <TechBlog title="Tech Blog" indexPage={true}>
   <div class="engineering-index">
     <div class="index-intro"><p>Chia sẻ cách chúng tôi xây dựng, vận hành và cải tiến các hệ thống phần mềm đáng tin cậy — từ kiến trúc, công cụ phát triển đến kỹ thuật production.</p></div>
-    {latest&&<section class="index-feature" id="latest-feature" aria-label="Bài mới nhất">
-      <a class="feature-visual" href={featureHref} tabindex="-1" aria-hidden="true"><TechCover cover={featureCover} slug={latest.slug} eager={true}/></a>
-      <div class="feature-story">
-        <div class="feature-kicker"><span>Bài mới nhất</span><span class="feature-divider" aria-hidden="true">·</span><time datetime={latest.date}>{dateLabel(latest.date)}</time></div>
-        <h2><a href={featureHref}>{latest.title}</a></h2>
-        <p>{latest.summary}</p>
-        <a class="index-read" href={featureHref}>Đọc bài viết <span aria-hidden="true">↗</span></a>
-      </div>
-    </section>}
     <section class="index-archive" aria-labelledby="feed-heading">
       <div class="index-toolbar filter-line">
         <div class="index-feed-title"><span class="article-count" id="article-count">{posts.length}</span><h2 id="feed-heading">Bài viết mới nhất</h2></div>
@@ -71,7 +59,6 @@ const featureHref=latest?base+'/techblog/'+latest.slug+'/':'';
   if(activeCategory)activeCategory.setAttribute('aria-current','true');
   else if(!category)document.querySelector('[data-all-categories]')?.setAttribute('aria-current','true');
   if(active){
-    document.getElementById('latest-feature')?.setAttribute('hidden','');
     const heading=document.getElementById('feed-heading');
     if(heading)heading.textContent=query?'Kết quả tìm kiếm':category?'Chuyên mục: '+(activeCategory?.textContent?.trim()||'Không có'):'Lưu trữ '+year;
     document.getElementById('clear-filters')?.removeAttribute('hidden');
