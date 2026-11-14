@@ -7,3 +7,6 @@ Example: {"kind":"swatches","caption":"Proposed palette","items":[{"label":"Prim
 Example: {"kind":"flow","caption":"Release sequence","items":[{"label":"CI"},{"label":"Deploy"},{"label":"Verify"}]}
 
 New technical posts should use at least one meaningful visual when applicable; authors explain a deliberate text-only choice in the PR. Charts must not invent observations. UI/UX articles show actual colors and controls, not just HEX names. Use existing pastel cover system unchanged. Test at 375 and 1280 pixels, keyboard focus, and page overflow; code/table may scroll internally. Raster assets use WebP and alt text.
+
+## Visual Editorial 2.0
+Use a meaningful optional title for featured diagrams. Flow defaults to a connected vertical card sequence with optional allowlisted icon (file, pull, shield, merge, cloud, check); variant cycle renders a five-stage circular SVG with a text key. Bars variant summary renders metric totals and a proportional segmented bar; provide 2–5 categories with nonnegative values, HEX colors and a positive sum. Prefer these layouts for status snapshots and continuous improvement diagrams. Match the approved conversation reference visually, not merely semantically; inspect actual rendered desktop and mobile before claiming visual parity. Preserve color meaning, captions and scope. No new runtime dependencies.
