@@ -27,3 +27,20 @@ test('tech blog renders, search filters and article text is justified',async({pa
  await page.goto('./techblog/?q=zz-no-such-post-xyz');
  await expect(page.locator('#no-results')).toBeVisible();
 });
+
+test('inferred categories on both feed and detail, filter works',async({page})=>{
+ await page.goto('./techblog/');
+ const category=page.locator('[data-category-filter="engineering"]');
+ await expect(category).toBeVisible();
+ await category.click();
+ await expect(page.locator('#feed-heading')).toHaveText('Chuyên mục: Engineering');
+ const card=page.locator('[data-tech-post][data-category="engineering"]').first();
+ await expect(card).toBeVisible();
+ await expect(card.locator('.topic-link')).toHaveText('Engineering');
+ await card.locator('h3 a').click();
+ await expect(page.locator('.article-heading .topic-link')).toHaveText('Engineering');
+ await page.locator('.article-heading .topic-link').click();
+ await expect(page.locator('#feed-heading')).toHaveText('Chuyên mục: Engineering');
+ await page.goto('./techblog/?category=unknown-topic');
+ await expect(page.locator('#no-results')).toBeVisible();
+});
