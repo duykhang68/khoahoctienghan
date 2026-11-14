@@ -2,6 +2,7 @@
 import EditorialHeader from './EditorialHeader.astro';
 import EditorialFooter from './EditorialFooter.astro';
 import TechCover from './TechCover.astro';
+import AuthorByline from './AuthorByline.astro';
 import KnowledgeArticleFeed from './KnowledgeArticleFeed.astro';
 import kbMetadata from '../data/studio-metadata.json';
 import {topics} from '../lib/knowledge-topics';
@@ -26,6 +27,7 @@ const permalink=base+'/'+(path?path+'/':'');
   <div class="research-reading-grid">
    <aside class="research-meta" aria-label="Thông tin bài viết">
     <dl class="post-meta"><div><dt>Nhóm</dt><dd><a href={base+'/'}>Tri thức Hàn Quốc</a></dd></div>
+     {!isTopic&&<div><dt>Tác giả</dt><dd><AuthorByline/></dd></div>}
      {date&&<div><dt>Ngày bài viết</dt><dd><time datetime={date}>{new Intl.DateTimeFormat('vi-VN',{dateStyle:'long',timeStyle:'medium',timeZone:'Asia/Ho_Chi_Minh',hour12:false}).format(new Date(date))}</time></dd></div>}
      {topic&&<div><dt>Chủ đề</dt><dd><a class="topic-link" href={base+'/'+topic.id+'/'}>{topic.title}</a></dd></div>}
     </dl>

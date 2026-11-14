@@ -1,5 +1,6 @@
 ---
 import StudioDocument from '../../components/StudioDocument.astro';
+import AuthorByline from '../../components/AuthorByline.astro';
 import StudioMetadata from '../../components/StudioMetadata.astro';
 import TechBlog from '../../layouts/TechBlog.astro';
 import TechCover from '../../components/TechCover.astro';
@@ -32,7 +33,7 @@ const category=inferCategory(post);
             <div><dt>Xuất bản</dt><dd><time datetime={post.date}>{dateLabel(post.date)}</time></dd></div>
             <div><dt>Nhóm</dt><dd><a href={base+'/techblog/'}>Engineering</a></dd></div>
             <div><dt>Chủ đề</dt><dd><a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></dd></div>
-            {post.author&&<div><dt>Tác giả</dt><dd>{post.author}</dd></div>}
+            <div><dt>Tác giả</dt><dd><AuthorByline name={post.author}/></dd></div>
             <div><dt>Thời gian đọc</dt><dd>{readingMinutes(post)} phút</dd></div>
           </dl>
           <div class="research-share">

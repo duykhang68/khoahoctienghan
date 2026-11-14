@@ -1,6 +1,7 @@
 ---
 import TechBlog from '../../layouts/TechBlog.astro';
 import TechCover from '../../components/TechCover.astro';
+import AuthorByline from '../../components/AuthorByline.astro';
 import {isReferenceHeading} from '../../lib/tech-links.mjs';
 import '../../styles/techblog-index.css';
 import {posts,dateLabel,yearLabel,coverURL,inferCategory} from '../../lib/techblog';
@@ -18,7 +19,7 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
           return <article class="index-card feed-post" data-tech-post data-category={category.id} data-year={yearLabel(post.date)} data-search={JSON.stringify([{kind:'title',text:post.title},{kind:'summary',text:post.summary},...post.sections.flatMap(s=>isReferenceHeading(s.heading)?s.paragraphs.map(p=>({kind:'reference',heading:s.heading,text:p.replace(/https?:\/\/[^\s]+/gi,'')})):[{kind:'heading',heading:s.heading,text:s.heading},...s.paragraphs.map(p=>({kind:'body',heading:s.heading,text:p.replace(/https?:\/\/[^\s]+/gi,'')}))])])}>
             <a class="index-card-visual" href={href} tabindex="-1" aria-hidden="true"><TechCover cover={cover} slug={post.slug}/></a>
             <div class="index-card-copy">
-              <div class="post-meta"><time datetime={post.date}>{dateLabel(post.date)}</time><a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></div>
+              <div class="post-meta"><AuthorByline name={post.author}/><time datetime={post.date}>{dateLabel(post.date)}</time><a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></div>
               <h3><a href={href}>{post.title}</a></h3>
               <p class="post-summary">{post.summary}</p>
               <div class="search-evidence" hidden><div class="search-evidence-label"></div><p class="search-snippet"></p></div>
