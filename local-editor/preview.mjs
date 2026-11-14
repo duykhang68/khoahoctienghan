@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import {execFile,execFileSync} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdtemp,mkdir,writeFile,rm,symlink,readFile,stat,realpath} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,rm,cp,readFile,stat,realpath} from 'node:fs/promises';
+import {constants} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,dirname,extname,sep} from 'node:path';
 import {applyChanges} from './core.mjs';
@@ -34,6 +35,16 @@ let active=null,building=false;
 async function stopPreview(){
  if(!active)return;const current=active;active=null;await new Promise(resolve=>{current.server.close(resolve);current.server.closeAllConnections()});await rm(current.dir,{recursive:true,force:true});
 }
+// npm ci has already installed locked dependencies. A directory symlink would also
+// share Astro/Vite's generated caches with the main checkout and resolve imports
+// against real paths outside the snapshot. Clone dependencies, not their caches.
+export async function cloneDependencies(root,temp){
+ const source=await realpath(join(root,'node_modules'));
+ await cp(source,join(temp,'node_modules'),{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE,filter:path=>{
+  const relative=path.slice(source.length+1).split(sep)[0];
+  return !['.astro','.vite','.vite-temp','.cache'].includes(relative);
+ }});
+}
 export async function createPreview(root,snapshot,changes,route){
  assert(validPreviewRoute(route),'Invalid preview route');assert(!building,'Preview build already running');building=true;
  let temp,server;
@@ -41,14 +52,25 @@ export async function createPreview(root,snapshot,changes,route){
   const base=new Map(Object.entries(snapshot.files).map(([path,value])=>[path,value.content]));
   if(changes.length)applyChanges(base,changes);
   for(const change of changes)if(change.path.startsWith('src/content/docs/')&&change.content!==null&&change.content!==base.get(change.path))assertPreviewSource(change.path,change.content,base.get(change.path)??(change.path.endsWith('.mdx')?base.get(change.path.slice(0,-1)):undefined));
-  temp=await mkdtemp(join(tmpdir(),'editor-astro-preview-'));
+  temp=await mkdtemp(join(await realpath(tmpdir()),'editor-astro-preview-'));
   const archive=execFileSync('git',['archive','--format=tar',snapshot.sha],{cwd:root,maxBuffer:64*1024*1024});
   execFileSync('tar',['-xf','-','-C',temp],{input:archive,maxBuffer:2*1024*1024});
-  await symlink(join(root,'node_modules'),join(temp,'node_modules'),'dir');
+  await cloneDependencies(root,temp);
   for(const change of changes){const path=join(temp,change.path);if(change.content===null)await rm(path,{force:true});else{await mkdir(dirname(path),{recursive:true});await writeFile(path,mediaPath(change.path)?Buffer.from(change.content,'base64'):change.content)}}
   const env={PATH:process.env.PATH||'/usr/bin:/bin',HOME:temp,TMPDIR:temp,LANG:'C.UTF-8',ASTRO_TELEMETRY_DISABLED:'1',NODE_ENV:'production',SITE_BASE:BASE.slice(0,-1),SITE_URL:'https://duykhang68.github.io'};
   // This is a temporary trusted local build, not an OS sandbox. Never pass GitHub credentials.
-  await run(process.execPath,[join(root,'node_modules/astro/bin/astro.mjs'),'build'],{cwd:temp,env,timeout:150000,maxBuffer:8*1024*1024});
+  try{
+   await run(process.execPath,[join(temp,'node_modules/astro/bin/astro.mjs'),'build','--root',temp],{cwd:temp,env,timeout:150000,maxBuffer:8*1024*1024});
+  }catch(error){
+   // Keep draft text out of shared logs by default. Explicit local diagnostics
+   // are enabled by the integration test only for its public fixture.
+   if(process.env.EDITOR_PREVIEW_DEBUG==='1'){
+    const diagnostic=String(error.stderr||error.stdout||error.message).replaceAll(temp,'[preview]').replaceAll(root,'[checkout]').slice(-6000);
+    console.error('[editor-preview] Astro build diagnostic:',diagnostic);
+   }
+   const detail=error.killed?'timeout':typeof error.code==='number'?'exit '+error.code:typeof error.code==='string'&&/^[A-Z0-9_]+$/.test(error.code)?error.code:'unknown';
+   throw Error('Astro build thất bại ('+detail+'). Kiểm tra dependencies và bản nháp.');
+  }
   const dist=await realpath(join(temp,'dist'));await stat(join(dist,route,'index.html'));
   server=http.createServer(async(req,res)=>{
    res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');

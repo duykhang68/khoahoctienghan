@@ -96,3 +96,27 @@ test('production preview compiles only approved local MDX syntax and safe routes
  assert.throws(()=>assertPreviewSource(doc,front+"import KnowledgeImage from 'https://example.com/KnowledgeImage.astro';",null),/arbitrary/);
  assert.throws(()=>assertPreviewSource(doc,front.replace('description: Test article','description: Test article\ncustom: true')+'Body',null),/metadata/);
 });
+
+import {cloneDependencies} from '../local-editor/preview.mjs';
+import {mkdtemp as makeTemp,mkdir as makeDirectory,writeFile as putFile,readFile as getFile,rm as removeTemp,symlink as makeLink,lstat as inspectPath} from 'node:fs/promises';
+import {tmpdir as tempRoot} from 'node:os';
+import {join as joinPath} from 'node:path';
+test('preview dependencies are isolated from main checkout and generated caches',async()=>{
+ const dir=await makeTemp(joinPath(tempRoot(),'editor-deps-test-'));
+ try{
+  const src=joinPath(dir,'source'),dest=joinPath(dir,'preview');
+  await makeDirectory(joinPath(src,'node_modules','pkg'),{recursive:true});
+  await makeDirectory(joinPath(src,'node_modules','.astro'),{recursive:true});
+  await makeDirectory(joinPath(src,'node_modules','.bin'),{recursive:true});
+  await makeDirectory(dest);
+  await putFile(joinPath(src,'node_modules','pkg','value.js'),'original');
+  await putFile(joinPath(src,'node_modules','.astro','cache'),'old');
+  await makeLink('../pkg/value.js',joinPath(src,'node_modules','.bin','tool'));
+  await cloneDependencies(src,dest);
+  assert.equal((await inspectPath(joinPath(dest,'node_modules'))).isSymbolicLink(),false);
+  await assert.rejects(inspectPath(joinPath(dest,'node_modules','.astro')),{code:'ENOENT'});
+  await putFile(joinPath(dest,'node_modules','pkg','value.js'),'draft');
+  assert.equal(await getFile(joinPath(src,'node_modules','pkg','value.js'),'utf8'),'original');
+  assert.equal(await getFile(joinPath(dest,'node_modules','.bin','tool'),'utf8'),'draft');
+ }finally{await removeTemp(dir,{recursive:true,force:true})}
+});

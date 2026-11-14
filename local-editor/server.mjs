@@ -106,7 +106,7 @@ const server=http.createServer(async(req,res)=>{
    const snap=local();if(data.base!==snap.sha)throw Error('Preview cần checkout cùng SHA với bản nháp. Cập nhật Git local, mở lại Editor và Pull.');
    if(!Array.isArray(data.changes))throw Error('Invalid preview changes');
    try{return json(200,await createPreview(ROOT,snap,data.changes,data.route))}
-   catch(e){throw Error('Không dựng được preview Astro: '+(e.code?'build không thành công; kiểm tra checkout/npm ci và nội dung.':e.message))}
+   catch(e){throw Error('Không dựng được preview Astro: '+(e.code?'không chuẩn bị được snapshot ('+e.code+'). Kiểm tra checkout/npm ci.':e.message))}
   }
   if(path==='/api/pull')return json(200,await remote());
   if(path==='/api/publishing'){if(!token)return json(401,{error:'Kết nối GitHub trước'});return json(200,await publishingStatus(data.numbers));}

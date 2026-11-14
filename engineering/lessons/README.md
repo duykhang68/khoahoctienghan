@@ -7,3 +7,5 @@ Read before implementation. Add one file per verified root cause, including inci
 ## Candidate preventive changes (verification pending)
 
 - [GitHub App stateless installation tokens](github-app-stateless-token.md) — compatibility notice; no confirmed incident.
+
+- [Editor Astro preview isolation](editor-preview-isolation.md) — candidate, failed preview build; exact cause pending regression verification.

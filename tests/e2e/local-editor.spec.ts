@@ -124,7 +124,8 @@ test('actual Astro draft preview renders placed Knowledge image and existing vis
  test.setTimeout(240000);
  const probe=createServer();await new Promise<void>((resolve,reject)=>{probe.once('error',reject);probe.listen(0,'127.0.0.1',resolve)});
  const port=(probe.address() as import('node:net').AddressInfo).port;await new Promise<void>(resolve=>probe.close(()=>resolve()));
- const child=spawn(process.execPath,['local-editor/server.mjs'],{env:{...process.env,EDITOR_PORT:String(port)},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,['local-editor/server.mjs'],{env:{...process.env,EDITOR_PORT:String(port),EDITOR_PREVIEW_DEBUG:'1'},stdio:['ignore','pipe','pipe']});
+ let diagnostic='';child.stderr.on('data',chunk=>{diagnostic=(diagnostic+String(chunk)).slice(-8000)});
  const base='http://127.0.0.1:'+port;
  try{
   await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Editor not listening')),10000);child.once('error',error=>{clearTimeout(timer);reject(error)});child.stdout.once('data',()=>{clearTimeout(timer);resolve()})});
@@ -140,7 +141,7 @@ test('actual Astro draft preview renders placed Knowledge image and existing vis
   record.images.push({id,src:asset.slice(6),width:16,height:12,alt:'Ảnh preview thực tế',caption:'Fixture chỉ tồn tại trong preview'});index['ngon-ngu/hangul']=record;
   const changes=[{path:docs,before:snapshot.files[docs].hash,content:article},{path:indexPath,before:snapshot.files[indexPath].hash,content:JSON.stringify(index,null,2)+'\n'},{path:asset,before:snapshot.files[asset]?.hash??null,content:bytes}];
   const response=await fetch(base+'/api/preview',{method:'POST',headers:{Origin:base,'Content-Type':'application/json','X-Editor-Nonce':session.nonce},body:JSON.stringify({base:snapshot.sha,route:'ngon-ngu/hangul/',changes}),signal:AbortSignal.timeout(180000)});
-  const preview=await response.json();expect(response.status,JSON.stringify(preview)).toBe(200);
+  const preview=await response.json();expect(response.status,JSON.stringify(preview)+'\n'+diagnostic).toBe(200);
   await page.goto(preview.url);
   const image=page.getByRole('img',{name:'Ảnh preview thực tế'});
   await expect(image).toBeVisible();await expect(image).toHaveAttribute('width','16');
