@@ -18,3 +18,5 @@ Hangul, ngữ pháp, từ vựng và TOPIK. Đây là trang tổng quan của ch
 - [Nguồn thông tin chính thức](https://nuri.iksi.or.kr/)
 
 - [Hangul: nguồn gốc, cấu trúc và vai trò trong xã hội Hàn Quốc](/khoahoctienghan/ngon-ngu/hangul-nguon-goc-cau-truc-va-vai-tro-trong-xa-hoi-han-quoc/)
+
+- [Sejong Đại Vương: Vua nhà sáng lập chữ Hangul và nhà cải cách thời Joseon](/khoahoctienghan/ngon-ngu/sejong-dai-vuong-vua-nha-sang-lap-chu-hangul-va-nha-cai-cach-thoi-joseon/)
