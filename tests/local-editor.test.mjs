@@ -40,3 +40,6 @@ test('real WebP bytes are validated and staged with image references only',()=>{
  assert.throws(()=>applyChanges(files,[asset]),/chưa được chèn/);
  assert.throws(()=>applyChanges(files,[asset,{...index,content:JSON.stringify({'':{images:[{...image,width:17}]}})}]),/dimensions/);
 });
+
+import {checkPositions} from '../src/lib/editor-block-position.mjs';
+test('visual insertion positions support start and middle and reject out of range',()=>{const s={paragraphs:['a','b'],visuals:[{afterParagraph:0}],images:[{afterParagraph:1}]};assert.doesNotThrow(()=>checkPositions(s));assert.throws(()=>checkPositions({...s,images:[{afterParagraph:3}]}),/position/)});

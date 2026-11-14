@@ -5,6 +5,7 @@ export {inferCategory};
 export type TechVisual = {
   kind: 'swatches'|'buttons'|'type'|'spacing'|'wireframe'|'table'|'flow'|'bars'|'code';
   caption: string;
+  afterParagraph?: number;
   variant?: 'summary'|'cycle';
   title?: string;
   centerLabel?: [string,string];
@@ -17,7 +18,7 @@ export type TechVisual = {
   language?: string;
   code?: string;
 };
-export type EditorImage = {src:string;alt:string;caption:string;width:number;height:number};
+export type EditorImage = {src:string;alt:string;caption:string;width:number;height:number;afterParagraph?:number};
 export type TechPost = {
   slug: string;
   title: string;

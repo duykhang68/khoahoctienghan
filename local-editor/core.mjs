@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {validateMenu,routesFromPaths} from '../src/lib/knowledge-menu.mjs';
+import {checkPositions} from '../src/lib/editor-block-position.mjs';
 import {validateVisual} from '../src/lib/tech-visual-validation.mjs';
 import {MEDIA_INDEX,mediaPath,validateMedia,validateMediaIndex} from '../src/lib/editor-media.mjs';
 export const MENU='src/data/knowledge-menu.json';
@@ -29,6 +30,7 @@ export function applyChanges(files,changes){
   assert(typeof p.title==='string'&&p.title.trim()&&typeof p.summary==='string'&&p.summary.trim()&&typeof p.date==='string'&&Number.isFinite(Date.parse(p.date))&&Array.isArray(p.sections)&&Array.isArray(p.issues),'Thiếu metadata bài Tech Blog');
   for(const section of p.sections){
    assert(typeof section.heading==='string'&&Array.isArray(section.paragraphs)&&section.paragraphs.every(x=>typeof x==='string'),'Section không hợp lệ');
+   checkPositions(section);
    if(section.visuals!==undefined){assert(Array.isArray(section.visuals),'Visuals không hợp lệ');section.visuals.forEach(validateVisual);}
   }
  }
