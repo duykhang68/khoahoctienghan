@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+import {matchPost} from '../../src/lib/tech-search.mjs';
+test('search matches exact phrases and ranks title above body, not partial words',()=>{
+ expect(matchPost([{kind:'body',text:'sidebars'}],'sidebar')).toBeNull();
+ expect(matchPost([{kind:'body',text:'Một cấu hình sidebar'}],'SIDEBAR')?.highlight).toBe('sidebar');
+ expect(matchPost([{kind:'title',text:'Sửa lỗi sidebar'}],'sidebar')!.score).toBeGreaterThan(matchPost([{kind:'body',text:'sidebar'}],'sidebar')!.score);
+ expect(matchPost([{kind:'body',text:'sidebar'}],'sidebar','title')).toBeNull();
+ expect(matchPost([{kind:'title',text:'Tiếng Việt'}],'Tiếng Việt'.normalize('NFD'))?.kind).toBe('title');
+ expect(matchPost([{kind:'body',text:'a+b'}],'a+b')?.highlight).toBe('a+b');
+});
+test('sidebar results show actual match evidence and title-only scope excludes incidental mentions',async({page})=>{
+ await page.goto('./techblog/?q=sidebar');
+ await expect(page.locator('.sort-label')).toHaveText('Liên quan nhất');
+ const cards=page.locator('[data-tech-post]:visible');
+ const bugfix=cards.filter({has:page.locator('h3 a[href$="/bugfix-issue-2/"]')});
+ const researcher=cards.filter({has:page.locator('h3 a[href$="/engineering-researcher-bo-nao-cua-self-healing-ci-cd/"]')});
+ const culture=cards.filter({has:page.locator('h3 a[href$="/engineering-culture-2-0-tu-commit-den-production/"]')});
+ await expect(bugfix.locator('.search-evidence-label')).toHaveText('Khớp tiêu đề');
+ await expect(researcher.locator('.search-evidence-label')).toContainText('Có nhắc trong nội dung');
+ await expect(culture.locator('.search-evidence-label')).toContainText('Có nhắc trong nội dung');
+ for(const card of [bugfix,researcher,culture])await expect(card.locator('mark')).toHaveText(/sidebar/i);
+ await page.locator('#search-scope').selectOption('title');
+ await expect(page).toHaveURL(/scope=title/);
+ await expect(bugfix).toBeVisible();
+ await expect(page.locator('[data-tech-post]').first().locator('h3 a')).toHaveAttribute('href',/\/bugfix-issue-2\/$/);
+ await expect(researcher).toHaveCount(0);
+ await expect(culture).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
+ await page.locator('#clear-filters').click();
+ await expect(page.locator('.sort-label')).toHaveText('Mới nhất');
+ await expect(page.locator('.search-evidence:visible')).toHaveCount(0);
+});
