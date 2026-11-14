@@ -34,6 +34,11 @@ test('homepage shows full count only for topics with previously unseen articles'
  expect(Math.abs(bounds!.width-numberBounds!.width)).toBeLessThan(2);
  expect(Math.abs(bounds!.height-numberBounds!.height)).toBeLessThan(2);
  expect(await badge.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
+ // Pastel artwork must be unchanged: the number overlay has no background or scrim.
+ expect(await badge.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+ const palette=await cover.locator('.editorial-cover').getAttribute('data-palette');
+ const ink:Record<string,string>={sage:'rgb(57, 88, 60)',lavender:'rgb(97, 71, 126)',sand:'rgb(121, 83, 46)',blue:'rgb(53, 91, 117)',rose:'rgb(131, 77, 87)'};
+ expect(await badge.evaluate(el=>getComputedStyle(el).color)).toBe(ink[palette!]);
  expect(await badge.locator('span').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(bounds!.height*.65);
  // Changing pagination during the same visit must not consume the indicator.
  const next=page.getByRole('link',{name:'Trang 2',exact:true});
