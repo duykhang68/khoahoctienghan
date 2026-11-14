@@ -4,10 +4,11 @@ import {execFileSync} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {allowed,digest,applyChanges} from './core.mjs';
+import {selectNativeCI,publishPhase,validSha} from './publishing.mjs';
 import {mediaPath} from '../src/lib/editor-media.mjs';
 const ROOT=fileURLToPath(new URL('../',import.meta.url));
 const REPO='duykhang68/khoahoctienghan', API='https://api.github.com', prefix='/repos/'+REPO;
-const PORT=4317,hosts=new Set(['127.0.0.1:'+PORT,'localhost:'+PORT]);
+const PORT=Number(process.env.EDITOR_PORT||4317);if(!Number.isInteger(PORT)||PORT<1024||PORT>65535)throw Error('Invalid local port');const hosts=new Set(['127.0.0.1:'+PORT,'localhost:'+PORT]);
 const nonce=randomBytes(32).toString('hex');
 let token=null,login=null,writing=false;
 const git=(...args)=>execFileSync('git',args,{cwd:ROOT,encoding:'utf8',maxBuffer:16*1024*1024});
@@ -36,6 +37,38 @@ async function remote(){
   files[e.path]={content,hash:digest(content)};
  }));
  return {sha,tree:commit.tree.sha,files};
+}
+const PUBLIC='https://duykhang68.github.io/khoahoctienghan/';
+async function markerStatus(){
+ try{
+  const response=await fetch(PUBLIC+'release-sha.json?v='+Date.now(),{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000)});
+  if(!response.ok)return null;const marker=await response.json();if(!validSha(marker.sha))return null;
+  const routes=await Promise.all(['','ngon-ngu/hangul/','techblog/'].map(async p=>{try{return (await fetch(PUBLIC+p,{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000)})).ok}catch{return false}}));
+  return {sha:marker.sha,routesOK:routes.every(Boolean)};
+ }catch{return null}
+}
+async function publishingStatus(numbers){
+ if(!Array.isArray(numbers)||numbers.length>8||numbers.some(n=>!Number.isSafeInteger(n)||n<1))throw Error('Chỉ kiểm tra tối đa 8 PR hợp lệ.');
+ const marker=await markerStatus();
+ const results=[];
+ for(const number of [...new Set(numbers)]){
+  try{
+   const pr=await gh(prefix+'/pulls/'+number);
+   if(pr.head?.repo?.full_name!==REPO||!pr.head.ref.startsWith('content/editor-'))throw Error('PR không thuộc Editor');
+   const runs=await gh(prefix+'/actions/workflows/ci.yml/runs?head_sha='+pr.head.sha+'&per_page=30').catch(()=>null);
+   const ci=selectNativeCI(runs?.workflow_runs||[],pr.head.sha,pr.head.ref);
+   const sha=pr.merged&&validSha(pr.merge_commit_sha)?pr.merge_commit_sha:null;
+   let relation=null;
+   if(sha&&marker){if(sha===marker.sha)relation='exact';else{const compare=await gh(prefix+'/compare/'+sha+'...'+marker.sha).catch(()=>null);if(compare?.status==='ahead')relation='ancestor'}}
+   let deployment=null;
+   if(sha&&marker&&relation){
+    const list=await gh(prefix+'/deployments?environment=github-pages&sha='+marker.sha+'&per_page=10').catch(()=>[]);
+    for(const dep of list||[]){if(dep.sha!==marker.sha)continue;const states=await gh(prefix+'/deployments/'+dep.id+'/statuses?per_page=1').catch(()=>[]);if(states?.[0]?.state==='success'){deployment={id:dep.id,sha:dep.sha,state:'success'};break}}
+   }
+   results.push({number,title:pr.title,head:pr.head.sha,mergeSha:sha,merged:pr.merged,state:pr.state,ci:ci?{id:ci.id,status:ci.status,conclusion:ci.conclusion}:null,relation,deployment,phase:publishPhase(pr,ci,marker,relation)});
+  }catch(e){results.push({number,error:e.message,phase:'UNKNOWN'})}
+ }
+ return {marker,results,checkedAt:new Date().toISOString()};
 }
 async function body(req){
  const chunks=[];let n=0;
@@ -69,6 +102,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(path==='/api/disconnect'){token=null;login=null;return json(200,{login:null});}
   if(path==='/api/pull')return json(200,await remote());
+  if(path==='/api/publishing'){if(!token)return json(401,{error:'Kết nối GitHub trước'});return json(200,await publishingStatus(data.numbers));}
   if(path==='/api/sync'){
    if(writing)return json(409,{error:'Đang đồng bộ'});
    writing=true;

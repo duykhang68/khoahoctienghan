@@ -52,3 +52,30 @@ test('only non-core unreferenced Knowledge leaves can be deleted',()=>{
  const linked=new Map(base);linked.set(doc,content+'\n[Extra](/ngon-ngu/extra/)');
  assert.throws(()=>applyChanges(linked,[change]),/still linked/);
 });
+
+import {selectNativeCI,publishPhase} from '../local-editor/publishing.mjs';
+test('publishing tracker does not confuse CI, merge and public marker',()=>{
+ const sha='a'.repeat(40),head={head_sha:sha,head_branch:'content/editor-test',head_repository:{full_name:'duykhang68/khoahoctienghan'},status:'completed',conclusion:'success',event:'pull_request',id:1};
+ const ci=selectNativeCI([head,{...head,id:2,event:'workflow_dispatch'},{...head,id:3,head_sha:'b'.repeat(40)}],sha,head.head_branch);
+ assert.equal(ci.id,1);
+ assert.equal(publishPhase({state:'open'},ci,null,null),'CI_PASSED_WAITING_MERGE');
+ assert.equal(publishPhase({merged:true},ci,{routesOK:true},null),'MERGED_WAITING_PUBLIC');
+ assert.equal(publishPhase({merged:true},ci,{routesOK:false},'exact'),'MERGED_WAITING_PUBLIC');
+ assert.equal(publishPhase({merged:true},ci,{routesOK:true},'ancestor'),'PUBLIC_MARKER_CONFIRMED');
+});
+import {spawn} from 'node:child_process';
+import {createServer} from 'node:net';
+test('real loopback editor rejects foreign host origin and missing nonce',async()=>{
+ const probe=createServer();await new Promise((resolve,reject)=>{probe.once('error',reject);probe.listen(0,'127.0.0.1',resolve)});const port=probe.address().port;await new Promise(resolve=>probe.close(resolve));
+ const child=spawn(process.execPath,['local-editor/server.mjs'],{env:{...process.env,EDITOR_PORT:String(port)},stdio:['ignore','pipe','pipe']});
+ const base='http://127.0.0.1:'+port;
+ try{
+  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Editor listen timeout')),8000);child.once('error',e=>{clearTimeout(timer);reject(e)});child.once('exit',code=>{clearTimeout(timer);reject(Error('Editor exited '+code))});child.stdout.once('data',()=>{clearTimeout(timer);resolve()})});
+  const session=await fetch(base+'/api/session');assert.equal(session.status,200);const {nonce}=await session.json();
+  const html=await fetch(base+'/');assert.match(html.headers.get('content-security-policy'),/default-src 'none'/);assert.equal(html.headers.get('x-frame-options'),'DENY');
+  assert.equal((await fetch(base+'/api/session',{headers:{Origin:'https://example.invalid'}})).status,403);
+  const init={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:'{}'};
+  assert.equal((await fetch(base+'/api/publishing',init)).status,403);
+  assert.equal((await fetch(base+'/api/publishing',{...init,headers:{...init.headers,'X-Editor-Nonce':nonce}})).status,401);
+ }finally{child.kill();await new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)resolve();else child.once('exit',resolve)})}
+});
