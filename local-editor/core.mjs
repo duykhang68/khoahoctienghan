@@ -18,7 +18,7 @@ export function applyChanges(files,changes){
   seen.add(c.path);
   const old=files.get(c.path)??null;
   assert(digest(old)===c.before,'Xung đột nội dung tại '+c.path+'; Pull và đối chiếu trước khi đồng bộ');
-  if(c.content===null){assert(old!==null&&/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)+[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/.test(c.path)&&!/(?:\/index|\/ngon-ngu\/hangul|\/lich-su\/joseon|\/van-hoa\/chao-hoi)\.mdx?$/.test(c.path),'Protected deletion');next.delete(c.path);continue}
+  if(c.content===null){const migration=c.path.endsWith('.md')&&changes.some(x=>x.path===c.path+'x'&&typeof x.content==='string');assert(old!==null&&(migration||/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)+[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/.test(c.path)&&!/(?:\/index|\/ngon-ngu\/hangul|\/lich-su\/joseon|\/van-hoa\/chao-hoi)\.mdx?$/.test(c.path)),'Protected deletion');next.delete(c.path);continue}
   assert(typeof c.content==='string'&&c.content.length>0&&Buffer.byteLength(c.content)<=2_000_000,'Nội dung trống hoặc vượt giới hạn');
   if(mediaPath(c.path)){validateMedia(c.path,c.content);assert(old===null||old===c.content,'Cannot overwrite immutable WebP');}
   next.set(c.path,c.content);
@@ -45,11 +45,11 @@ export function applyChanges(files,changes){
  const pages=[...next].filter(([path])=>path.startsWith('src/content/docs/')).map(([path,content])=>({path,content}));
  if(next.has(VISUALS))validateKnowledgeVisuals(JSON.parse(next.get(VISUALS)),pages);
  const routes=routesFromPaths(next.keys(),posts);
- for(const c of changes)if(c.content===null){const route='/'+c.path.slice('src/content/docs/'.length).replace(/\.mdx?$/,'')+'/';assert(!pages.some(p=>p.content.includes(route)),'Article still linked: '+route)}
+ for(const c of changes)if(c.content===null&&!next.has(c.path+'x')){const route='/'+c.path.slice('src/content/docs/'.length).replace(/\.mdx?$/,'')+'/';assert(!pages.some(p=>p.content.includes(route)),'Article still linked: '+route)}
 
  validateMenu(JSON.parse(next.get(MENU)),routes);
  const knowledgeRoutes=routesFromPaths(next.keys(),[]);knowledgeRoutes.delete('/techblog/');
- const used=validateMediaIndex(JSON.parse(next.get(MEDIA_INDEX)||'{}'),posts,knowledgeRoutes,p=>next.has(p)?validateMedia(p,next.get(p)):null);
+ const used=validateMediaIndex(JSON.parse(next.get(MEDIA_INDEX)||'{}'),posts,knowledgeRoutes,p=>next.has(p)?validateMedia(p,next.get(p)):null,pages);
  for(const c of changes)if(mediaPath(c.path))assert(used.has(c.path),'Ảnh chưa được chèn vào bài viết');
  return next;
 }

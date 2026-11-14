@@ -1,0 +1,11 @@
+---
+import EditorialImage from './EditorialImage.astro';
+import records from '../data/editor-images.json';
+import type {EditorImage} from '../lib/techblog';
+const {id}=Astro.props as {id:string};
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const route=Astro.url.pathname.slice(base.length).replace(/^\/|\/$/g,'');
+const image=(records as Record<string,{images:EditorImage[]}>)[route]?.images.find(item=>item.id===id);
+if(!image)throw Error('Unknown KnowledgeImage ID: '+id);
+---
+<div class="not-content"><EditorialImage {image}/></div>

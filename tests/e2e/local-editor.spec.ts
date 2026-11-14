@@ -93,6 +93,11 @@ test('local studio edits rendered documents and retains original structured visu
  await page.getByRole('button',{name:'+ Thêm minh họa',exact:true}).click();
  await page.getByRole('dialog').getByRole('button',{name:'Áp dụng',exact:true}).click();
  await expect(page.locator('#visual-editor figure.visual-block')).toHaveCount(4);
+ await page.locator('#image-target').selectOption('kb:1');
+ await page.locator('#image-insert').click();
+ await expect(page.locator('#visual-editor .editor-image-card img')).toHaveCount(2);
+ const inline=await page.evaluate(path=>JSON.parse(localStorage.getItem('trithuchanquoc-editor-drafts-v1')||'{}')[path].content,docs);
+ expect(inline).toContain('<KnowledgeImage id="image-');
  await page.locator('#files .file').filter({hasText:'Tech Blog · Tất cả bài viết'}).click();
  await page.locator('#visual-editor h1.paper-field').fill('Autosave thử');
  await expect(page.locator('#autosave-state')).toHaveText('Đã lưu local');

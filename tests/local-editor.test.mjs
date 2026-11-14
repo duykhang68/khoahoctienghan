@@ -79,3 +79,9 @@ test('real loopback editor rejects foreign host origin and missing nonce',async(
   assert.equal((await fetch(base+'/api/publishing',{...init,headers:{...init.headers,'X-Editor-Nonce':nonce}})).status,401);
  }finally{child.kill();await new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)resolve();else child.once('exit',resolve)})}
 });
+
+test('Markdown to MDX keeps route and protected links when migrated atomically',()=>{
+ const from='src/content/docs/ngon-ngu/hangul.md',to=from+'x',base=new Map(files);base.set(from,content);base.set(doc,content+'\n[Link](/ngon-ngu/hangul/)');
+ const result=applyChanges(base,[{path:from,before:digest(content),content:null},{path:to,before:null,content}]);assert.ok(!result.has(from)&&result.has(to));assert.ok(routesFromPaths(result.keys()).has('/ngon-ngu/hangul/'));
+ assert.throws(()=>applyChanges(base,[{path:from,before:digest(content),content:null}]),/Protected/);
+});

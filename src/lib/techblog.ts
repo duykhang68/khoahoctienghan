@@ -18,7 +18,7 @@ export type TechVisual = {
   language?: string;
   code?: string;
 };
-export type EditorImage = {src:string;alt:string;caption:string;width:number;height:number;afterParagraph?:number};
+export type EditorImage = {src:string;alt:string;caption:string;width:number;height:number;id?:string;afterParagraph?:number};
 export type TechPost = {
   slug: string;
   title: string;

@@ -70,7 +70,7 @@ function applyHistory(target){
   const next={...drafts};let cursor=history.cursor;
   while(cursor!==target){const forward=cursor<target,entry=history.entries[forward?cursor:cursor-1];for(const c of entry.changes){const value=forward?c.next:c.prev;if(value===null)delete next[c.path];else next[c.path]=value}cursor+=forward?1:-1}
   localStorage.setItem(KEY,JSON.stringify(next));drafts=next;history.cursor=cursor;saveHistory();
-  const selected=active,slug=postList?.[postIndex]?.slug;loadMenu();select(get(selected)==null?'':selected);
+  const selected=active,slug=postList?.[postIndex]?.slug;loadMenu();const alternate=selected.endsWith('.mdx')?selected.slice(0,-1):selected.endsWith('.md')?selected+'x':'';select(get(selected)!=null?selected:alternate&&get(alternate)!=null?alternate:'');
   if(selected===POSTS&&slug&&postList){const n=postList.findIndex(p=>p.slug===slug);if(n>=0){postIndex=n;renderPosts();$('editor').value=JSON.stringify(postList[n],null,2);renderVisual();state()}}
   status('Đã khôi phục phiên bản bản nháp local. Không thay đổi production.');
  }catch(e){status(e.message)}
@@ -377,7 +377,7 @@ function imageCard(image,onRemove,cover=false){
 function appendKnowledgeMedia(root){
  const route=routeForDoc(active),record=knowledgeMedia()[route];if(!record)return;
  if(record.cover)root.prepend(imageCard(record.cover,()=>removeKnowledgeImage('cover'),true));
- if(record.images.length){const section=el('section','','article-section');section.append(visualTitle('Ảnh cuối nội dung'));record.images.forEach((image,i)=>section.append(imageCard(image,()=>removeKnowledgeImage(i))));root.append(section)}
+ if(record.images.some(image=>!image.id)){const section=el('section','','article-section');section.append(visualTitle('Ảnh cuối nội dung'));record.images.forEach((image,i)=>{if(!image.id)section.append(imageCard(image,()=>removeKnowledgeImage(i)))});root.append(section)}
 }
 function removeKnowledgeImage(index){
  const records=knowledgeMedia(),route=routeForDoc(active),record=records[route];if(index==='cover')delete record.cover;else record.images.splice(index,1);if(!record.cover&&!record.images.length)delete records[route];stage(MEDIA_INDEX,JSON.stringify(records,null,2)+'\n');renderVisual();
@@ -388,6 +388,60 @@ function positionPicker(length,label='Vị trí minh họa',value=length){
  select.value=String(value);return select;
 }
 function blockPosition(value,length){return Number.isInteger(value.afterParagraph)?value.afterParagraph:length}
+const knowledgeImport=/^\s*import (KnowledgeVisual|KnowledgeImage) from ['"][^'"\r\n]+\/\1\.astro['"];?\s*$/;
+const knowledgeTag=/^\s*<(KnowledgeVisual|KnowledgeImage) id="([a-z0-9-]+)"\s*\/>\s*$/;
+function knowledgeDocument(raw){
+ const m=raw.match(/^(---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$))([\s\S]*)$/);if(!m)return null;
+ const parts=m[2].split(/((?:\r?\n){2,})/);
+ const blocks=parts.filter((part,i)=>i%2===0&&part.trim()&&!knowledgeImport.test(part));
+ const safe=blocks.every(part=>knowledgeTag.test(part)||!/(^|\n)[ \t]*(?:\x60{3,}|~{3,}|:::|import\b|export\b|<)|[{}]/m.test(part));
+ return {front:m[1],parts,blocks,safe};
+}
+function knowledgeBoundary(raw,position,tag,kind,path){
+ const doc=knowledgeDocument(raw);if(!doc?.safe||!Number.isInteger(position)||position<0||position>doc.blocks.length)throw Error('Vị trí không an toàn hoặc đã thay đổi.');
+ // Preserve every original block and separator; insert only at a known blank-line boundary.
+ const indexes=doc.parts.map((part,i)=>i%2===0&&part.trim()&&!knowledgeImport.test(part)?i:-1).filter(i=>i>=0);
+ let body;
+ if(position===doc.blocks.length)body=doc.parts.join('').replace(/\s*$/,'')+'\n\n'+tag+'\n';
+ else{const i=indexes[position];body=doc.parts.slice(0,i).join('')+tag+'\n\n'+doc.parts.slice(i).join('')}
+ if(!doc.parts.some(part=>knowledgeImport.exec(part)?.[1]===kind)){const depth=path.slice('src/content/docs/'.length).split('/').length;body="import "+kind+" from '"+'../'.repeat(depth+1)+'components/'+kind+".astro';\n\n"+body.replace(/^\s*/,'')}
+ return doc.front+body;
+}
+function stageKnowledgeDocument(content,extras){
+ const path=active;
+ if(path.endsWith('.md')){
+  // Markdown is promoted to MDX atomically; canonical route is unchanged.
+  const next=path+'x';if(get(next)!=null)throw Error('Đã tồn tại tệp MDX cùng đường dẫn.');
+  stageMany([[path,null],[next,content],...extras]);select(next);
+ }else{stageMany([[path,content],...extras]);$('editor').value=content;renderVisual()}
+}
+function knowledgePositions(select,doc,initial=doc?.blocks.length??0){
+ select.replaceChildren();
+ if(doc?.safe)for(let i=0;i<=doc.blocks.length;i++)select.add(new Option(i===0?'Trước khối đầu tiên':i===doc.blocks.length?'Cuối bài':'Sau khối '+i+' · '+doc.blocks[i-1].trim().replace(/^#+\s*/,'').slice(0,45),String(i)));
+ select.value=String(initial);return select;
+}
+function knowledgeControls(root,doc){
+ const row=el('div','','knowledge-block-toolbar'),select=el('select');select.setAttribute('aria-label','Vị trí minh họa Knowledge Base');
+ knowledgePositions(select,doc);
+ row.append(select,btn('+ Đoạn văn tại đây',()=>{try{const raw=$('editor').value,parsed=knowledgeDocument(raw),position=Number(select.value);if(!parsed?.safe)throw Error('Không thể chèn an toàn');const parts=parsed.parts.slice(),indexes=parts.map((part,i)=>i%2===0&&part.trim()&&!knowledgeImport.test(part)?i:-1).filter(i=>i>=0);const idx=indexes[position];const body=idx===undefined?parts.join('').replace(/\s*$/,'')+'\n\nĐoạn văn mới.\n':parts.slice(0,idx).join('')+'Đoạn văn mới.\n\n'+parts.slice(idx).join('');$('editor').value=parsed.front+body;scheduleAutosave();renderVisual()}catch(e){status(e.message)}}),btn('+ Ảnh tại đây',()=>openImageLibrary('kb:'+select.value)));
+ row.append(visualPicker(v=>{const records=JSON.parse(get(cataloguePath)||'{}'),id='visual-'+crypto.randomUUID();records[id]=v;const content=knowledgeBoundary($('editor').value,Number(select.value),'<KnowledgeVisual id="'+id+'" />','KnowledgeVisual',active);stageKnowledgeDocument(content,[[cataloguePath,JSON.stringify(records,null,2)+'\n']])}));
+ root.append(row);
+}
+function moveKnowledgeTag(kind,id,delta,remove=false){
+ const doc=knowledgeDocument($('editor').value);if(!doc?.safe)throw Error('Không thể di chuyển trong nội dung nâng cao.');
+ const indexes=doc.parts.map((part,i)=>i%2===0&&part.trim()&&!knowledgeImport.test(part)?i:-1).filter(i=>i>=0);
+ const found=indexes.filter(i=>{const m=knowledgeTag.exec(doc.parts[i]);return m?.[1]===kind&&m[2]===id});
+ if(found.length!==1)throw Error('Khối dùng nhiều lần; không thể di chuyển an toàn.');
+ const index=found[0],n=indexes.indexOf(index),dest=indexes[n+delta],extras=[];
+ if(remove){
+  doc.parts[index]='';
+  if(kind==='KnowledgeImage'){const records=knowledgeMedia(),route=routeForDoc(active),item=records[route];item.images=item.images.filter(x=>x.id!==id);if(!item.cover&&!item.images.length)delete records[route];extras.push([MEDIA_INDEX,JSON.stringify(records,null,2)+'\n'])}
+  else{const other=docPaths().filter(p=>p!==active).some(p=>(get(p)||'').includes('"'+id+'"'));if(!other){const records=JSON.parse(get(cataloguePath)||'{}');delete records[id];extras.push([cataloguePath,JSON.stringify(records,null,2)+'\n'])}}
+ }else{if(dest===undefined)return;[doc.parts[index],doc.parts[dest]]=[doc.parts[dest],doc.parts[index]]}
+ stageKnowledgeDocument(doc.front+doc.parts.join(''),extras);
+}
+function knowledgeBlockActions(box,kind,id){const bar=el('div','','visual-block-actions');for(const [name,delta] of [['↑ Lên',-1],['↓ Xuống',1]])bar.append(btn(name,()=>{try{moveKnowledgeTag(kind,id,delta)}catch(e){status(e.message)}},name+' '+id));bar.append(btn('Xóa khối',()=>{if(confirm('Gỡ khối khỏi bài?'))try{moveKnowledgeTag(kind,id,0,true)}catch(e){status(e.message)}}));box.append(bar);return box}
+
 function renderVisual(){
  const root=$('visual-editor');root.replaceChildren();refreshImageTarget();
  if(!active){root.append(el('p','Chọn bài viết để bắt đầu.'));return}
@@ -408,6 +462,7 @@ function renderVisual(){
    (s.paragraphs||[]).forEach((p,j)=>{const isCode=/^(css|js|javascript|ts|typescript|bash|sh|json|python|yaml|html|sql)\n/.test(p),isList=p.split('\n').every(line=>line.startsWith('- '));if(isCode||isList){const display=el('div','','protected-block');if(isCode)display.append(el('small',p.split('\n')[0]),el('pre',p.split('\n').slice(1).join('\n')));else{const list=el('ul');p.split('\n').forEach(line=>list.append(el('li',line.slice(2))));display.append(list)}display.append(el('small','Khối định dạng nâng cao · giữ nguyên'));block.append(display)}else block.append(editable('p','Đoạn '+(j+1),p,v=>{s.paragraphs[j]=v;update()}));place(j+1)});
    block.append(btn('+ Đoạn văn',()=>{s.paragraphs.push('');update();renderVisual()}));
    const position=positionPicker(length,'Vị trí chèn minh họa');
+   block.append(btn('+ Đoạn tại vị trí chọn',()=>{const at=Number(position.value);s.paragraphs.splice(at,0,'Đoạn văn mới.');for(const value of [...(s.visuals||[]),...(s.images||[])])if(Number.isInteger(value.afterParagraph)&&value.afterParagraph>at)value.afterParagraph++;update();renderVisual()}));
    block.append(position,btn('+ Chèn ảnh vào phần này',()=>openImageLibrary(i+':'+position.value)));
    if(!/^(tài liệu|tham khảo|nguồn tham khảo|nguồn và tài liệu)/iu.test(s.heading.trim()))block.append(visualPicker(v=>{v.afterParagraph=Number(position.value);(s.visuals??=[]).push(v);update();renderVisual()}));
    block.append(btn('Xóa phần',()=>{if(confirm('Xóa phần này cùng các hình minh họa của phần?')){post.sections.splice(i,1);update();renderVisual()}}));root.append(block);
@@ -429,16 +484,23 @@ function renderVisual(){
   root.append(editable(key==='title'?'h1':'p',label,value,v=>{front=front.replace(pattern,()=>key+': '+JSON.stringify(v));update()}));
  }
  // Preserve complex MDX without treating its source as editable HTML.
- const allowedImport=/^\s*import KnowledgeVisual from ['"][^'"\r\n]+KnowledgeVisual\.astro['"];?\s*$/;
- const visualTag=/^\s*<KnowledgeVisual id="([a-z0-9-]+)"\s*\/>\s*$/;
+ const allowedImport=knowledgeImport;
+ const visualTag=knowledgeTag;
  const segments=body.split(/((?:\r?\n){2,})/);
  const unsupported=segments.some((part,i)=>i%2===0&&!allowedImport.test(part)&&!visualTag.test(part)&&/(^|\n)[ \t]*(?:\x60{3,}|~{3,}|:::|import\b|export\b|<)|[{}]/m.test(part));
  let catalogue={};try{catalogue=JSON.parse(get(cataloguePath)||'{}')}catch{}
- if(unsupported){root.append(el('p','Bài có cấu trúc nâng cao. Nội dung gốc được giữ nguyên; vẫn có thể chỉnh sửa các minh họa đã nhận diện.','notice'));for(const part of segments){const view=part.match(visualTag);if(view&&catalogue[view[1]])root.append(knowledgeVisual(view[1],catalogue[view[1]]))}appendKnowledgeMedia(root);return}
+ const imageRecords=knowledgeMedia()[routeForDoc(active)]?.images||[];
+ const displayTag=(view,movable)=>{const kind=view[1],id=view[2];let box;
+  if(kind==='KnowledgeVisual'&&catalogue[id])box=knowledgeVisual(id,catalogue[id]);
+  else if(kind==='KnowledgeImage'){const image=imageRecords.find(x=>x.id===id);if(image)box=imageCard(image,null)}
+  if(!box)return el('p','Khối chưa có dữ liệu · giữ nguyên','notice');
+  return movable?knowledgeBlockActions(box,kind,id):box;
+ };
+ if(unsupported){root.append(el('p','Bài có cấu trúc nâng cao. Nội dung gốc được giữ nguyên; vẫn có thể chỉnh sửa các minh họa đã nhận diện.','notice'));for(const part of segments){const view=part.match(visualTag);if(view)root.append(displayTag(view,false))}appendKnowledgeMedia(root);return}
  const syncBody=()=>{body=segments.join('');update()};
  segments.forEach((part,i)=>{
   if(i%2||!part.trim()||allowedImport.test(part))return;
-  const view=part.match(visualTag);if(view){root.append(catalogue[view[1]]?knowledgeVisual(view[1],catalogue[view[1]]):el('p','Minh họa đã được bảo toàn','notice'));return}
+  const view=part.match(visualTag);if(view){root.append(displayTag(view,true));return}
   const trimmed=part.trim(),h=trimmed.match(/^(#{2,3}) ([^\r\n]+)$/);
   const leading=part.match(/^\s*/)[0],trailing=part.match(/\s*$/)[0];
   if(h){const node=editable(h[1].length===2?'h2':'h3','Tiêu đề phần',h[2],v=>{segments[i]=leading+h[1]+' '+v+trailing;syncBody()},{markdown:true});if(node){root.append(node);return}}
@@ -447,18 +509,7 @@ function renderVisual(){
   else if(trimmed.split('\n').every(l=>/^- /.test(l))){const list=el('ul');for(const line of trimmed.split('\n')){const li=el('li'),fragment=inlineMarkdown(line.slice(2));li.append(fragment||document.createTextNode(line.slice(2)));list.append(li)}root.append(list,el('small','Danh sách gốc · bảo toàn'));return}
   root.append(el('p','Khối định dạng nâng cao · giữ nguyên khi lưu','notice'));
  });
- if(active.endsWith('.mdx')){
-  const positions=el('select');positions.setAttribute('aria-label','Vị trí minh họa Knowledge Base');positions.add(new Option('Cuối bài',String(segments.length)));
-  for(let i=0;i<segments.length;i+=2){if(segments[i].trim()&&!allowedImport.test(segments[i]))positions.add(new Option('Sau khối '+(i/2+1),String(i+1)))}
-  root.append(positions,visualPicker(v=>{
-   const latest=JSON.parse(get(cataloguePath)||'{}'),id='visual-'+crypto.randomUUID();latest[id]=v;
-   const parts=segments.slice(),at=Number(positions.value),tag='<KnowledgeVisual id="'+id+'" />';
-   if(at===parts.length)body=parts.join('').replace(/\s*$/,'')+'\n\n'+tag+'\n';
-   else{parts.splice(at,0,'\n\n'+tag);body=parts.join('')}
-   if(!segments.some(part=>allowedImport.test(part))){const depth=active.slice('src/content/docs/'.length).split('/').length;body='import KnowledgeVisual from \''+'../'.repeat(depth+1)+'components/KnowledgeVisual.astro\';\n\n'+body.replace(/^\s*/,'')}
-   update();stageMany([[active,$('editor').value],[cataloguePath,JSON.stringify(latest,null,2)+'\n']]);renderVisual();
-  }));
- }
+ knowledgeControls(root,knowledgeDocument($('editor').value));
  appendKnowledgeMedia(root);
  root.append(btn('+ Chèn ảnh vào cuối bài',()=>openImageLibrary()));
  root.append(btn('+ Thêm đoạn văn',()=>{body=segments.join('').replace(/\s*$/,'')+'\n\nĐoạn văn mới.\n';update();renderVisual()}));
@@ -472,7 +523,7 @@ function refreshImageTarget(preferred){
   else{try{JSON.parse($('editor').value).sections.forEach((s,i)=>{const n=s.paragraphs.length;const reference=/^(tài liệu|tham khảo|nguồn tham khảo|nguồn và tài liệu)/iu.test(s.heading.trim());target.add(new Option('Cuối phần '+(i+1)+' · '+s.heading,i+':'+n));if(!reference)for(let j=0;j<n;j++)target.add(new Option('Phần '+(i+1)+' · '+(j===0?'trước đoạn đầu':'sau đoạn '+j),i+':'+j))})}catch{}}
  }else if(active.startsWith('src/content/docs/')){
   if(role==='cover'){if(routeForDoc(active))target.add(new Option('Ảnh đại diện Knowledge Base','cover'))}
-  else target.add(new Option('Cuối nội dung Knowledge Base','end'));
+  else{target.add(new Option('Cuối nội dung Knowledge Base','end'));const doc=knowledgeDocument($('editor').value);if(doc?.safe)for(let i=0;i<=doc.blocks.length;i++)target.add(new Option(i===0?'Trước khối đầu tiên':'Sau khối '+i+' · '+doc.blocks[i-1].trim().slice(0,40),'kb:'+i));}
  }
  if([...target.options].some(o=>o.value===String(previous)))target.value=String(previous);
  $('image-insert').disabled=!optimized||!target.options.length;
@@ -490,7 +541,11 @@ async function insertImage(){
   const next=postList.slice();next[postIndex]=post;changes.push([POSTS,JSON.stringify(next,null,2)+'\n']);stageMany(changes);postList=next;$('editor').value=JSON.stringify(post,null,2);renderPosts();
  }else if(active.startsWith('src/content/docs/')){
   const records=knowledgeMedia(),route=routeForDoc(active),item=records[route]??{images:[]};
-  if(role==='cover'){if(!route)throw Error('Trang chủ không có ảnh đại diện bài.');if(item.cover&&!confirm('Thay thế ảnh đại diện hiện tại?'))return;item.cover=record}else item.images.push(record);
+  if(role==='cover'){if(!route)throw Error('Trang chủ không có ảnh đại diện bài.');if(item.cover&&!confirm('Thay thế ảnh đại diện hiện tại?'))return;item.cover=record}else if(target.startsWith('kb:')){
+   record.id='image-'+crypto.randomUUID();item.images.push(record);records[route]=item;
+   const next=knowledgeBoundary($('editor').value,Number(target.slice(3)),'<KnowledgeImage id="'+record.id+'" />','KnowledgeImage',active);
+   stageKnowledgeDocument(next,[...changes,[MEDIA_INDEX,JSON.stringify(records,null,2)+'\n']]);status('Đã chèn WebP vào vị trí đã chọn.');return;
+  }else item.images.push(record);
   records[route]=item;changes.push([MEDIA_INDEX,JSON.stringify(records,null,2)+'\n'],[active,$('editor').value]);stageMany(changes);
  }else throw Error('Chọn bài viết trước khi chèn ảnh.');
  renderVisual();status('Đã chèn WebP và lưu bản nháp local. Sync để gửi ảnh cùng nội dung lên GitHub.');

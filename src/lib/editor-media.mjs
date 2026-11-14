@@ -23,7 +23,7 @@ export function validateMedia(path,encoded){
  assert(dimensions&&dimensions.every(n=>Number.isInteger(n)&&n>=1&&n<=1600)&&(!canvas||canvas.every((n,i)=>n===dimensions[i])),'Invalid WebP dimensions');
  return {width:dimensions[0],height:dimensions[1]};
 }
-export function validateMediaIndex(index,posts,routes,lookup){
+export function validateMediaIndex(index,posts,routes,lookup,pages=[]){
  assert(index&&typeof index==='object'&&!Array.isArray(index),'Invalid Knowledge image index');
  const used=new Set();
  function image(image,cover=false){
@@ -36,8 +36,16 @@ export function validateMediaIndex(index,posts,routes,lookup){
  for(const [route,record] of Object.entries(index)){
   assert(routes.has('/'+(route?route+'/':''))&&record&&typeof record==='object'&&Array.isArray(record.images),'Unknown Knowledge image route');
   if(record.cover){assert(route,'Home has no article cover');image(record.cover,true)}
-  record.images.forEach(x=>image(x));
+  const ids=new Set();
+  for(const x of record.images){image(x);if(x.id!==undefined){assert(/^image-[a-f0-9-]{36}$/.test(x.id)&&!ids.has(x.id),'Invalid inline image ID');ids.add(x.id)}}
+  const doc=pages.find(p=>p.path.replace(/^src\/content\/docs\//,'').replace(/\.mdx?$/,'').replace(/(^|\/)index$/,'$1').replace(/\/$/,'')===route);
+  if(ids.size)assert(doc&&doc.path.endsWith('.mdx'),'Inline images require MDX');
+  const refs=[...(doc?.content||'').matchAll(/<KnowledgeImage\b[^>]*>/g)];
+  for(const match of refs){const exact=/^<KnowledgeImage\s+id="(image-[a-f0-9-]{36})"\s*\/>$/.exec(match[0]);assert(exact&&ids.delete(exact[1]),'Unknown or duplicate inline image reference')}
+  assert(ids.size===0,'Unreferenced inline image');
+
  }
+ for(const p of pages){const route=p.path.replace(/^src\/content\/docs\//,'').replace(/\.mdx?$/,'').replace(/(^|\/)index$/,'$1').replace(/\/$/,'');if(p.content.includes('<KnowledgeImage'))assert(Object.hasOwn(index,route),'Inline image has no record')}
  for(const post of posts){
   if(mediaURL(post.cover)){const actual=lookup('public'+post.cover);image({src:post.cover,alt:post.coverAlt,caption:post.coverCaption??'',width:actual?.width,height:actual?.height},true)}
   for(const section of post.sections)if(section.images!==undefined){assert(Array.isArray(section.images),'Invalid section image list');section.images.forEach(x=>image(x))}

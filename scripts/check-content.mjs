@@ -31,7 +31,7 @@ const mediaIndex=JSON.parse(await readFile(MEDIA_INDEX,'utf8'));
 const mediaFiles=await readdir('public/media/editor').catch(e=>{if(e.code==='ENOENT')return [];throw e});
 const dimensions=new Map();
 for(const name of mediaFiles){const path='public/media/editor/'+name;assert(mediaPath(path),'Unexpected editor media path');dimensions.set(path,validateMedia(path,(await readFile(path)).toString('base64')));}
-validateMediaIndex(mediaIndex,techPosts,routes,p=>dimensions.get(p));
+validateMediaIndex(mediaIndex,techPosts,routes,p=>dimensions.get(p),knowledgePages);
 console.log('Validated '+dimensions.size+' editor WebP assets and references');
 
 const {checkPositions}=await import('../src/lib/editor-block-position.mjs');for(const post of techPosts)for(const section of post.sections)checkPositions(section);
