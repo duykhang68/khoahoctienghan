@@ -13,21 +13,22 @@ concurrency:
 jobs:
   quality:
     name: Content and Astro build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
+          package-manager-cache: false
       - run: if test -f package-lock.json; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
       - run: node scripts/security-check.mjs
       - run: npm run check
       - run: npm run build
       - run: node scripts/verify-build.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: knowledge-base-preview
           path: dist/

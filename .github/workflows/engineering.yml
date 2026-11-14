@@ -17,16 +17,17 @@ concurrency:
 jobs:
   reconcile:
     if: github.repository == 'duykhang68/khoahoctienghan' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
+          package-manager-cache: false
       - run: node scripts/engineering-controller.mjs
         env:
           GH_TOKEN: ${{ github.token }}
