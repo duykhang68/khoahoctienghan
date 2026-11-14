@@ -6,10 +6,10 @@ on:
     workflows: ['P0 · Knowledge Base CI','CD · Public Knowledge Base']
     types: [completed]
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review, edited, closed]
+    types: [opened, reopened, ready_for_review]
     branches: [main]
   schedule:
-    - cron: '32 * * * *'
+    - cron: '32 */6 * * *'
   issues:
     types: [closed]
   workflow_dispatch:
@@ -18,12 +18,19 @@ permissions:
   pull-requests: write
   issues: write
   actions: write
-concurrency:
-  group: engineering-reconciliation
-  cancel-in-progress: false
 jobs:
   reconcile:
-    if: github.repository == 'duykhang68/khoahoctienghan' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'issues' || github.actor == 'duykhang68' || github.actor == 'github-actions[bot]') && (github.event_name != 'pull_request_target' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'duykhang68'))
+    # Skip before allocating a runner: successful CD, cancelled CI and external runs.
+    if: >-
+      github.repository == 'duykhang68/khoahoctienghan' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'issues' || github.actor == 'duykhang68' || github.actor == 'github-actions[bot]') && (github.event_name != 'pull_request_target' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'duykhang68'))
+      && (github.event_name != 'workflow_run' ||
+          (github.event.workflow_run.head_repository.full_name == github.repository &&
+           (github.event.workflow_run.conclusion == 'failure' ||
+            (github.event.workflow_run.name == 'P0 · Knowledge Base CI' &&
+             github.event.workflow_run.conclusion == 'success'))))
+    concurrency:
+      group: engineering-reconciliation
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

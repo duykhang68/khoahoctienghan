@@ -132,15 +132,8 @@ for(const p of prs){
   try{
    branchApi('pulls/'+p.number+'/update-branch','PUT',{expected_head_sha:current.head.sha});
    console.log('UPDATE_REQUESTED PR #'+p.number+' · '+current.head.sha.slice(0,12));
-   // update-branch returns 202; wait briefly for the actual new HEAD, never reuse an old SHA.
-   for(let attempt=0;attempt<6;attempt++){
-    await new Promise(resolve=>setTimeout(resolve,2000));
-    const fresh=api('pulls/'+p.number);
-    if(fresh.state!=='open'||!trusted(fresh))break;
-    if(fresh.head.sha===current.head.sha)continue;
-    console.log('UPDATED PR #'+p.number+' · '+fresh.head.sha.slice(0,12));
-    break;
-   }
+   // HTTP 202 is only acceptance. The App-triggered native CI completion reconciles the new exact HEAD; never poll the old HEAD here.
+   console.log('WAITING_NATIVE_PR_CI PR #'+p.number);
   }catch{console.log('UPDATE_DEFERRED PR #'+p.number+'; GitHub rejected request or a race occurred')}
   continue;
  }
