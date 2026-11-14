@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-test('editorial landing uses latest feature, date-ordered grid and working list toggle',async({page})=>{
+test('editorial landing has no hero, date-ordered grid and working list toggle',async({page})=>{
  await page.goto('./techblog/');
  await expect(page.locator('.engineering-index .index-intro')).toBeVisible();
  await expect(page.locator('.tech-sidebar')).toHaveCount(0);
@@ -7,7 +7,7 @@ test('editorial landing uses latest feature, date-ordered grid and working list 
  const dates=await cards.locator('time').evaluateAll(nodes=>nodes.map(n=>Date.parse(n.getAttribute('datetime')||'')));
  expect(dates.length).toBeGreaterThan(0);
  expect(dates).toEqual([...dates].sort((a,b)=>b-a));
- await expect(page.locator('.feature-story h2 a')).toHaveAttribute('href',await cards.first().locator('h3 a').getAttribute('href')||'');
+ await expect(page.locator('#latest-feature,.index-feature')).toHaveCount(0);
  await expect(cards.first().locator('.editorial-cover')).toBeVisible();
  const grid=page.locator('#tech-post-list');
  await expect(grid).toHaveAttribute('data-layout','grid');
@@ -24,12 +24,13 @@ test('editorial landing uses latest feature, date-ordered grid and working list 
  await expect(page.locator('.research-share [data-copy-permalink]')).toBeVisible();
  await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
 });
-test('filtered index hides the unfiltered featured panel and shows correct result count',async({page})=>{
+test('filtered index shows correct result count without a hero',async({page})=>{
  await page.goto('./techblog/?q=zz-no-such-post-xyz');
- await expect(page.locator('#latest-feature')).toBeHidden();
+ await expect(page.locator('#latest-feature')).toHaveCount(0);
  await expect(page.locator('#article-count')).toHaveText('0');
  await expect(page.locator('#no-results')).toBeVisible();
  await expect(page.locator('#clear-filters')).toBeVisible();
  await page.locator('#clear-filters').click();
- await expect(page.locator('#latest-feature')).toBeVisible();
+ await expect(page.locator('#latest-feature')).toHaveCount(0);
+ await expect(page.locator('[data-tech-post]:visible').first()).toBeVisible();
 });

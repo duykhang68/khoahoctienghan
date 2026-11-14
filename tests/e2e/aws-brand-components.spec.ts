@@ -25,6 +25,11 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(footer.getByRole('heading',{name:'Khám phá',exact:true})).toHaveCount(0);
  await expect(footer.getByRole('heading',{name:'Tài nguyên',exact:true})).toHaveCount(0);
  await expect(footer.locator('.footer-brand')).toHaveText('Engineering Blog');
+ const signature=footer.locator('.footer-bottom > div');
+ await expect(signature).toHaveText('Tri thức Hàn Quốc · Engineering');
+ await expect(signature).toHaveCSS('text-align','right');
+ await expect(signature).toHaveCSS('font-weight','700');
+ await expect(signature).toHaveCSS('color','rgb(255, 204, 0)');
  const kbHref=(await footer.locator('.footer-cta').getAttribute('href'))!;
  expect(kbHref).toMatch(/\/khoahoctienghan\/$/);
  await expect(footer.locator('a[href="'+kbHref+'"]')).toHaveCount(1);
