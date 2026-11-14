@@ -43,3 +43,7 @@ console.log('Validated '+checked+' rendered Tech Blog links across '+htmlPaths.l
 const oldDashboard=await readFile('dist/engineering-foundation/index.html','utf8');
 assert(oldDashboard.includes('https://korean-backoffice.tamsudev-com.workers.dev/admin/engineering/'),'Legacy engineering route must point to private Back Office');
 assert(!oldDashboard.includes('id="trend"')&&!oldDashboard.includes('api.github.com/repos/'),'Public build contains dashboard implementation');
+
+const oldSheet=await readFile('dist/viet-blog-by-google-sheet/index.html','utf8');
+assert(oldSheet.includes('https://korean-backoffice.tamsudev-com.workers.dev/admin/sheets/'),'Legacy Sheet route must link to private Back Office');
+assert(!oldSheet.includes('data-sheet-blog')&&!oldSheet.includes('data-gh-token'),'Public build contains Sheets publisher');

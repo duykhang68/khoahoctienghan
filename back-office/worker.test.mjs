@@ -8,6 +8,8 @@ test('missing config and anonymous requests fail closed',async()=>{
  assert.equal((await worker.fetch(req('/admin/'),{})).status,503);
  assert.equal((await worker.fetch(req('/admin/'),env)).status,303);
  assert.equal((await worker.fetch(req('/admin/engineering/'),env)).status,303);
+ assert.equal((await worker.fetch(req('/admin/sheets/'),env)).status,303);
+ for(const path of ['/admin/assets/sheet-blog/browser.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'])assert.equal((await worker.fetch(req(path),env)).status,403);
  assert.equal((await worker.fetch(req('/admin/engineering/',{headers:{Cookie:'__Host-bo_session=fake.signature'}}),env)).status,303);
  assert.equal((await worker.fetch(new Request('https://preview.example.test/admin/engineering/'),env)).status,403);
  assert.equal((await worker.fetch(req('/api/private'),env)).status,403);
@@ -53,6 +55,12 @@ test('end-to-end session exchange with Google-shaped JWKS and signed credential'
   assert.equal((await worker.fetch(req('/admin/',{headers:{Cookie:session}}),env)).status,200);
   const dashboard=await worker.fetch(req('/admin/engineering/',{headers:{Cookie:session}}),env);assert.equal(dashboard.status,200);assert.match(await dashboard.text(),/id="trend"/);assert.match(dashboard.headers.get('content-security-policy'),/connect-src https:\/\/api.github.com/);
   assert.equal((await worker.fetch(req('/admin/engineering/',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,303);
+  const sheets=await worker.fetch(req('/admin/sheets/',{headers:{Cookie:session}}),env);assert.equal(sheets.status,200);assert.match(await sheets.text(),/data-sheet-blog/);
+  for(const [path,type] of [['/admin/assets/sheet-blog/browser.mjs','text/javascript'],['/admin/assets/sheet-blog.css','text/css']]){const asset=await worker.fetch(req(path,{headers:{Cookie:session}}),env);assert.equal(asset.status,200);assert.ok(asset.headers.get('content-type').startsWith(type));assert.equal(asset.headers.get('cache-control'),'no-store');}
+  assert.equal((await worker.fetch(req('/admin/assets/sheet-blog/browser.mjs',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,403);
+  assert.equal((await worker.fetch(req('/admin/article-check/attacker/bai-thu/',{headers:{Cookie:session}}),env)).status,400);
+  globalThis.fetch=async(url,init)=>{assert.equal(url,'https://duykhang68.github.io/khoahoctienghan/techblog/bai-thu/');assert.equal(init.method,'HEAD');assert.equal(init.redirect,'manual');return new Response(null,{status:404});};
+  assert.equal((await worker.fetch(req('/admin/article-check/techblog/bai-thu/',{headers:{Cookie:session}}),env)).status,404);
   const denied=await worker.fetch(req('/admin/',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'});assert.equal(denied.status,303);
   const logout=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:origin,Cookie:session}}),env);assert.equal(logout.status,303);assert.match(logout.headers.get('set-cookie'),/Max-Age=0/);
  }finally{globalThis.fetch=originalFetch;}

@@ -1,4 +1,5 @@
-import {test,expect} from '@playwright/test';
+import {expect} from '@playwright/test';
+import {test} from './private-office-fixture';
 import {checkHeaders,listRows,rowDraft,recommendDestination,sheetId,sheetsClient} from '../../src/lib/sheet-blog/model.mjs';
 import {buildDocument} from '../../src/lib/editor-v2/model.mjs';
 import {sharedGoogleClientId} from '../../src/lib/sheet-blog/oauth-config.mjs';
@@ -17,7 +18,7 @@ test('VN mapping preserves title and body, stable retry payload, and fails close
  expect((await buildDocument(draft.blocks)).body.content).toHaveLength(2);
  expect(()=>rowDraft({...selected,id:'a'.repeat(40)},['a'.repeat(40),...row.slice(1)],topics,'knowledge','ngon-ngu')).toThrow(/Content ID/);
 });
-test('Google OAuth fixture lists only VN titles, previews exact chosen content and gates GitHub writes',async({page})=>{
+test('Google OAuth fixture lists only VN titles, previews exact chosen content and gates GitHub writes',async({page,office})=>{
  await page.route('https://api.github.com/repos/duykhang68/khoahoctienghan/issues?**',route=>route.fulfill({json:[]}));
  await page.route('https://accounts.google.com/gsi/client',route=>route.fulfill({contentType:'application/javascript',body:'window.google={accounts:{oauth2:{hasGrantedAllScopes:()=>true,initTokenClient:c=>({requestAccessToken:()=>c.callback({access_token:"fixture-google"})})}}};'}));
  let bodyRead=0;
@@ -34,7 +35,7 @@ test('Google OAuth fixture lists only VN titles, previews exact chosen content a
   else throw Error('Unexpected Sheets range: '+range);
   return route.fulfill({json:response});
  });
- await page.goto('./viet-blog-by-google-sheet/');
+ await page.goto(office+'/admin/sheets/');
  await expect(page.locator('[data-client]')).toHaveValue(sharedGoogleClientId);
  await expect(page.locator('[data-client-label]')).toBeHidden();
  await page.getByRole('button',{name:'Đăng nhập Google'}).click();
@@ -97,3 +98,5 @@ test('Sheets HTTP 400 diagnostics identify the failing read without exposing API
  expect(message).not.toContain('sensitive raw API detail');expect(message).not.toContain('fixture-secret');
  expect(seen).toEqual(["'VN'!A1:E1","'VN'!A2:B"]);
 });
+
+test('legacy Sheets route links to Back Office without publisher controls',async({page})=>{await page.goto('./viet-blog-by-google-sheet/');await expect(page.getByRole('link',{name:'Mở Back Office'})).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/sheets/');await expect(page.locator('[data-sheet-blog]')).toHaveCount(0);});
