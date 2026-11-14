@@ -1,7 +1,14 @@
+import {parseIssue} from './editor-v2-queue-policy.mjs';
+// Trusted publication requests take precedence over discretionary incident retrospectives.
+export function isEditorSubmissionIssue(issue){return !issue.pull_request&&issue.user?.login==='github-actions[bot]'&&String(issue.body||'').startsWith('<!-- editor-v2-fifo:');}
+export function editorPublicationPending(issues){
+ return issues.some(issue=>{if(!isEditorSubmissionIssue(issue))return false;try{const s=parseIssue(issue);return !s||s.phase!=='VERIFIED'||!s.closed||!s.verified||!s.merge||!s.route||!s.pr}catch{return true}});
+}
+export function incidentRetrospectivePR(pr){return /^(?:techblog|docs)\/bugfix-issue-\d+$/.test(pr.head?.ref||'');}
 // Only verified engineering incidents may queue one standalone retrospective.
 export function incidentPublication(issue,repo){
  const body=String(issue.body||'');
- if(issue.pull_request||issue.state!=='closed'||issue.state_reason!=='completed'||!['duykhang68','github-actions[bot]'].includes(issue.user?.login)||!body.includes('<!-- engineering-incident:v1 -->'))return null;
+ if(isEditorSubmissionIssue(issue)||issue.pull_request||issue.state!=='closed'||issue.state_reason!=='completed'||!['duykhang68','github-actions[bot]'].includes(issue.user?.login)||!body.includes('<!-- engineering-incident:v1 -->'))return null;
  if(!Number.isSafeInteger(issue.number)||issue.number<1)return null;
  const markers=[...body.matchAll(/<!-- verified-sha: ([a-f0-9]{40}) -->/g)];
  if(markers.length!==1||/<!-- (?:superseded|duplicate|not-a-bug|unverified) -->/i.test(body))return null;

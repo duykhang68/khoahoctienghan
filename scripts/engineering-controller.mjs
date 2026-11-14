@@ -2,7 +2,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {ciJobsPassed,releaseRecoveryDecision} from './release-recovery.mjs';
 import {selectPullRequestCI,branchToken} from './branch-auth.mjs';
-import {incidentPublication,hasVerifiedRun,alreadyPublished} from './incident-publication.mjs';
+import {incidentPublication,hasVerifiedRun,alreadyPublished,editorPublicationPending,incidentRetrospectivePR} from './incident-publication.mjs';
 import {labelDefinitions,labelEligible,inferPRLabels} from './pr-labels.mjs';
 import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar,branchSyncDecision,dependabotSyncEligible,mergeReviewRequired} from './engineering-policy.mjs';
 const repo=process.env.GITHUB_REPOSITORY;
@@ -98,7 +98,9 @@ if(run?.head_repository?.full_name===repo&&[ciName,releaseName].includes(run.nam
 // One incident, one retrospective. The scheduled Researcher authors the content PR.
 try{
  const posts=JSON.parse(readFileSync('src/data/techblog/posts.json','utf8'));
- for(const issue of issues){
+ const pending=editorPublicationPending(issues);
+ if(pending)console.log('RETROSPECTIVES_DEFERRED: Editor V2 publication FIFO has an unverified request');
+ for(const issue of pending?[]:issues){
   const record=incidentPublication(issue,repo);
   if(!record||alreadyPublished(record,posts,prs))continue;
   const marker='<!-- techblog-incident:'+record.number+' -->';
@@ -135,6 +137,7 @@ else if(mainCI.status==='completed'&&mainCI.conclusion==='success'){
 const synchronized=[];
 for(const p of prs){
  if(!trusted(p))continue;
+ if(incidentRetrospectivePR(p)&&editorPublicationPending(issues)){console.log('EDITOR_FIFO_PRIORITY: retrospective PR #'+p.number+' deferred');continue;}
  const current=api('pulls/'+p.number);
  if(current.state!=='open'||current.base.ref!=='main'||current.head.sha!==p.head.sha||!trusted(current)||mainSHA()!==main)continue;
  const compare=api('compare/'+main+'...'+current.head.sha);
@@ -184,6 +187,7 @@ for(const {p,exact} of synchronized){
  const current=api('pulls/'+p.number);
  if(current.state!=='open'||!trusted(current)||current.base.ref!=='main'||current.head.sha!==p.head.sha||mainSHA()!==main)continue;
  if(branchSyncDecision(current,api('compare/'+main+'...'+current.head.sha))!=='CURRENT')continue;
+ if(incidentRetrospectivePR(current)&&editorPublicationPending(all('issues?state=all&per_page=100'))){console.log('EDITOR_FIFO_PRIORITY: retrospective merge deferred');continue;}
  if(mergeReviewRequired(current,changed(current))){console.log('REVIEW_REQUIRED PR #'+p.number+' · protected paths or test-only change');continue;}
  const jobs=api('actions/runs/'+exact.id+'/jobs?per_page=100').jobs;
  if(!ciJobsPassed(jobs,exact.event))continue;
