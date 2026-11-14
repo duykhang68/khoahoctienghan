@@ -50,3 +50,5 @@ test('engineering resource budget preserves essential triggers and avoids redund
  assert.match(controller,/selectPullRequestCI\(runs,current\.head\.sha,repo,current\.head\.ref\)/);
  assert.match(controller,/if\(merged\.merged\)\{dispatch\('main'\)/);
 });
+
+import './release-recovery.test.mjs';

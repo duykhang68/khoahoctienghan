@@ -51,3 +51,26 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 3
+  release-handoff:
+    name: Release handoff
+    needs: quality
+    if: github.repository == 'duykhang68/khoahoctienghan' && github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      # No checkout, PR code, artifact execution or shared credentials in this job.
+      - name: Dispatch exact main release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo "SUPERSEDED: $GITHUB_SHA"
+            exit 0
+          fi
+          jq -n --arg sha "$GITHUB_SHA" --arg id "$GITHUB_RUN_ID" '{ref:"main",inputs:{expected_sha:$sha,ci_run_id:$id}}' |
+            gh api -X POST "repos/$GITHUB_REPOSITORY/actions/workflows/release.yml/dispatches" --input -
