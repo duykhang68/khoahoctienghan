@@ -1,0 +1,67 @@
+---
+import {getCollection} from 'astro:content';
+import TechCover from './TechCover.astro';
+import {topics} from '../lib/knowledge-topics';
+import {buildKnowledgeFeed} from '../lib/knowledge-feed.mjs';
+import metadata from '../data/studio-metadata.json';
+const {topic=''}=Astro.props as {topic?:string};
+const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const entries=await getCollection('docs');
+const articles=buildKnowledgeFeed(entries,metadata,topics).filter(a=>!topic||a.topic===topic);
+const labels=[...new Set(articles.flatMap(a=>a.labels))].sort((a,b)=>a.localeCompare(b,'vi'));
+const series=[...new Set(articles.flatMap(a=>a.series?[a.series.name]:[]))].sort((a,b)=>a.localeCompare(b,'vi'));
+const fmt=(date:string)=>new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',timeStyle:'medium',timeZone:'Asia/Ho_Chi_Minh',hour12:false}).format(new Date(date));
+---
+<section class="not-content knowledge-feed" data-knowledge-feed aria-labelledby="knowledge-feed-heading">
+ <div class="knowledge-feed-head"><div><span class="knowledge-feed-kicker">THƯ VIỆN TRI THỨC</span><h2 id="knowledge-feed-heading">{topic?'Bài viết trong chuyên mục':'Bài viết mới nhất'}</h2><p>Khám phá bài học theo chủ đề, nhãn và Series.</p></div><span class="knowledge-feed-total" data-feed-count aria-live="polite">{articles.length} bài viết</span></div>
+ {articles.length>0&&<div class="knowledge-feed-filters" hidden data-feed-controls>
+ <label>Tìm bài viết<input type="search" data-feed-query placeholder="Tiêu đề, nhãn, Series…" autocomplete="off"/></label>
+ {!topic&&<label>Chuyên mục<select data-feed-topic><option value="">Tất cả chuyên mục</option>{topics.map(t=><option value={t.id}>{t.title}</option>)}</select></label>}
+ {labels.length>0&&<label>Nhãn<select data-feed-label><option value="">Tất cả nhãn</option>{labels.map(label=><option value={label}>{label}</option>)}</select></label>}
+ {series.length>0&&<label>Series<select data-feed-series><option value="">Tất cả Series</option>{series.map(name=><option value={name}>{name}</option>)}</select></label>}
+ <button type="button" data-feed-reset>Đặt lại</button>
+ </div>}
+ <div class="knowledge-feed-grid">
+ {articles.map(a=><article class="knowledge-feed-card" data-knowledge-article data-article={JSON.stringify({topic:a.topic,labels:a.labels,series:a.series,search:a.search})}>
+ <a class="knowledge-feed-cover" href={base+'/'+a.slug+'/'} aria-hidden="true" tabindex="-1"><TechCover slug={a.slug}/></a>
+ <div class="knowledge-feed-card-body">
+ <div class="knowledge-feed-meta"><a href={base+'/'+a.topic+'/'}>{a.topicTitle}</a>{a.date&&<time datetime={a.date}>{fmt(a.date)}</time>}</div>
+ <h3><a href={base+'/'+a.slug+'/'}>{a.title}</a></h3>
+ <p>{a.summary}</p>
+ {a.labels.length>0&&<ul class="knowledge-feed-labels" aria-label="Nhãn">{a.labels.map(label=><li>{label}</li>)}</ul>}
+ {a.series&&<div class="knowledge-feed-series"><strong>{a.series.name}</strong><span>Tập {a.series.part} / {a.series.total_parts}</span></div>}
+ </div></article>)}
+ </div>
+ <p data-feed-empty role="status" hidden={articles.length>0}>{articles.length?'Không tìm thấy bài phù hợp.':'Chuyên mục chưa có bài viết. Nội dung mới sẽ tự xuất hiện khi được xuất bản.'}</p>
+ <nav data-feed-pagination aria-label="Phân trang bài viết tri thức" hidden><button type="button" data-feed-prev>Trang trước</button><span data-feed-page></span><button type="button" data-feed-next>Trang sau</button></nav>
+</section>
+<script>
+ import {matchesKnowledgeArticle} from '../lib/knowledge-feed.mjs';
+ import {pageWindow} from '../lib/tech-pagination.mjs';
+ for(const root of document.querySelectorAll<HTMLElement>('[data-knowledge-feed]')){
+  const cards=[...root.querySelectorAll<HTMLElement>('[data-knowledge-article]')];
+  const controls=root.querySelector<HTMLElement>('[data-feed-controls]');
+  if(!controls)continue;
+  controls.hidden=false;
+  const input= root.querySelector<HTMLInputElement>('[data-feed-query]')!;
+  const topic=root.querySelector<HTMLSelectElement>('[data-feed-topic]');
+  const label=root.querySelector<HTMLSelectElement>('[data-feed-label]');
+  const series=root.querySelector<HTMLSelectElement>('[data-feed-series]');
+  const count=root.querySelector<HTMLElement>('[data-feed-count]')!;
+  const empty=root.querySelector<HTMLElement>('[data-feed-empty]')!;
+  const pagination=root.querySelector<HTMLElement>('[data-feed-pagination]')!;
+  const prev=root.querySelector<HTMLButtonElement>('[data-feed-prev]')!,next=root.querySelector<HTMLButtonElement>('[data-feed-next]')!;
+  const pageText=root.querySelector<HTMLElement>('[data-feed-page]')!;
+  let page=1;
+  function render(){
+   const filtered=cards.filter(card=>matchesKnowledgeArticle(JSON.parse(card.dataset.article!),{query:input.value,topic:topic?.value,label:label?.value,series:series?.value}));
+   const win=pageWindow(filtered.length,page);page=win.page;
+   const visible=new Set(filtered.slice(win.start,win.end));cards.forEach(card=>card.hidden=!visible.has(card));
+   count.textContent=filtered.length+' bài viết';empty.hidden=filtered.length>0;pagination.hidden=win.pages<=1;
+   pageText.textContent='Trang '+page+' / '+win.pages;prev.disabled=page===1;next.disabled=page===win.pages;
+  }
+  for(const control of [input,topic,label,series])control?.addEventListener(control===input?'input':'change',()=>{page=1;render()});
+  root.querySelector('[data-feed-reset]')?.addEventListener('click',()=>{for(const c of [input,topic,label,series])if(c)c.value='';page=1;render();input.focus()});
+  prev.addEventListener('click',()=>{page--;render()});next.addEventListener('click',()=>{page++;render()});render();
+ }
+</script>
