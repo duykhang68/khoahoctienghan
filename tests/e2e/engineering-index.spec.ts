@@ -37,3 +37,23 @@ test('filtered index shows correct result count without a hero',async({page})=>{
  await expect(page.locator('#latest-feature')).toHaveCount(0);
  await expect(page.locator('[data-tech-post]:visible').first()).toBeVisible();
 });
+
+test('listing and article share the same compact top navigation and breadcrumb styling',async({page})=>{
+ await page.goto('./techblog/');
+ const styles=()=>page.evaluate(()=>{
+  const header=document.querySelector('.engineering-header')!.getBoundingClientRect();
+  const menu=document.querySelector('.blog-navigation')!.getBoundingClientRect();
+  const breadcrumb=document.querySelector('.blog-breadcrumb')!.getBoundingClientRect();
+  const band=document.querySelector('.breadcrumb-band')!;
+  return {headerHeight:header.height,menuHeight:menu.height,breadcrumbTop:breadcrumb.top,background:getComputedStyle(band).backgroundColor,padding:getComputedStyle(band.querySelector('nav')!).padding,font:getComputedStyle(band.querySelector('nav')!).fontSize};
+ });
+ const home=await styles();
+ expect(home.background).toBe('rgb(250, 249, 245)');
+ await expect(page.locator('.breadcrumb-band + #content')).toBeVisible();
+ await expect(page.locator('.blog-masthead,.index-intro,.index-feature')).toHaveCount(0);
+ const gap=await page.evaluate(()=>document.querySelector('#feed-heading')!.getBoundingClientRect().top-document.querySelector('.breadcrumb-band')!.getBoundingClientRect().bottom);
+ expect(gap).toBeLessThan(90);
+ await page.locator('[data-tech-post]:visible').first().locator('h3 a').click();
+ expect(await styles()).toEqual(home);
+ await expect(page.locator('.blog-breadcrumb a')).toHaveText('Engineering Blog');
+});
