@@ -1,5 +1,7 @@
 name: Engineering · Learn and Reconcile
 on:
+  push:
+    branches: [main]
   workflow_run:
     workflows: ['P0 · Knowledge Base CI','CD · Public Knowledge Base']
     types: [completed]

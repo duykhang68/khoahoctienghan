@@ -17,3 +17,15 @@ export function nativePolicyReady(repo,rules){
 export function latestRun(runs,sha,repo,events,branch){return runs.filter(r=>r.head_sha===sha&&r.head_repository?.full_name===repo&&events.includes(r.event)&&(!branch||r.head_branch===branch)).sort((a,b)=>b.id-a.id)[0];}
 export function canRetry(kind,run,current){return kind==='TRANSIENT'&&current&&Number(run.run_attempt)<3;}
 export function migrateSidebar(old){return old.replace(/autogenerate: \{ directory: '([a-z0-9-]+)' \}, collapsed: true/g,"collapsed: true, items: [{ autogenerate: { directory: '$1' } }]");}
+
+export function branchSyncDecision(pr,comparison){
+ if(!Number.isInteger(comparison?.behind_by)||comparison.behind_by<0)return 'UNKNOWN';
+ if(pr.mergeable===false)return 'CONFLICT';
+ if(pr.mergeable!==true)return 'UNKNOWN';
+ if(comparison.behind_by>0)return 'UPDATE';
+ if(comparison.status==='ahead'&&comparison.ahead_by>0)return 'CURRENT';
+ return 'NO_CHANGES';
+}
+export function dependabotSyncEligible(p,repo){
+ return p.user?.login==='dependabot[bot]'&&p.head?.repo?.full_name===repo&&p.head.ref.startsWith('dependabot/')&&!p.draft&&Boolean(p.auto_merge);
+}

@@ -1,6 +1,6 @@
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
-import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar} from './engineering-policy.mjs';
+import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar,branchSyncDecision,dependabotSyncEligible} from './engineering-policy.mjs';
 const repo=process.env.GITHUB_REPOSITORY;
 if(repo!=='duykhang68/khoahoctienghan')throw Error('Wrong repository');
 const event=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
@@ -67,29 +67,70 @@ for(let i=0;i+5<=remaining.length;i+=5){
 const mainRuns=api('actions/workflows/ci.yml/runs?branch=main&head_sha='+main+'&per_page=30').workflow_runs;
 const mainCI=latestRun(mainRuns,main,repo,['push','workflow_dispatch'],'main');
 if(!mainCI){dispatch('main');console.log('Dispatched missing current main CI');}
-// Merge authorization is delegated to GitHub rules, not the previous production version.
-let rules;try{rules=api('rules/branches/main')}catch{console.log('BLOCKED: cannot verify active repository rules');process.exit(0)}
-if(!nativePolicyReady(api(''),rules)){console.log('BLOCKED: configure native auto merge and strict main ruleset first');process.exit(0)}
+// Synchronize independently of merge authorization. Only owner-created, same-repo PRs.
+const synchronized=[];
 for(const p of prs){
- if(!trusted(p)||sensitive(changed(p)))continue;
+ if(!trusted(p))continue;
  const current=api('pulls/'+p.number);
- if(current.head.sha!==p.head.sha||current.base.sha!==main||current.draft||mainSHA()!==main)continue;
- if(current.mergeable===false){incident('conflict-'+p.number+'-'+p.head.sha,'[Conflict] PR #'+p.number,'PR: '+p.html_url+'\n\nSHA: '+p.head.sha+'\n\nSemantic conflict must be reviewed; no ours/theirs.');continue}
- if(current.mergeable!==true)continue;
- const comparison=api('compare/'+main+'...'+p.head.sha);
- if(comparison.status!=='ahead'){
-  try{api('pulls/'+p.number+'/update-branch','PUT',{expected_head_sha:p.head.sha});console.log('Requested clean branch update')}catch{console.log('Branch update deferred')}
+ if(current.state!=='open'||current.base.ref!=='main'||current.head.sha!==p.head.sha||!trusted(current)||mainSHA()!==main)continue;
+ const compare=api('compare/'+main+'...'+current.head.sha);
+ const decision=branchSyncDecision(current,compare);
+ if(decision==='CONFLICT'){
+  incident('conflict-'+p.number+'-'+current.head.sha,'[Conflict] PR #'+p.number,'PR: '+p.html_url+'\n\nSHA: '+current.head.sha+'\n\nSemantic conflict requires research; no ours/theirs.');
   continue;
  }
- const runs=api('actions/workflows/ci.yml/runs?head_sha='+p.head.sha+'&per_page=30').workflow_runs;
- const exact=latestRun(runs,p.head.sha,repo,['pull_request','workflow_dispatch'],p.head.ref);
- if(!exact){dispatch(p.head.ref);continue}
+ if(decision==='UPDATE'){
+  if(mainSHA()!==main)break;
+  try{
+   api('pulls/'+p.number+'/update-branch','PUT',{expected_head_sha:current.head.sha});
+   console.log('UPDATE_REQUESTED PR #'+p.number+' · '+current.head.sha.slice(0,12));
+   // update-branch returns 202; wait briefly for the actual new HEAD, never reuse an old SHA.
+   for(let attempt=0;attempt<6;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,2000));
+    const fresh=api('pulls/'+p.number);
+    if(fresh.state!=='open'||!trusted(fresh))break;
+    if(fresh.head.sha===current.head.sha)continue;
+    const runs=api('actions/workflows/ci.yml/runs?head_sha='+fresh.head.sha+'&per_page=30').workflow_runs;
+    if(!latestRun(runs,fresh.head.sha,repo,['pull_request','workflow_dispatch'],fresh.head.ref))dispatch(fresh.head.ref);
+    console.log('UPDATED PR #'+p.number+' · '+fresh.head.sha.slice(0,12));
+    break;
+   }
+  }catch{console.log('UPDATE_DEFERRED PR #'+p.number+'; GitHub rejected request or a race occurred')}
+  continue;
+ }
+ if(decision!=='CURRENT'){console.log('WAITING PR #'+p.number+' · '+decision);continue}
+ const runs=api('actions/workflows/ci.yml/runs?head_sha='+current.head.sha+'&per_page=30').workflow_runs;
+ const exact=latestRun(runs,current.head.sha,repo,['pull_request','workflow_dispatch'],current.head.ref);
+ // Recover CI suppressed when a GitHub token updates an owner branch.
+ if(!exact){dispatch(current.head.ref);console.log('CI_DISPATCHED PR #'+p.number);continue}
  if(exact.status!=='completed'||exact.conclusion!=='success')continue;
+ synchronized.push({p:current,exact});
+}
+// Dependabot owns its own branches; do not push commits onto them.
+// Only automatic synchronization, never new merge approval, for already owner-armed Dependabot PRs.
+for(const p of prs){
+ if(!dependabotSyncEligible(p,repo))continue;
+ const current=api('pulls/'+p.number);
+ if(!dependabotSyncEligible(current,repo)||current.state!=='open'||current.head.sha!==p.head.sha||current.base.ref!=='main')continue;
+ const compare=api('compare/'+main+'...'+current.head.sha);
+ if(compare.behind_by<=0||mainSHA()!==main)continue;
+ const marker='<!-- branch-sync:'+main+':'+current.head.sha+' -->';
+ const comments=all('issues/'+p.number+'/comments?per_page=100');
+ if(comments.some(c=>['github-actions[bot]','duykhang68'].includes(c.user?.login)&&String(c.body||'').includes(marker)))continue;
+ api('issues/'+p.number+'/comments','POST',{body:'@dependabot rebase\n\n'+marker});
+ console.log('DEPENDABOT_REBASE_REQUESTED PR #'+p.number);
+}
+// Merge authorization stays separate; require native policy and exact fresh green HEAD.
+let rules;try{rules=api('rules/branches/main')}catch{console.log('BLOCKED: cannot verify active repository rules');process.exit(0)}
+if(!nativePolicyReady(api(''),rules)){console.log('BLOCKED: native merge policy not ready');process.exit(0)}
+for(const {p,exact} of synchronized){
+ if(sensitive(changed(p))){console.log('REVIEW_REQUIRED PR #'+p.number);continue}
+ const current=api('pulls/'+p.number);
+ if(current.state!=='open'||!trusted(current)||current.base.ref!=='main'||current.head.sha!==p.head.sha||mainSHA()!==main)continue;
+ if(branchSyncDecision(current,api('compare/'+main+'...'+current.head.sha))!=='CURRENT')continue;
  const jobs=api('actions/runs/'+exact.id+'/jobs?per_page=100').jobs;
  if(!jobs.some(j=>j.name===checkName&&j.conclusion==='success')||jobs.some(j=>j.conclusion!=='success'))continue;
  if(mainSHA()!==main)break;
- // GitHub enforces the required checks and up-to-date base atomically; no --admin override.
- // Immediate merge only: do not leave an auto-merge armed for an unreviewed future head.
  try{cli(['pr','merge',String(p.number),'--repo',repo,'--squash','--match-head-commit',p.head.sha]);}catch{console.log('Native merge requirements are not satisfied');continue}
  const merged=api('pulls/'+p.number);
  if(merged.merged){dispatch('main');console.log('Merged via GitHub rules; CI will verify new main '+merged.merge_commit_sha);break}
