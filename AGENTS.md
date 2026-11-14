@@ -18,7 +18,7 @@
 ## Failure learning loop
 - Capture exact run, job, PR, SHA and minimal sanitized signature; deduplicate incidents. Research official docs and reproduce. Record root cause, fix, regression, and evidence in Issues and engineering/lessons. No raw logs or secrets in public issues.
 - Known safe fix only: use a narrowly scoped allowlisted transformation and re-run CI. At most three attempts for transient failure; unknown errors/conflicts are BLOCKED for agent research, not infinite reruns. Never loosen security. Verify before closing issues; link follow-up PR.
-- On five verified, closed engineering incidents, prepare one editorial synthesis candidate. Exclude unrelated issues, duplicates, confidential data. Do not invent lessons or automatically publish unreviewed claims. Use stable batch IDs.
+- One verified, completed engineering incident = one standalone Vietnamese Tech Blog article, slug bugfix-issue-<number>, with source issue, root cause, fix, regression, official references, verified SHA and evidence. Researcher checks existing posts and open PRs to avoid duplicates; no five-incident batching. An ordinary closed, duplicate, cancelled or unverified issue is not a fixed bug. Review claims and sanitized lesson records before publication through standard PR/CI/CD; no raw logs or secrets.
 - Every agent must report merged vs deployed vs verified separately and include exact SHA.
 
 ## Commands

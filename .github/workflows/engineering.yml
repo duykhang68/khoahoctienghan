@@ -10,6 +10,8 @@ on:
     branches: [main]
   schedule:
     - cron: '32 * * * *'
+  issues:
+    types: [closed]
   workflow_dispatch:
 permissions:
   contents: write
@@ -21,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   reconcile:
-    if: github.repository == 'duykhang68/khoahoctienghan' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request_target' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'duykhang68'))
+    if: github.repository == 'duykhang68/khoahoctienghan' && (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'issues' || github.actor == 'duykhang68' || github.actor == 'github-actions[bot]') && (github.event_name != 'pull_request_target' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'duykhang68'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

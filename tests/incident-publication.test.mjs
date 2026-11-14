@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {incidentPublication,hasVerifiedRun,alreadyPublished} from '../scripts/incident-publication.mjs';
+const repo='duykhang68/khoahoctienghan',sha='a'.repeat(40);
+const issue={number:42,state:'closed',state_reason:'completed',user:{login:'duykhang68'},body:'<!-- engineering-incident:v1 -->\n<!-- verified-sha: '+sha+' -->\nhttps://github.com/'+repo+'/actions/runs/123\n'};
+test('one verified completed incident yields stable article slug',()=>{const rec=incidentPublication(issue,repo);assert.equal(rec.slug,'bugfix-issue-42');assert.equal(rec.sha,sha);assert.ok(hasVerifiedRun(rec,[{id:123,head_sha:sha,head_repository:{full_name:repo},status:'completed',conclusion:'success',name:'P0 · Knowledge Base CI'}],repo));assert.ok(!hasVerifiedRun(rec,[{id:123,head_sha:'b'.repeat(40),head_repository:{full_name:repo},status:'completed',conclusion:'success',name:'P0 · Knowledge Base CI'}],repo));assert.ok(alreadyPublished(rec,[{slug:rec.slug}],[]));assert.ok(alreadyPublished(rec,[],[{head:{ref:'techblog/'+rec.slug}}]));assert.ok(!alreadyPublished(rec,[{slug:'intro',issues:[42]}],[]));});
+test('unverified, ordinary closed, duplicate or untrusted incident does not publish',()=>{for(const p of [{state:'open'},{state_reason:'not_planned'},{user:{login:'outsider'}},{body:'ordinary issue'},{body:issue.body+'<!-- duplicate -->'}])assert.equal(incidentPublication({...issue,...p},repo),null);});
