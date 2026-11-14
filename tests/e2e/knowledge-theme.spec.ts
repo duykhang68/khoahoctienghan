@@ -8,9 +8,9 @@ test('knowledge routes share Tech Blog visual tokens without replacing docs navi
  await page.goto('./techblog/');
  const reference=await snapshot();
  const headerColor=await page.locator('.engineering-header').evaluate(el=>getComputedStyle(el).backgroundColor);
- const routes=['ngon-ngu','lich-su','van-hoa','am-thuc','dia-ly-du-lich','kinh-te-cong-nghe','giao-duc-du-hoc','hallyu','doi-song','the-che','ngon-ngu/hangul','lich-su/joseon','van-hoa/chao-hoi'];
+ const routes=['','ngon-ngu','lich-su','van-hoa','am-thuc','dia-ly-du-lich','kinh-te-cong-nghe','giao-duc-du-hoc','hallyu','doi-song','the-che','ngon-ngu/hangul','lich-su/joseon','van-hoa/chao-hoi'];
  for(const route of routes){
-  const response=await page.goto('./'+route+'/');
+  const response=await page.goto(route?'./'+route+'/':'./');
   expect(response?.ok(),route).toBe(true);
   await expect(page.locator('h1')).toBeVisible();
   expect(await snapshot(),route).toEqual(reference);

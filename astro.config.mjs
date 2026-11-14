@@ -13,6 +13,8 @@ export default defineConfig({
     components: {
       ThemeProvider: './src/components/LightTheme.astro',
       ThemeSelect: './src/components/NoThemeSelect.astro',
+      Sidebar: './src/components/KnowledgeSidebar.astro',
+      PageTitle: './src/components/KnowledgePageTitle.astro',
     },
     tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
     sidebar: [

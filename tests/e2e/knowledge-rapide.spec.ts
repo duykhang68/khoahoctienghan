@@ -1,26 +1,25 @@
 import {test,expect} from '@playwright/test';
 
-test('Rapide-inspired docs navigation remains native and usable',async({page})=>{
+test('Advanced Docs navigation remains native and usable',async({page})=>{
  await page.goto('./ngon-ngu/hangul/');
  await expect(page.locator('h1')).toContainText('Hangul');
  const wide=page.viewportSize()!.width>=1152;
  if(wide){
   const current=page.locator('.sidebar-pane a[aria-current="page"]').first();
   await expect(current).toBeVisible();
-  await expect(current).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await expect(current).toHaveCSS('background-color','rgb(246, 246, 246)');
   const toc=page.locator('.right-sidebar starlight-toc a').filter({hasText:'Ghép âm tiết'}).first();
   await expect(toc).toBeVisible();
   await toc.click();
   await expect(page).toHaveURL(/#.+/);
  }else{
-  const toc=page.locator('mobile-starlight-toc summary').first();
-  if(await toc.isVisible()){
-   await toc.click();
-   await expect(page.locator('mobile-starlight-toc details')).toHaveAttribute('open','');
-   await page.locator('mobile-starlight-toc a').filter({hasText:'Ghép âm tiết'}).first().click();
-   await expect(page).toHaveURL(/#.+/);
-  }
+  const toc=page.locator('.knowledge-inline-toc');
+  await expect(toc).toBeVisible();
+  await expect(toc.getByRole('link',{name:'Ghép âm tiết'})).toBeVisible();
+  await toc.getByRole('link',{name:'Ghép âm tiết'}).click();
+  await expect(page).toHaveURL(/#.+/);
  }
+
  const search=page.locator('site-search button[data-open-modal]').first();
  await expect(search).toBeVisible();
  await search.click();
