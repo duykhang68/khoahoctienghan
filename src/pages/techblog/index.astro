@@ -22,6 +22,8 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
                 <span class="meta-category">trong <a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></span>
                 <span>{readingMinutes(post)} phút đọc</span>
                 <a href={href}>Permalink</a>
+                <button class="share-link" type="button" data-copy-permalink={href}>Chia sẻ</button>
+                <span class="share-status" role="status" aria-live="polite"></span>
               </div>
               <div class:list={['feed-excerpt',cover&&'has-cover']}>
                 {cover&&<a class="feed-cover" href={href} tabindex="-1" aria-hidden="true"><img src={cover} alt="" width="1200" height="675" loading={index===0?'eager':'lazy'} decoding="async"/></a>}

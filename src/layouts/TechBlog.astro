@@ -9,6 +9,7 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="theme-color" content="#232f3e"/>
   <title>{title} | Engineering</title>
   <meta name="description" content={description}/>
   <link rel="canonical" href={canonical}/>
@@ -46,3 +47,16 @@ const canonical=new URL(Astro.url.pathname,Astro.site);
   <footer class="engineering-footer"><div class="footer-inner"><a class="footer-brand" href={base+'/techblog/'}>Engineering</a><p>Ghi lại những điều học được khi xây dựng phần mềm.</p><div class="footer-links"><a href={base+'/'}>Kho tri thức</a><a href="https://github.com/duykhang68/khoahoctienghan">GitHub</a><a href="#content">Về đầu trang ↑</a></div></div></footer>
 </body>
 </html>
+
+<script>
+  for(const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-permalink]')){
+    button.addEventListener('click',async()=>{
+      const status=button.parentElement?.querySelector<HTMLElement>('.share-status');
+      const path=button.dataset.copyPermalink;
+      if(!path)return;
+      const url=new URL(path,location.origin).href;
+      try{await navigator.clipboard.writeText(url);if(status)status.textContent='Đã sao chép liên kết';}
+      catch{if(status)status.textContent='Dùng liên kết Permalink để chia sẻ.';}
+    });
+  }
+</script>
