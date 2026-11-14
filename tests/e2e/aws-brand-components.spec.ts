@@ -1,0 +1,27 @@
+import {test,expect} from '@playwright/test';
+test('blog chrome and AWS-style controls have functional navigation and accessible mobile layout',async({page})=>{
+ await page.goto('./techblog/');
+ await expect(page.locator('.utility-band')).toBeVisible();
+ await expect(page.locator('.blog-tabs a[aria-current=true]')).toHaveText('Blogs');
+ const menu=page.locator('.edition-menu');
+ await menu.locator('summary').click();
+ await expect(menu).toHaveAttribute('open','');
+ await expect(menu.locator('.edition-panel a').first()).toHaveText('Tất cả bài viết');
+ await menu.locator('summary').press('Escape');
+ await expect(menu).not.toHaveAttribute('open','');
+ await expect(page.locator('.search-submit')).toHaveCSS('background-color','rgb(9, 114, 211)');
+ await expect(page.locator('.nav-cta')).toHaveAttribute('href',/\/$/);
+ const first=page.locator('[data-tech-post]').first();
+ const title=(await first.locator('h3').innerText()).trim();
+ await first.locator('h3 a').click();
+ await expect(page.locator('.current-crumb')).toHaveText(title);
+ await expect(page.locator('.article-heading h1')).toHaveText(title);
+ await expect(page.locator('.article-heading .post-meta')).toBeVisible();
+ await expect(page.locator('.article-body .article-lead')).toHaveCSS('text-align','justify');
+ await expect(page.locator('.resource-links a').first()).toHaveText('Kho tri thức');
+ await expect(page.locator('.footer-cta')).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
+ await page.setViewportSize({width:375,height:812});
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
+ await expect(page.locator('.blog-breadcrumb a').last()).toHaveText('Engineering Blog');
+});

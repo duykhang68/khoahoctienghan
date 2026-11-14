@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 test('AWS-inspired editorial shell keeps navigation, heading and metadata in reading order',async({page})=>{
  await page.goto('./techblog/');
  await expect(page.locator('.blog-masthead h1')).toHaveText('Engineering Blog');
- await expect(page.locator('.engineering-header')).toHaveCSS('background-color','rgb(22, 30, 45)');
+ await expect(page.locator('.engineering-header')).toHaveCSS('background-color','rgb(22, 29, 38)');
  const first=page.locator('[data-tech-post]').first();
  await expect(first.locator('h3 a')).toBeVisible();
  await expect(first.locator('.post-meta time')).toBeVisible();
