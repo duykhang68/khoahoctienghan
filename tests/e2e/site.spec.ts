@@ -11,13 +11,17 @@ test('homepage topic navigation and Hangul article',async({page})=>{
 });
 test('tech blog renders, search filters and article text is justified',async({page})=>{
  await page.goto('./techblog/');
+ await expect(page.locator('.engineering-header .engineering-brand')).toBeVisible();
+ await expect(page.locator('.edition-menu summary')).toBeVisible();
+ await expect(page.locator('.blog-breadcrumb')).toHaveText('Engineering Blog');
+ await expect(page.locator('.index-toolbar, .index-filters, [data-view], #tech-query')).toHaveCount(0);
+ await expect(page.locator('#tech-post-list')).toHaveAttribute('data-layout','grid');
  await expect(page.locator('h1')).toHaveText('BÀI MỚI NHẤT');
  const card=page.locator('[data-tech-post]').first();
  await expect(card).toBeVisible();
  const title=(await card.locator('h3').innerText()).trim();
  const query=title.split(':')[0];
- await page.locator('#tech-query').fill(query);
- await page.locator('#tech-query').press('Enter');
+ await page.goto('./techblog/?q='+encodeURIComponent(query));
  await expect(page.locator('#feed-heading')).toHaveText('Kết quả tìm kiếm');
  await expect(card).toBeVisible();
  await card.locator('h3 a').click();
@@ -30,7 +34,8 @@ test('tech blog renders, search filters and article text is justified',async({pa
 
 test('inferred categories on both feed and detail, filter works',async({page})=>{
  await page.goto('./techblog/');
- const category=page.locator('[data-category-filter="engineering"]');
+ await page.locator('.edition-menu summary').click();
+ const category=page.locator('.edition-panel a[href$="?category=engineering"]');
  await expect(category).toBeVisible();
  await category.click();
  await expect(page.locator('#feed-heading')).toHaveText('Chuyên mục: Engineering');
