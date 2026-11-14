@@ -27,3 +27,5 @@ test('categories derive from article context and do not require metadata',()=>{
 });
 
 import './incident-publication.test.mjs';
+
+import './branch-auth.test.mjs';
