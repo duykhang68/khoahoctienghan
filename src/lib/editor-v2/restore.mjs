@@ -20,10 +20,7 @@ export function mountRestore(root){
    });
    const out={kind:d.kind,title:d.title,summary:d.summary??'',category:d.category,labels:d.labels??'',series:{enabled:series.enabled===true,name:String(series.name??'').slice(0,180),part:String(series.part??1).slice(0,4),total_parts:String(series.total_parts??1).slice(0,4),target_date:String(series.target_date??'').slice(0,10)},blocks};
    if(!confirm('Thay bản nháp '+d.kind+' trong Back Office bằng bản sao này? Hãy lưu bản hiện tại trước nếu cần.'))return;
-   const key='khoahoctienghan.editor-v2.draft.v2.'+d.kind;
-   localStorage.setItem(key,JSON.stringify(out));localStorage.setItem('khoahoctienghan.editor-v2.active.v2',JSON.stringify(d.kind));
-   // Prevent old pagehide handler from overwriting the imported draft: notify editor to adopt draft before navigation.
-   root.dispatchEvent(new CustomEvent('editor-import',{detail:out}));
+   if(!root.dispatchEvent(new CustomEvent('editor-import',{detail:out,cancelable:true})))throw Error('Editor đang bận hoặc chưa lưu được bản nháp.');
    status.textContent='Đã nhập bản nháp.';
   }catch(e){status.textContent='Không nhập được: '+String(e.message||'Lỗi dữ liệu');}finally{input.value='';}
  });

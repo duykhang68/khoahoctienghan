@@ -15,5 +15,16 @@ const block='// BEGIN GENERATED SHEETS ASSETS\nconst sheetsBundle='+JSON.stringi
 const url=new URL('../back-office/worker.mjs',import.meta.url),old=await readFile(url,'utf8');
 const start=old.indexOf('// BEGIN GENERATED SHEETS ASSETS'),end=old.indexOf('// END GENERATED SHEETS ASSETS');
 if(start<0||end<start)throw Error('Missing generated Sheets asset marker');
-const next=old.slice(0,start)+block+old.slice(end+'// END GENERATED SHEETS ASSETS'.length);
+let next=old.slice(0,start)+block+old.slice(end+'// END GENERATED SHEETS ASSETS'.length);
+const {SERIES_BLUEPRINTS}=await import('../src/lib/editor-v2/blueprints-data.mjs');
+const blocks=[["paragraph","¶","Đoạn văn"],["heading","H2","Tiêu đề"],["subheading","H3","Tiêu đề phụ"],["quote","❝","Trích dẫn"],["bullet","•","Danh sách"],["ordered","1.","Danh sách số"],["note","▣","Ghi chú"],["code","<>","Mã nguồn"],["table","▦","Bảng"],["image","▧","Ảnh từ máy"],["diagram","◇","Sơ đồ draw.io"],["divider","—","Đường phân cách"]];
+const editorHtml=(await read('back-office/editor.html')).replaceAll('__BLUEPRINT_COUNT__',String(SERIES_BLUEPRINTS.length)).replace('__BLUEPRINT_OPTIONS__',SERIES_BLUEPRINTS.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.label)+'</option>').join('')).replace('__TOPIC_OPTIONS__',topics.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.title)+'</option>').join('')).replace('__BLOCK_BUTTONS__',blocks.map(([k,i,l])=>'<button type="button" data-add="'+esc(k)+'"><span aria-hidden="true">'+esc(i)+'</span>'+esc(l)+'</button>').join(''));
+const editorAssets={};
+for(const p of ["editor-v2/browser.mjs","editor-v2/series-progress.mjs","editor-v2/drawio-browser.mjs","editor-v2/blueprints.mjs","editor-v2/blueprints-data.mjs","editor-v2/restore.mjs"])editorAssets[p]=await read('src/lib/'+p);
+editorAssets['editor-v2/entry.mjs']="import {mountEditor} from './browser.mjs';\nimport {mountRestore} from './restore.mjs';\nconst root=document.querySelector('[data-editor-v2]');mountEditor(root);mountRestore(root);\n";
+editorAssets['editor-v2.css']=(await read('back-office/editor-shell.css'))+'\n'+(await read('src/styles/editor-v2.css'));
+const editorBlock='// BEGIN GENERATED EDITOR ASSETS\nconst editorBundle='+JSON.stringify({html:editorHtml,assets:editorAssets})+';\n// END GENERATED EDITOR ASSETS';
+const eStart=next.indexOf('// BEGIN GENERATED EDITOR ASSETS'),eEnd=next.indexOf('// END GENERATED EDITOR ASSETS');
+if(eStart<0||eEnd<eStart)throw Error('Missing generated Editor asset marker');
+next=next.slice(0,eStart)+editorBlock+next.slice(eEnd+'// END GENERATED EDITOR ASSETS'.length);
 if(process.argv.includes('--check')){if(next!==old)throw Error('Private Sheets assets stale; run npm run sync:back-office');console.log('Private Sheets assets match source');}else await writeFile(url,next);
