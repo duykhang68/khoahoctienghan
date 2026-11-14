@@ -1,4 +1,5 @@
 // Browser-native projection of the public Astro content contract; no V1 runtime.
+import {drawioPath} from './drawio-source.mjs';
 const requireValue=(ok,message)=>{if(!ok)throw Error(message)};
 export const slugify=value=>String(value).normalize('NFD').replace(/\p{M}/gu,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'');
 const textNode=(text,marks=[])=>{const node={type:'text',text};if(marks.length)node.marks=marks.map(type=>({type}));return node};
@@ -17,8 +18,8 @@ export function metadata(draft){
  }
  return value;
 }
-export const kinds=['paragraph','heading','subheading','detailheading','quote','bullet','ordered','code','note','table','image','divider'];
-export const newBlock=kind=>({id:crypto.randomUUID(),kind,text:'',...(kind==='table'?{rows:[['Tiêu đề 1','Tiêu đề 2'],['','']]}:{}),...(kind==='note'?{tone:'info'}:{}),...(kind==='image'?{alt:'',src:'',width:0,height:0}:{}),marks:[]});
+export const kinds=['paragraph','heading','subheading','detailheading','quote','bullet','ordered','code','note','table','image','diagram','divider'];
+export const newBlock=kind=>({id:crypto.randomUUID(),kind,text:'',...(kind==='table'?{rows:[['Tiêu đề 1','Tiêu đề 2'],['','']]}:{}),...(kind==='note'?{tone:'info'}:{}),...(['image','diagram'].includes(kind)?{alt:'',src:'',width:0,height:0}:{}),...(kind==='diagram'?{drawioXml:'',caption:''}:{}),marks:[]});
 export async function buildDocument(blocks){
  requireValue(Array.isArray(blocks)&&blocks.length<=250,'Tối đa 250 khối mỗi bài.');
  const nodes=[],assets=new Map();let size=0;
@@ -27,13 +28,19 @@ export async function buildDocument(blocks){
   const text=String(b.text||'');size+=text.length;
   const marks=(Array.isArray(b.marks)?b.marks:[]).filter(x=>['bold','italic','underline','strike'].includes(x));
   requireValue(text.length<=50000,'Khối quá dài.');
-  if(b.kind==='image'){
+  if(b.kind==='image'||b.kind==='diagram'){
    requireValue(/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(b.src||'')&&b.src.length<=2_000_030&&validText(b.alt,500)&&Number.isInteger(b.width)&&Number.isInteger(b.height)&&b.width>0&&b.height>0&&b.width<=1600&&b.height<=1600,'Ảnh cần WebP hợp lệ và mô tả.');
    const encoded=b.src.split(',')[1],bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
    requireValue(bytes.length<=1500000&&String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WEBP','Ảnh không phải WebP.');
    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
    const src='/media/studio/'+digest+'.webp';assets.set('public'+src,encoded);
-   nodes.push({type:'image',attrs:{src,alt:b.alt.trim(),width:b.width,height:b.height}});continue;
+   const image={type:'image',attrs:{src,alt:b.alt.trim(),width:b.width,height:b.height}};
+   if(b.kind==='diagram'){
+    const source=await drawioPath(digest,b.drawioXml);assets.set(source.path,source.binary);
+    const caption=String(b.caption||'').trim();requireValue(caption.length<=1000,'Chú thích sơ đồ tối đa 1000 ký tự.');
+    nodes.push(caption?{type:'articleFigure',content:[image,{type:'articleCaption',content:inline(caption)}]}:image);
+   }else nodes.push(image);
+   continue;
   }
   if(b.kind==='divider'){nodes.push({type:'horizontalRule'});continue}
   if(b.kind==='table'){
