@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {branchSyncDecision,dependabotSyncEligible} from '../scripts/engineering-policy.mjs';
+import {branchSyncDecision,dependabotSyncEligible,trustedPR,sensitiveFile} from '../scripts/engineering-policy.mjs';
 test('sync status uses exact compare behind count, not stale PR base SHA',()=>{
  const p={mergeable:true,base:{sha:'old'}};
  assert.equal(branchSyncDecision(p,{status:'diverged',ahead_by:1,behind_by:1}),'UPDATE');
@@ -15,4 +15,15 @@ test('only same-repo owner-armed Dependabot PRs receive rebase requests',()=>{
  assert.ok(dependabotSyncEligible(p,repo));
  assert.ok(!dependabotSyncEligible({...p,auto_merge:null},repo));
  assert.ok(!dependabotSyncEligible({...p,head:{...p.head,repo:{full_name:'fork/other'}}},repo));
+});
+
+test('owner perf branch receives sync without bypassing sensitive review',()=>{
+ const repo='duykhang68/khoahoctienghan';
+ const p={user:{login:'duykhang68'},head:{repo:{full_name:repo},ref:'perf/ci-playwright-headless-shell'},draft:false,mergeable:true};
+ assert.ok(trustedPR(p,repo));
+ assert.equal(branchSyncDecision(p,{status:'diverged',ahead_by:1,behind_by:1}),'UPDATE');
+ assert.ok(sensitiveFile('.github/workflows/ci.yml'));
+ assert.ok(!trustedPR({...p,draft:true},repo));
+ assert.ok(!trustedPR({...p,user:{login:'other'}},repo));
+ assert.ok(!trustedPR({...p,head:{...p.head,repo:{full_name:'fork/other'}}},repo));
 });
