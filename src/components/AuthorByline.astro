@@ -1,0 +1,19 @@
+---
+import owner from '../data/site-author.json';
+const {name,variant='inline'}=Astro.props as {name?:string;variant?:'inline'|'owner'};
+const displayName=name?.trim()||owner.name;
+const verified=displayName===owner.name;
+---
+<span class:list={['author-byline',variant==='owner'&&'author-byline-owner']} data-author={displayName}>
+ <span class="author-name">{displayName}</span>
+ {verified&&<span class="author-verified" title="Chủ blog · Xác nhận bởi website" aria-label="Chủ blog đã được website xác nhận" role="img" data-verified-author>
+  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path fill="#1877F2" d="M12 1.5 15 4.2 19 4.1 19.9 8 22.5 12 19.9 16 19 19.9 15 19.8 12 22.5 9 19.8 5 19.9 4.1 16 1.5 12 4.1 8 5 4.1 9 4.2Z"/><path d="m7.7 12.1 2.8 2.8 5.8-6" stroke="white" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+ </span>}
+</span>
+<style>
+.author-byline{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;min-width:0;max-width:100%;font-weight:600;line-height:1.4;color:var(--ink,#181818)}
+.author-name{min-width:0;overflow-wrap:anywhere}
+.author-verified{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;line-height:1;width:1.05em;height:1.05em}
+.author-verified svg{display:block;width:100%;height:100%}
+.author-byline-owner{font-size:var(--type-small,.9rem)}
+</style>

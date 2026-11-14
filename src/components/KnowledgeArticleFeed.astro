@@ -1,6 +1,7 @@
 ---
 import {getCollection} from 'astro:content';
 import TechCover from './TechCover.astro';
+import AuthorByline from './AuthorByline.astro';
 import {topics} from '../lib/knowledge-topics';
 import {buildKnowledgeFeed} from '../lib/knowledge-feed.mjs';
 import metadata from '../data/studio-metadata.json';
@@ -25,7 +26,7 @@ const fmt=(date:string)=>new Intl.DateTimeFormat('vi-VN',{dateStyle:'short',time
  {articles.map(a=><article class="knowledge-feed-card" data-knowledge-article data-article={JSON.stringify({topic:a.topic,labels:a.labels,series:a.series,search:a.search})}>
  <a class="knowledge-feed-cover" href={base+'/'+a.slug+'/'} aria-hidden="true" tabindex="-1"><TechCover slug={a.slug}/></a>
  <div class="knowledge-feed-card-body">
- <div class="knowledge-feed-meta"><a href={base+'/'+a.topic+'/'}>{a.topicTitle}</a>{a.date&&<time datetime={a.date}>{fmt(a.date)}</time>}</div>
+ <div class="knowledge-feed-meta"><AuthorByline/><a href={base+'/'+a.topic+'/'}>{a.topicTitle}</a>{a.date&&<time datetime={a.date}>{fmt(a.date)}</time>}</div>
  <h3><a href={base+'/'+a.slug+'/'}>{a.title}</a></h3>
  <p>{a.summary}</p>
  {a.labels.length>0&&<ul class="knowledge-feed-labels" aria-label="Nhãn">{a.labels.map(label=><li>{label}</li>)}</ul>}
