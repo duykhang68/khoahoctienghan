@@ -23,7 +23,7 @@ const category=inferCategory(post);
           <span class="meta-category">trong <a class="topic-link" href={base+'/techblog/?category='+category.id}>{category.label}</a></span>
           <span>{readingMinutes(post)} phút đọc</span>
           <a href={base+'/techblog/'+post.slug+'/'}>Permalink</a>
-          <button class="share-link" type="button" data-copy-permalink>Chia sẻ</button>
+          <button class="share-link" type="button" data-copy-permalink={base+'/techblog/'+post.slug+'/'}>Chia sẻ</button>
           <span class="share-status" role="status" aria-live="polite"></span>
         </div>
       </header>
@@ -40,16 +40,3 @@ const category=inferCategory(post);
   </div>
 </TechBlog>
 
-<script>
-  const button=document.querySelector<HTMLButtonElement>('[data-copy-permalink]');
-  const status=document.querySelector<HTMLElement>('.share-status');
-  button?.addEventListener('click', async()=>{
-    const url=document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href||location.href;
-    try {
-      await navigator.clipboard.writeText(url);
-      if(status)status.textContent='Đã sao chép liên kết';
-    } catch {
-      if(status)status.textContent='Dùng liên kết Permalink để chia sẻ.';
-    }
-  });
-</script>
