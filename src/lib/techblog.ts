@@ -5,7 +5,9 @@ export {inferCategory};
 export type TechVisual = {
   kind: 'swatches'|'buttons'|'type'|'spacing'|'wireframe'|'table'|'flow'|'bars'|'code';
   caption: string;
-  items?: {label:string;value?:string;detail?:string;color?:string;foreground?:string;hover?:string;size?:number;weight?:number}[];
+  variant?: 'summary'|'cycle';
+  title?: string;
+  items?: {label:string;icon?:string;value?:string;detail?:string;color?:string;foreground?:string;hover?:string;size?:number;weight?:number}[];
   layout?: 'listing'|'article'|'responsive';
   columns?: string[];
   rows?: string[][];
