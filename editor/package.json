@@ -1,0 +1,16 @@
+{
+  "name": "korean-editorial-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @duynguyen/editor-web",
+    "build": "npm run build --workspace @duynguyen/editor-web"
+  }
+}

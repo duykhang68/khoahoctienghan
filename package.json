@@ -9,7 +9,8 @@
     "preview": "astro preview",
     "check": "node scripts/check-content.mjs",
     "test:engineering": "node --test tests/engineering.test.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "editor": "npm --prefix editor run dev"
   },
   "engines": {
     "node": ">=24"

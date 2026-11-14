@@ -25,3 +25,13 @@ const knowledgeVisuals=JSON.parse(await readFile('src/data/knowledge-visuals.jso
 const knowledgePages=await Promise.all(paths.map(async path=>({path,content:await readFile(root+'/'+path,'utf8')})));
 const visualCount=validateKnowledgeVisuals(knowledgeVisuals,knowledgePages);
 console.log('Validated '+visualCount+' Knowledge Base visual references');
+
+const {normalizeDocument,assertImageFiles,webpDimensions}=await import('../src/lib/studio-document.mjs');
+const {readFileSync}=await import('node:fs');
+const studioDocs=JSON.parse(await readFile('src/data/studio-documents.json','utf8'));
+const studioRefs=new Set();
+for(const p of knowledgePages)for(const m of p.content.matchAll(/<KnowledgeStudioDocument\b[^>]*>/g)){
+ const exact=/^<KnowledgeStudioDocument id="([a-z0-9-]+)"\s*\/>$/.exec(m[0]);assert(exact&&p.path.endsWith('.mdx')&&Object.hasOwn(studioDocs,exact[1])&&!studioRefs.has(exact[1]),'Invalid studio document reference');studioRefs.add(exact[1]);
+}
+for(const [id,body] of Object.entries(studioDocs)){assert(studioRefs.has(id),'Unused studio document');assertImageFiles(normalizeDocument(body),path=>readFileSync(path))}
+for(const post of techPosts)if(post.studioBody)assertImageFiles(normalizeDocument(post.studioBody),path=>readFileSync(path));

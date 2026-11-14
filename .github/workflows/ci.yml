@@ -29,6 +29,10 @@ jobs:
       - run: node scripts/security-check.mjs
       - run: npm run check
       - run: npm run test:engineering
+      - name: Install locked Reddit Editor dependencies
+        run: npm ci --prefix editor --no-audit --no-fund
+      - name: Build migrated Editor (local only)
+        run: npm --prefix editor run build
       - run: npm run build
       - run: node scripts/verify-build.mjs
       - name: Install Chromium headless shell only

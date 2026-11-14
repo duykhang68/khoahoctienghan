@@ -1,0 +1,8 @@
+---
+import StudioDocument from './StudioDocument.astro';
+import data from '../data/studio-documents.json';
+const {id}=Astro.props as {id:string};
+if(!Object.hasOwn(data,id))throw Error('Unknown studio document: '+id);
+const body=(data as Record<string,unknown>)[id];
+---
+<div class="not-content"><StudioDocument {body}/></div>

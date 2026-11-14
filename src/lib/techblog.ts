@@ -24,6 +24,7 @@ export type TechPost = {
   date: string;
   sections: { heading: string; paragraphs: string[]; visuals?: TechVisual[] }[];
   issues: number[];
+  studioBody?: unknown;
   author?: string;
   cover?: string;
   coverAlt?: string;
