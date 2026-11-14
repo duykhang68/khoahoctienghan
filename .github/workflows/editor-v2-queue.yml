@@ -76,3 +76,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH_APP_TOKEN: ${{ steps.app.outputs.token }}
+          GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON }}

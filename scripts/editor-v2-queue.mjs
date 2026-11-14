@@ -4,9 +4,10 @@ import {readFileSync} from 'node:fs';
 import {parseIssue,queueHead,submissionId,validateSubmission,prepareQueued,marker,shaPattern,topicIds} from './editor-v2-queue-policy.mjs';
 import {nativePolicyReady,latestRun,ciName} from './engineering-policy.mjs';
 import {ciJobsPassed} from './release-recovery.mjs';
+import {syncSheetReceipt} from './sheet-writeback.mjs';
 const repo='duykhang68/khoahoctienghan',site='https://duykhang68.github.io/khoahoctienghan/';
 assert(process.env.GITHUB_REPOSITORY===repo,'Wrong repository');
-const {BRANCH_APP_TOKEN,...env}=process.env;
+const {BRANCH_APP_TOKEN,GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON,...env}=process.env;
 const cli=(args,token=env.GH_TOKEN,input)=>execFileSync('gh',args,{encoding:'utf8',env:{...env,GH_TOKEN:token},input,stdio:['pipe','pipe','pipe'],maxBuffer:40*1024*1024});
 function api(path='',method='GET',data,token=env.GH_TOKEN){const raw=cli(['api','-X',method,'repos/'+repo+(path?'/'+path:''),...(data?['--input','-']:[])],token,data?JSON.stringify(data):undefined);return raw?JSON.parse(raw):null}
 function optional(path){try{return api(path)}catch(e){if(String(e.stderr||'').includes('HTTP 404'))return null;throw e}}
@@ -16,7 +17,7 @@ const mainSHA=()=>api('git/ref/heads/main').object.sha;
 const blob=sha=>{const file=api('git/blobs/'+sha);assert(file.encoding==='base64','Invalid blob');return Buffer.from(file.content,'base64')};
 function body(state,detail){
  const {number,closed,...saved}=state;
- return marker+JSON.stringify(saved)+' -->\n\n**Trạng thái:** '+detail+'\n\nCommit gửi bài: '+saved.source+'\n'+(saved.pr?'Pull request: #'+saved.pr+'\n':'')+(saved.route?'URL: '+site+saved.route+'\n':'')+(saved.merge?'Merge SHA: '+saved.merge+'\n':'')+(saved.verified?'Production SHA: '+saved.verified+'\n':'')+'\nFIFO theo số Issue. Không tự đóng Issue chưa xác minh.';
+ return marker+JSON.stringify(saved)+' -->\n\n**Trạng thái:** '+detail+'\n\nCommit gửi bài: '+saved.source+'\n'+(saved.pr?'Pull request: #'+saved.pr+'\n':'')+(saved.route?'URL: '+site+saved.route+'\n':'')+(saved.merge?'Merge SHA: '+saved.merge+'\n':'')+(saved.verified?'Production SHA: '+saved.verified+'\n':'')+(saved.sheetSync?'Google Sheet content id_vn: '+saved.sheetSync.status+(saved.sheetSync.row?' · VN!A'+saved.sheetSync.row:'')+(saved.sheetSync.code?' · '+saved.sheetSync.code:'')+'\n':'')+'\nFIFO theo số Issue. Không tự đóng Issue chưa xác minh.';
 }
 function save(state,detail,close=false){const current=api('issues/'+state.number),next=body(state,detail);if(current.body!==next||close&&current.state!=='closed')api('issues/'+state.number,'PATCH',{body:next,...(close?{state:'closed',state_reason:'completed'}:{})});console.log('#'+state.number+' '+detail)}
 async function readDraft(source,id){
@@ -33,8 +34,9 @@ async function enqueue(){
  const prior=all('issues?state=all&per_page=100').map(parseIssue).filter(Boolean).find(s=>s.id===id);
  if(prior){console.log('Already accepted #'+prior.number);return}
  // Fail closed on malformed content, but record an Issue that blocks the queue.
- let title='Bản gửi '+id.slice(0,12);try{const draft=await readDraft(source,id);title=draft.title.trim().replace(/[\r\n]/g,' ').slice(0,150)}catch{console.log('Submission validation pending/blocked')}
+ let title='Bản gửi '+id.slice(0,12),sheetSync;try{const draft=await readDraft(source,id);title=draft.title.trim().replace(/[\r\n]/g,' ').slice(0,150);if(draft.sheetSource)sheetSync={status:'PENDING',attempts:0}}catch{console.log('Submission validation pending/blocked')}
  const state={id,source,phase:'QUEUED'};
+ if(sheetSync)state.sheetSync=sheetSync;
  const issue=api('issues','POST',{title:'[Editor V2] '+title,body:body(state,'QUEUED — Chờ đến lượt')});
  console.log('Accepted #'+issue.number);
 }
@@ -60,12 +62,25 @@ async function productionVerified(s){
 const branchOf=s=>'content/editor-fifo-'+s.number+'-'+s.base.slice(0,12);
 function findPR(s){if(s.pr)return api('pulls/'+s.pr);if(!s.head)return null;return api('pulls?state=all&head=duykhang68:'+encodeURIComponent(branchOf(s))+'&base=main&per_page=100')[0]||null}
 function validatePR(p,s){assert(p.head?.repo?.full_name===repo&&p.head.ref===branchOf(s)&&p.head.sha===s.head&&p.base.ref==='main'&&p.body==='<!-- editor-fifo-issue:'+s.number+' -->','Queue PR was altered; manual review required')}
+async function syncVerified(s){
+ if(s.phase!=='VERIFIED'||!s.closed||!s.sheetSync||!['PENDING','WAITING_CONFIG'].includes(s.sheetSync.status))return;
+ // Recheck live deployment evidence, and reload the immutable source from its verified digest.
+ if(!await productionVerified(s))return;
+ const draft=await readDraft(s.source,s.id);
+ const next=await syncSheetReceipt(s,draft,GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON);
+ if(next){s.sheetSync=next;save(s,'VERIFIED — Bài đã lên production',true)}
+}
 async function reconcile(){
+ const receipts=all('issues?state=all&per_page=100').map(parseIssue).filter(Boolean);
+ for(const s of receipts.filter(s=>s.phase==='VERIFIED'&&s.closed&&['PENDING','WAITING_CONFIG'].includes(s.sheetSync?.status)).slice(0,8)){
+  try{await syncVerified(s)}catch{console.error('Sheet synchronization deferred #'+s.number)}
+ }
  for(let count=0;count<8;count++){
   const head=queueHead(all('issues?state=all&per_page=100'));if(!head)return console.log('Queue empty');
   if(head.closed)return save(head,'BLOCKED — Issue đóng trước khi xác minh; mở lại để tiếp tục');
   try{await advance(head)}catch(e){console.error('Queue stopped at #'+head.number+' ('+(String(e.message).includes('APP_SETUP_REQUIRED')?'APP_SETUP_REQUIRED':'validation, GitHub, CI or production check')+')');return save(head,'BLOCKED — Kiểm tra log workflow; không bỏ qua bài đầu')}
   const fresh=parseIssue(api('issues/'+head.number));if(fresh.phase!=='VERIFIED')return;
+  try{await syncVerified(fresh)}catch{console.error('Sheet synchronization deferred #'+fresh.number)}
  }
 }
 async function advance(s){

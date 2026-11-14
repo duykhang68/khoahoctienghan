@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 import {checkHeaders,listRows,rowDraft,recommendDestination,sheetId,sheetsClient} from '../../src/lib/sheet-blog/model.mjs';
 import {buildDocument} from '../../src/lib/editor-v2/model.mjs';
 import {sharedGoogleClientId} from '../../src/lib/sheet-blog/oauth-config.mjs';
+import {sheetSource} from '../../src/lib/sheet-blog/source.mjs';
 test('VN mapping preserves title and body, stable retry payload, and fails closed on changed row',async()=>{
  checkHeaders(['content id_vn','blog title','blog main content','group','topic']);
  expect(()=>checkHeaders(['blog title','blog main content'])).toThrow();
@@ -53,8 +54,33 @@ test('Google OAuth fixture lists only VN titles, previews exact chosen content a
  await expect(page.getByRole('button',{name:'Kết nối GitHub để đăng bài'})).toBeVisible();
  await page.getByRole('button',{name:'Kết nối GitHub để đăng bài'}).click();
  await expect(page.locator('[data-gh-token]')).toBeFocused();
+ let payload:any;
+ await page.route('https://api.github.com/**',route=>{
+  const path=new URL(route.request().url()).pathname,hash='a'.repeat(40);
+  if(path.endsWith('/issues'))return route.fulfill({json:[]});
+  if(path==='/user')return route.fulfill({json:{login:'duykhang68'}});
+  if(path==='/repos/duykhang68/khoahoctienghan')return route.fulfill({json:{full_name:'duykhang68/khoahoctienghan',permissions:{push:true}}});
+  if(path.includes('/git/ref/heads/content/editor-v2-'))return route.fulfill({status:404,json:{}});
+  if(path.endsWith('/git/ref/heads/main'))return route.fulfill({json:{object:{sha:hash}}});
+  if(path.endsWith('/git/commits/'+hash))return route.fulfill({json:{tree:{sha:hash}}});
+  if(path.endsWith('/git/blobs'))payload=JSON.parse(route.request().postDataJSON().content);
+  if(path.endsWith('/dispatches'))return route.fulfill({status:204});
+  if(['/git/blobs','/git/trees','/git/commits','/git/refs'].some(s=>path.endsWith(s)))return route.fulfill({json:{sha:hash}});
+  throw Error('Unexpected GitHub path '+path);
+ });
+ await page.route('**/ngon-ngu/bai-thu-tieng-viet/',route=>route.fulfill({status:404}));
+ await page.locator('[data-gh-token]').fill('github'+'_pat_fixture');
+ await page.getByRole('button',{name:'Kết nối GitHub',exact:true}).click();
+ await expect(page.locator('[data-github-state]')).toHaveText('Đã kết nối · chủ blog');
+ await page.getByRole('button',{name:'Đăng bài',exact:true}).click();
+ await expect(page.locator('[data-confirm-dialog]')).toBeVisible();
+ await page.locator('[data-consent]').check();await page.locator('[data-submit]').click();
+ await expect(page.locator('[data-status]')).toContainText('Đã gửi commit');
+ expect(payload.draft.sheetSource).toEqual(await sheetSource(2,['','Bài thử tiếng Việt','Nội dung thật <b>không thực thi</b>','Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc']));
+ expect(JSON.stringify(payload)).not.toContain('fixture-google');expect(JSON.stringify(payload)).not.toContain('pat_fixture');
  await page.getByRole('button',{name:'Ngắt Google'}).click();
- await expect(page.getByRole('heading',{name:'Bài thử tiếng Việt'})).toHaveCount(0);
+ await expect(page.locator('[data-rows]').getByRole('heading',{name:'Bài thử tiếng Việt'})).toHaveCount(0);
+ await expect(page.locator('[data-queue-progress]').getByRole('heading',{name:'Bài thử tiếng Việt'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
 
