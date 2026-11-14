@@ -1,7 +1,10 @@
 import {test,expect} from '@playwright/test';
 test('editorial landing has no hero, date-ordered grid and working list toggle',async({page})=>{
  await page.goto('./techblog/');
- await expect(page.locator('.engineering-index .index-intro')).toBeVisible();
+ await expect(page.locator('.index-intro,.blog-masthead')).toHaveCount(0);
+ await expect(page.locator('#feed-heading')).toHaveText('BÀI MỚI NHẤT');
+ await expect(page.locator('#feed-heading')).toHaveCSS('font-weight','700');
+ await expect(page.locator('.blog-breadcrumb')).toHaveText('Engineering Blog');
  await expect(page.locator('.tech-sidebar')).toHaveCount(0);
  const cards=page.locator('[data-tech-post]');
  const dates=await cards.locator('time').evaluateAll(nodes=>nodes.map(n=>Date.parse(n.getAttribute('datetime')||'')));

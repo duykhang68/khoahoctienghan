@@ -83,3 +83,14 @@
 .engineering-index .search-evidence-label{font-size:14px;font-weight:600;line-height:1.4;margin-bottom:5px}
 .engineering-index .search-snippet{font-size:15px;line-height:1.5;margin:0;text-align:start}
 .engineering-index .search-snippet mark{background:#f4dda4;color:#242420;padding:0 2px}
+
+/* Compact entry page: breadcrumb followed immediately by six-post archive. */
+.engineering-index .index-archive{padding-top:20px}
+.engineering-index #feed-heading{font-size:24px;font-weight:700;line-height:1.25;margin:0}
+.engineering-index .index-pagination{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:36px 0 0}
+.engineering-index .index-pagination[hidden]{display:none}
+.engineering-index .index-pagination a{display:grid;place-items:center;min-width:40px;min-height:40px;padding:6px 12px;border:1px solid #aaa99f;border-radius:5px;color:#181818;text-decoration:none;font-size:16px;font-weight:600}
+.engineering-index .index-pagination a:hover{background:#e8e6de}
+.engineering-index .index-pagination a[aria-current=page]{background:#252522;border-color:#252522;color:#fff}
+.engineering-index-page .blog-breadcrumb .current-crumb{overflow-wrap:anywhere;min-width:0}
+@media(max-width:640px){.engineering-index .index-archive{padding-top:14px}.engineering-index #feed-heading{font-size:21px}}

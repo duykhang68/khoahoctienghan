@@ -8,10 +8,9 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 ---
 <TechBlog title="Tech Blog" indexPage={true}>
   <div class="engineering-index">
-    <div class="index-intro"><p>Chia sẻ cách chúng tôi xây dựng, vận hành và cải tiến các hệ thống phần mềm đáng tin cậy — từ kiến trúc, công cụ phát triển đến kỹ thuật production.</p></div>
     <section class="index-archive" aria-labelledby="feed-heading">
       <div class="index-toolbar filter-line">
-        <div class="index-feed-title"><span class="article-count" id="article-count">{posts.length}</span><h2 id="feed-heading">Bài viết mới nhất</h2></div>
+        <div class="index-feed-title"><span class="article-count" id="article-count">{posts.length}</span><h1 id="feed-heading">BÀI MỚI NHẤT</h1></div>
         <div class="index-view-tools"><span class="sort-label">Mới nhất</span><div class="view-switch" role="group" aria-label="Kiểu hiển thị"><button type="button" data-view="grid" aria-label="Dạng lưới" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx=".5"/><rect x="12" y="2" width="6" height="6" rx=".5"/><rect x="2" y="12" width="6" height="6" rx=".5"/><rect x="12" y="12" width="6" height="6" rx=".5"/></svg></button><button type="button" data-view="list" aria-label="Dạng danh sách" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 20 20" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 4h16M2 10h16M2 16h16"/></svg></button></div></div>
       </div>
       <div class="index-filters" id="search">
@@ -42,12 +41,13 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
       </div>
       {!posts.length&&<p class="muted">Chưa có bài viết được xuất bản.</p>}
       <p id="no-results" class="muted" role="status" hidden>Không có bài viết phù hợp.</p>
-      <div class="index-more"><button id="show-more" type="button" hidden>Xem thêm <span aria-hidden="true">↓</span></button></div>
+      <nav class="index-pagination" id="index-pagination" aria-label="Phân trang bài viết" hidden></nav>
     </section>
   </div>
 </TechBlog>
 <script>
   import {matchPost,normalizeSearch} from '../../lib/tech-search.mjs';
+  import {pageWindow,pageNumbers} from '../../lib/tech-pagination.mjs';
   const params=new URLSearchParams(location.search);
   const query=normalizeSearch(params.get('q'));
   const scope=params.get('scope')==='title'?'title':'all';
@@ -95,11 +95,52 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
   const count=document.getElementById('article-count');
   if(count)count.textContent=String(matching.length);
   if(active&&!matching.length)document.getElementById('no-results')?.removeAttribute('hidden');
-  const more=document.querySelector<HTMLButtonElement>('#show-more');
-  const pageSize=12;let limit=pageSize;
-  function render(){const visible=new Set(matching.slice(0,limit));for(const card of cards)card.hidden=!visible.has(card);if(more)more.hidden=matching.length<=limit;}
-  render();
-  more?.addEventListener('click',()=>{const firstNew=matching[limit];limit+=pageSize;render();firstNew?.querySelector('h3 a')?.focus();});
+  const {pages,page,start,end}=pageWindow(matching.length,params.get('page'));
+  const visible=new Set(matching.slice(start,end));
+  for(const card of cards)card.hidden=!visible.has(card);
+  function pageURL(n:number){
+    const url=new URL(location.href);
+    if(n===1)url.searchParams.delete('page');else url.searchParams.set('page',String(n));
+    url.hash='';
+    return url.pathname+url.search;
+  }
+  if(params.has('page')&&(page===1||params.get('page')!==String(page)))history.replaceState(null,'',pageURL(page));
+  const pager=document.getElementById('index-pagination');
+  function pageLink(n:number,label:string,accessibleLabel:string){
+    const a=document.createElement('a');
+    a.href=pageURL(n);a.textContent=label;a.setAttribute('aria-label',accessibleLabel);
+    if(n===page&&label===String(n))a.setAttribute('aria-current','page');
+    return a;
+  }
+  if(pager&&pages>1){
+    if(page>1)pager.append(pageLink(page-1,'‹','Trang trước'));
+    let last=0;
+    for(const n of pageNumbers(page,pages)){
+      if(last&&n>last+1){const ellipsis=document.createElement('span');ellipsis.textContent='…';ellipsis.setAttribute('aria-hidden','true');pager.append(ellipsis);}
+      pager.append(pageLink(n,String(n),'Trang '+n));last=n;
+    }
+    if(page<pages)pager.append(pageLink(page+1,'›','Trang sau'));
+    pager.hidden=false;
+  }
+  if(active||page>1){
+    const breadcrumb=document.querySelector('.blog-breadcrumb');
+    const home=document.querySelector<HTMLAnchorElement>('.engineering-brand');
+    if(breadcrumb&&home){
+      const root=document.createElement('a');root.href=home.href;root.textContent='Engineering Blog';
+      const labels:string[]=[];
+      if(category)labels.push(activeCategory?.textContent?.trim()||'Chuyên mục');
+      if(year)labels.push('Lưu trữ '+year);
+      if(query)labels.push('Tìm kiếm: '+query);
+      if(page>1)labels.push('Trang '+page);
+      breadcrumb.replaceChildren(root);
+      for(const [i,label] of labels.entries()){
+        const divider=document.createElement('span');divider.className='crumb-divider';divider.setAttribute('aria-hidden','true');divider.textContent='›';
+        const crumb=document.createElement('span');crumb.textContent=label;crumb.className='current-crumb';
+        if(i===labels.length-1)crumb.setAttribute('aria-current','page');
+        breadcrumb.append(divider,crumb);
+      }
+    }
+  }
   const grid=document.getElementById('tech-post-list');
   const toggles=[...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
   for(const toggle of toggles)toggle.addEventListener('click',()=>{const mode=toggle.dataset.view;if(!grid||!mode)return;grid.dataset.layout=mode;for(const item of toggles)item.setAttribute('aria-pressed',String(item===toggle));});
