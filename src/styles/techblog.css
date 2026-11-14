@@ -141,3 +141,35 @@ h1,h2,h3,.blog-name{font-family:var(--sans);letter-spacing:0;font-weight:600}
 
 /* Footer signature: right aligned, bold amber on the existing dark surface. */
 .engineering-footer .footer-bottom>div{color:#ffcc00;font-weight:700;text-align:right}
+
+/* Engineering Editorial 1.0 — Tech Blog only. Uber Move is optional until
+   the owner's licensed webfont files are available. No remote font calls. */
+@font-face{font-family:"Plus Jakarta Sans Web";src:url("../assets/techblog-fonts/PlusJakartaSans-Variable.woff2") format("woff2");font-style:normal;font-weight:200 800;font-display:swap}
+:root{
+ --ink:#141414;--navy:#000;--navy-deep:#000;--muted:#6b6b6b;
+ --accent:#000;--link:#141414;--link-hover:#333;--line:#e2e2e2;
+ --soft:#f6f6f6;--surface:#fff;--button:#000;--button-hover:#333;--focus:#276ef1;
+ --sans:"Uber Move Text","Plus Jakarta Sans Web","Source Sans 3 Web",Arial,sans-serif;
+ --display:"Uber Move","Plus Jakarta Sans Web","Source Sans 3 Web",Arial,sans-serif;
+ --max:1280px;--pad:clamp(16px,4vw,64px);
+ --type-masthead:clamp(32px,5vw,52px);--type-h1:clamp(30px,4vw,44px);
+ --type-h2:clamp(24px,3vw,32px);--type-h3:clamp(19px,2vw,24px);
+ --type-body:17px;--type-nav:14px;--type-button:16px;--type-small:14px;
+ --type-leading:1.6470588235294117;
+}
+html,body{background:#fff;color:var(--ink)}
+h1,h2,h3,.engineering-nav-minimal .engineering-brand,.footer-brand{font-family:var(--display);font-weight:700}
+.engineering-header,.engineering-footer{background:#000}
+.engineering-nav.engineering-nav-minimal{min-height:56px}
+.engineering-nav-minimal .engineering-brand{font-size:22px;font-weight:700}
+.blog-navigation,.breadcrumb-band{background:#fff}
+.blog-navigation{border-color:var(--line)}
+.blog-breadcrumb a,.blog-breadcrumb>span[aria-current=page],.current-crumb{color:var(--muted)}
+.edition-panel{box-shadow:none;border:1px solid var(--line);border-radius:8px}
+.edition-panel a{color:var(--ink)}
+.aws-button,.article-end .read-link{min-height:48px;padding:12px 24px;border-radius:8px;font-weight:500}
+.footer-cta{background:#fff;color:#000;border-color:#fff}
+.footer-cta:hover{background:#eee;color:#000!important}
+.footer-bottom{border-color:#333;color:#afafaf}
+.engineering-footer .footer-bottom>div{color:#afafaf}
+.article-body a:not(.read-link){text-decoration:underline;text-underline-offset:3px}

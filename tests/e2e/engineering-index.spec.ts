@@ -44,7 +44,7 @@ test('listing and article share the same compact top navigation and breadcrumb s
   return {headerHeight:header.height,menuHeight:menu.height,breadcrumbTop:breadcrumb.top,background:getComputedStyle(band).backgroundColor,padding:getComputedStyle(band.querySelector('nav')!).padding,font:getComputedStyle(band.querySelector('nav')!).fontSize};
  });
  const home=await styles();
- expect(home.background).toBe('rgb(250, 249, 245)');
+ expect(home.background).toBe('rgb(255, 255, 255)');
  await expect(page.locator('.breadcrumb-band + #content')).toBeVisible();
  await expect(page.locator('.blog-masthead,.index-intro,.index-feature')).toHaveCount(0);
  const gap=await page.evaluate(()=>document.querySelector('#tech-post-list')!.getBoundingClientRect().top-document.querySelector('.breadcrumb-band')!.getBoundingClientRect().bottom);

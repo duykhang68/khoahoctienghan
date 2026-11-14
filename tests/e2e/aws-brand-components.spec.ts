@@ -29,7 +29,7 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(signature).toHaveText('Tri thức Hàn Quốc · Engineering');
  await expect(signature).toHaveCSS('text-align','right');
  await expect(signature).toHaveCSS('font-weight','700');
- await expect(signature).toHaveCSS('color','rgb(255, 204, 0)');
+ await expect(signature).toHaveCSS('color','rgb(175, 175, 175)');
  const kbHref=(await footer.locator('.footer-cta').getAttribute('href'))!;
  expect(kbHref).toMatch(/\/khoahoctienghan\/$/);
  await expect(footer.locator('a[href="'+kbHref+'"]')).toHaveCount(1);
