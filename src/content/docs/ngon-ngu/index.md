@@ -16,3 +16,5 @@ Hangul, ngữ pháp, từ vựng và TOPIK. Đây là trang tổng quan của ch
 ## Nguồn tra cứu
 
 - [Nguồn thông tin chính thức](https://nuri.iksi.or.kr/)
+
+- [Hangul: nguồn gốc, cấu trúc và vai trò trong xã hội Hàn Quốc](/khoahoctienghan/ngon-ngu/hangul-nguon-goc-cau-truc-va-vai-tro-trong-xa-hoi-han-quoc/)
