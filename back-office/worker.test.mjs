@@ -100,3 +100,21 @@ test('JWKS redirects, HTTP errors, invalid JSON and unknown keys never create a 
   }
  }finally{globalThis.fetch=originalFetch;}
 });
+
+// All routes use the same signed-session gate, including direct assets and HEAD.
+test('private routes reject expired, wrong-origin, malformed and revoked-admin sessions',async()=>{
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ async function signed(overrides={}){const payload=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+600,...overrides})).toString('base64url');const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(payload))).toString('base64url');return '__Host-bo_session='+payload+'.'+sig;}
+ const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/'];
+ const assets=['/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'];
+ const good=await signed();
+ for(const [cookie,config] of [[await signed({exp:1}),env],[await signed({origin:'https://other.test'}),env],[await signed({kind:'challenge'}),env],[await signed({sub:''}),env],['__Host-bo_session=invalid.signature',env],[good,{...env,ADMIN_EMAILS:'other@gmail.com'}]]){
+  for(const path of [...pages,...assets]){const res=await worker.fetch(req(path,{headers:{Cookie:cookie}}),config);assert.equal(res.status,pages.includes(path)?303:403,path);assert.equal(res.headers.get('cache-control'),'no-store');assert.doesNotMatch(await res.text(),/data-editor-v2|data-sheet-blog|id="trend"/);const head=await worker.fetch(req(path,{method:'HEAD',headers:{Cookie:cookie}}),config);assert.equal(head.status,403,path);}
+ }
+ for(const path of pages){const res=await worker.fetch(req(path,{method:'HEAD',headers:{Cookie:good}}),env);assert.equal(res.status,200,path);assert.equal(await res.text(),'');assert.equal(res.headers.get('cache-control'),'no-store');}
+ for(const path of [...pages,...assets]){const res=await worker.fetch(new Request('https://preview.example.test'+path,{headers:{Cookie:good}}),env);assert.equal(res.status,403,path);}
+ const cross=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:'https://other.test',Cookie:good}}),env);assert.equal(cross.status,403);assert.equal(cross.headers.get('set-cookie'),null);
+ const logout=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:origin,Cookie:good}}),env);assert.equal(logout.status,303);assert.equal(logout.headers.get('location'),'/auth/login');assert.ok(logout.headers.getSetCookie().every(v=>v.includes('Max-Age=0')&&v.includes('HttpOnly')&&v.includes('Secure')));
+ // Browser cookie jar has now removed the session. Do not claim replay revocation: this is a stateless session.
+ for(const path of pages)assert.equal((await worker.fetch(req(path),env)).status,303,path);
+});
