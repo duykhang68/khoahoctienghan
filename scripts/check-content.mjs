@@ -36,12 +36,12 @@ for(const p of knowledgePages)for(const m of p.content.matchAll(/<KnowledgeStudi
 for(const [id,body] of Object.entries(studioDocs)){assert(studioRefs.has(id),'Unused studio document');assertImageFiles(normalizeDocument(body),path=>readFileSync(path))}
 for(const post of techPosts)if(post.studioBody)assertImageFiles(normalizeDocument(post.studioBody),path=>readFileSync(path));
 
-const {normalizeMetadata}=await import('../src/lib/studio-metadata.mjs');
+const {normalizeMetadata,normalizeKnowledgeMetadata}=await import('../src/lib/studio-metadata.mjs');
 const kbMetadata=JSON.parse(await readFile('src/data/studio-metadata.json','utf8'));
 assert(kbMetadata&&typeof kbMetadata==='object'&&!Array.isArray(kbMetadata),'Invalid studio metadata index');
 for(const [id,value] of Object.entries(kbMetadata)){
  assert(studioRefs.has(id),'Orphan KB metadata: '+id);
- assert.deepEqual(value,normalizeMetadata(value),'Noncanonical KB metadata: '+id);
+ assert.deepEqual(value,normalizeKnowledgeMetadata(value),'Noncanonical KB metadata: '+id);
 }
 for(const post of techPosts){
  const canonical=normalizeMetadata(post);

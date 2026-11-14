@@ -1,7 +1,7 @@
 import React,{createContext,useContext,useEffect,useState} from 'react';
 const Context=createContext(null);
 const route='/api/github-editor/session';
-const topics=[['ngon-ngu','Ngôn ngữ'],['lich-su','Lịch sử'],['van-hoa','Văn hóa'],['am-thuc','Ẩm thực'],['dia-ly-du-lich','Địa lý và du lịch'],['kinh-te-cong-nghe','Kinh tế và công nghệ'],['giao-duc-du-hoc','Giáo dục và du học'],['hallyu','Hallyu'],['doi-song','Đời sống'],['the-che','Thể chế']];
+const topics=[['ngon-ngu','Ngôn ngữ Hàn Quốc'],['lich-su','Lịch sử Hàn Quốc'],['van-hoa','Văn hóa và xã hội'],['am-thuc','Ẩm thực'],['dia-ly-du-lich','Địa lý và du lịch'],['kinh-te-cong-nghe','Kinh tế và công nghệ'],['giao-duc-du-hoc','Giáo dục và du học'],['hallyu','Giải trí và Hallyu'],['doi-song','Đời sống tại Hàn Quốc'],['the-che','Chính trị và thể chế']];
 async function request(path,options){const res=await fetch(path,{credentials:'same-origin',cache:'no-store',...options});const result=await res.json();if(!res.ok)throw Error(result.error||'GitHub API HTTP '+res.status);return result}
 export function GithubProvider({children}){
  const [session,setSession]=useState(null),[working,setWorking]=useState(false),[error,setError]=useState('');

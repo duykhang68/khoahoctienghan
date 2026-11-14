@@ -9,12 +9,12 @@ export function prepareArticle(draft,snapshot){
  const title=draft.title.trim(),summary=draft.summary.trim()||title,slug=slugify(title),assets=new Map(),body=normalizeDocument(draft.body,{assets});
  assert(documentText(body).trim()||assets.size,'Bài viết chưa có nội dung');
  const metadata=normalizeMetadata(draft);
+ const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T')+'+07:00';
  const paths=new Set(snapshot.paths),changes=new Map();
  for(const [path,bytes] of assets)if(!paths.has(path))changes.set(path,{binary:bytes});
  let route;
  if(draft.kind==='tech'){
   assert(!snapshot.posts.some(p=>p.slug===slug),'URL đã tồn tại');
-  const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T')+'+07:00';
   const post={slug,title,summary,date,sections:[{heading:'Nội dung',paragraphs:[documentText(body)]}],issues:[],studioBody:body,...metadata};changes.set('src/data/techblog/posts.json',{text:JSON.stringify([...snapshot.posts,post],null,2)+'\n'});route='techblog/'+slug+'/';
  }else{
   assert(topics.has(draft.category)&&slug!=='index','Chuyên mục hoặc URL không hợp lệ');const stem='src/content/docs/'+draft.category+'/'+slug;
@@ -25,7 +25,7 @@ export function prepareArticle(draft,snapshot){
   route=draft.category+'/'+slug+'/';
   changes.set(stem+'.mdx',{text:'---\ntitle: '+JSON.stringify(title)+'\ndescription: '+JSON.stringify(summary)+'\n---\n\nimport KnowledgeStudioDocument from "../../../components/KnowledgeStudioDocument.astro";\n\n<KnowledgeStudioDocument id="'+id+'" />\n'});
   changes.set('src/data/studio-documents.json',{text:JSON.stringify({...snapshot.documents,[id]:body},null,2)+'\n'});
-  if(metadata.labels.length||metadata.series){const existing=snapshot.metadata??{};assert(!Object.hasOwn(existing,id),'Metadata đã tồn tại');changes.set('src/data/studio-metadata.json',{text:JSON.stringify({...existing,[id]:metadata},null,2)+'\n'})}
+  const existing=snapshot.metadata??{};assert(!Object.hasOwn(existing,id),'Metadata đã tồn tại');changes.set('src/data/studio-metadata.json',{text:JSON.stringify({...existing,[id]:{...metadata,date}},null,2)+'\n'});
   changes.set(index,{text:source.trimEnd()+'\n\n- ['+label+'](/khoahoctienghan/'+route+')\n'});
  }
  return {route,changes};

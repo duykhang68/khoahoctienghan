@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test';
+test('knowledge homepage and topic automatically show actual articles and accessible filters',async({page})=>{
+ await page.goto('./');
+ const feed=page.locator('[data-knowledge-feed]');
+ await expect(feed.getByRole('heading',{name:'Bài viết mới nhất'})).toBeVisible();
+ await expect(feed.locator('[data-knowledge-article]')).toHaveCount(3);
+ await feed.getByRole('searchbox',{name:'Tìm bài viết'}).fill('hangul');
+ await expect(feed.locator('[data-knowledge-article]:visible')).toHaveCount(1);
+ await expect(feed.locator('[data-knowledge-article]:visible').getByRole('heading')).toContainText('Hangul');
+ await feed.getByRole('button',{name:'Đặt lại'}).click();
+ await expect(feed.locator('[data-knowledge-article]:visible')).toHaveCount(3);
+ await page.goto('./ngon-ngu/');
+ await expect(page.locator('[data-knowledge-feed] [data-knowledge-article]')).toHaveCount(1);
+ await page.locator('[data-knowledge-feed] h3 a').click();
+ await expect(page).toHaveURL(/\/ngon-ngu\/hangul\/$/);
+ await page.goto('./am-thuc/');
+ await expect(page.locator('[data-feed-empty]')).toBeVisible();
+ await page.setViewportSize({width:375,height:812});
+ await page.goto('./');await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+});

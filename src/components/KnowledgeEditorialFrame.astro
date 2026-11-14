@@ -2,6 +2,8 @@
 import EditorialHeader from './EditorialHeader.astro';
 import EditorialFooter from './EditorialFooter.astro';
 import TechCover from './TechCover.astro';
+import KnowledgeArticleFeed from './KnowledgeArticleFeed.astro';
+import kbMetadata from '../data/studio-metadata.json';
 import {topics} from '../lib/knowledge-topics';
 const {entry}=Astro.locals.starlightRoute;
 const {title}=entry.data;
@@ -9,6 +11,9 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const path=Astro.url.pathname.slice(base.length).replace(/^\/|\/$/g,'');
 const isHome=!path;
 const topic=topics.find(t=>t.id===path.split('/')[0]);
+const isTopic=topic?.id===path;
+const metadata=(kbMetadata as Record<string,{date?:string}>)[path.replace('/','--')];
+const date=metadata?.date;
 const permalink=base+'/'+(path?path+'/':'');
 ---
 <EditorialHeader {title} knowledgeHome={true} indexPage={isHome} article={!isHome}/>
@@ -21,6 +26,7 @@ const permalink=base+'/'+(path?path+'/':'');
   <div class="research-reading-grid">
    <aside class="research-meta" aria-label="Thông tin bài viết">
     <dl class="post-meta"><div><dt>Nhóm</dt><dd><a href={base+'/'}>Tri thức Hàn Quốc</a></dd></div>
+     {date&&<div><dt>Ngày bài viết</dt><dd><time datetime={date}>{new Intl.DateTimeFormat('vi-VN',{dateStyle:'long',timeStyle:'medium',timeZone:'Asia/Ho_Chi_Minh',hour12:false}).format(new Date(date))}</time></dd></div>}
      {topic&&<div><dt>Chủ đề</dt><dd><a class="topic-link" href={base+'/'+topic.id+'/'}>{topic.title}</a></dd></div>}
     </dl>
     <div class="research-share"><a href={permalink}>Permalink</a>
@@ -28,7 +34,7 @@ const permalink=base+'/'+(path?path+'/':'');
      <span class="share-status" role="status" aria-live="polite"></span>
     </div>
    </aside>
-   <div class="article-body"><slot/></div>
+   <div class="article-body">{isTopic&&<KnowledgeArticleFeed topic={topic?.id}/>}<slot/></div>
   </div>
  </article></div></div>
 </div>}
