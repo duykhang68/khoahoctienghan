@@ -7,6 +7,9 @@ const req=(path,opts)=>new Request(origin+path,opts);
 test('missing config and anonymous requests fail closed',async()=>{
  assert.equal((await worker.fetch(req('/admin/'),{})).status,503);
  assert.equal((await worker.fetch(req('/admin/'),env)).status,303);
+ assert.equal((await worker.fetch(req('/admin/engineering/'),env)).status,303);
+ assert.equal((await worker.fetch(req('/admin/engineering/',{headers:{Cookie:'__Host-bo_session=fake.signature'}}),env)).status,303);
+ assert.equal((await worker.fetch(new Request('https://preview.example.test/admin/engineering/'),env)).status,403);
  assert.equal((await worker.fetch(req('/api/private'),env)).status,403);
  assert.equal((await worker.fetch(req('/api/private',{headers:{'Cf-Access-Authenticated-User-Email':'admin@gmail.com',Cookie:'__Host-bo_session=fake.signature'}}),env)).status,403);
 });
@@ -48,6 +51,8 @@ test('end-to-end session exchange with Google-shaped JWKS and signed credential'
   const body=await result.text();assert.equal(result.status,200,body);
   const session=result.headers.getSetCookie().find(x=>x.startsWith('__Host-bo_session=')).split(';')[0];
   assert.equal((await worker.fetch(req('/admin/',{headers:{Cookie:session}}),env)).status,200);
+  const dashboard=await worker.fetch(req('/admin/engineering/',{headers:{Cookie:session}}),env);assert.equal(dashboard.status,200);assert.match(await dashboard.text(),/id="trend"/);assert.match(dashboard.headers.get('content-security-policy'),/connect-src https:\/\/api.github.com/);
+  assert.equal((await worker.fetch(req('/admin/engineering/',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,303);
   const denied=await worker.fetch(req('/admin/',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'});assert.equal(denied.status,303);
   const logout=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:origin,Cookie:session}}),env);assert.equal(logout.status,303);assert.match(logout.headers.get('set-cookie'),/Max-Age=0/);
  }finally{globalThis.fetch=originalFetch;}

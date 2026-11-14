@@ -1,4 +1,17 @@
 import {test,expect} from '@playwright/test';
+import worker from '../../back-office/worker.mjs';
+import {createHmac} from 'node:crypto';
+const origin='https://korean-backoffice.tamsudev-com.workers.dev';
+const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'test-only-'.repeat(6)};
+test.beforeEach(async({page})=>{
+ // Test-only signed cookie; actual production authentication unchanged.
+ const payload=Buffer.from(JSON.stringify({kind:'session',origin,sub:'test',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url');
+ const signature=createHmac('sha256',env.SESSION_SECRET).update(payload).digest('base64url');
+ await page.route(origin+'/admin/engineering/',async route=>{
+  const response=await worker.fetch(new Request(route.request().url(),{headers:{Cookie:'__Host-bo_session='+payload+'.'+signature}}),env);
+  await route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});
+ });
+});
 
 const now=new Date('2026-11-15T05:00:00Z');
 function run(id:number,name:string,conclusion:string|null,status='completed',age=1){
@@ -19,9 +32,9 @@ test('footer opens dashboard with sampled metrics, accessible chart and local fi
  });
  await page.goto('./techblog/');
  const link=page.locator('.engineering-footer').getByRole('link',{name:'Engineering Foundation',exact:true});
- await expect(link).toHaveAttribute('href','/khoahoctienghan/engineering-foundation/');
+ await expect(link).toHaveAttribute('href',origin+'/admin/engineering/');
  await link.click();
- await expect(page).toHaveURL(/\/khoahoctienghan\/engineering-foundation\/$/);
+ await expect(page).toHaveURL(origin+'/admin/engineering/');
  await expect(page.getByRole('heading',{name:'Engineering Foundation',exact:true})).toBeVisible();
  await expect(page.getByRole('status')).toContainText('Đã tải 6 lượt gần nhất');
  await expect(page.locator('#runs')).toHaveText('5');
@@ -56,7 +69,7 @@ test('dashboard handles initial API failure, empty sample and failed refresh wit
  await page.route('https://api.github.com/**',route=>response==='error'
   ?route.fulfill({status:403,json:{}})
   :route.fulfill({json:response==='invalid'?{}:{workflow_runs:response==='empty'?[]:runs}}));
- await page.goto('./engineering-foundation/');
+ await page.goto(origin+'/admin/engineering/');
  const status=page.getByRole('status'),refresh=page.getByRole('button',{name:'Cập nhật dữ liệu'});
  await expect(status).toContainText('Chưa có dữ liệu.');
  await expect(refresh).toBeEnabled();
@@ -79,3 +92,5 @@ test('dashboard handles initial API failure, empty sample and failed refresh wit
   await expect(page.locator('#recent tr')).toHaveCount(5);
  }
 });
+
+test('legacy public route contains only Back Office navigation',async({page})=>{await page.goto('./engineering-foundation/');await expect(page.getByRole('link',{name:'Mở Back Office'})).toHaveAttribute('href',origin+'/admin/engineering/');await expect(page.locator('#trend')).toHaveCount(0);});

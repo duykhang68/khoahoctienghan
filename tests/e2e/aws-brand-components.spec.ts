@@ -22,7 +22,7 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  const footer=page.locator('.engineering-footer');
  await expect(footer.locator('section')).toHaveCount(1);
  await expect(footer.getByRole('link')).toHaveCount(3);
- await expect(footer.getByRole('link',{name:'Engineering Foundation',exact:true})).toHaveAttribute('href','/khoahoctienghan/engineering-foundation/');
+ await expect(footer.getByRole('link',{name:'Engineering Foundation',exact:true})).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/engineering/');
  await expect(footer.getByRole('heading',{name:'Khám phá',exact:true})).toHaveCount(0);
  await expect(footer.getByRole('heading',{name:'Tài nguyên',exact:true})).toHaveCount(0);
  await expect(footer.locator('.footer-brand')).toHaveText('Engineering Blog');
@@ -54,7 +54,7 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  await expect(page.locator('.footer-cta')).toBeVisible();
  await expect(footer.locator('section')).toHaveCount(1);
  await expect(footer.getByRole('link')).toHaveCount(3);
- await expect(footer.getByRole('link',{name:'Engineering Foundation',exact:true})).toHaveAttribute('href','/khoahoctienghan/engineering-foundation/');
+ await expect(footer.getByRole('link',{name:'Engineering Foundation',exact:true})).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/engineering/');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
  await page.setViewportSize({width:375,height:812});
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2)).toBe(true);
