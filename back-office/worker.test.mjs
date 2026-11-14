@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
 import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot} from './worker.mjs';
 const origin='https://example.test';
@@ -150,4 +151,15 @@ test('P1.3 library lists exact released articles without index pages or fabricat
  assert.equal((await worker.fetch(req('/admin/library/'),env)).status,303);
  assert.equal((await worker.fetch(req('/admin/api/library/'),env)).status,403);
  assert.equal((await worker.fetch(req('/admin/api/library/',{headers:{Cookie:'__Host-bo_session=invalid.signature'}}),env)).status,403);
+});
+
+// Compile the actual emitted browser script, not a duplicate fixture.
+test('P1.3 private library emits a syntactically valid browser script',async()=>{
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
+ const response=await worker.fetch(req('/admin/library/',{headers:{Cookie:'__Host-bo_session='+p+'.'+s}}),env);
+ assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
+ const html=await response.text();const match=html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/);
+ assert.ok(match);assert.doesNotThrow(()=>new Script(match[1],{filename:'library-browser.js'}));assert.match(html,/id="lib-list"/);assert.doesNotMatch(match[1],/export default \{async fetch/);
 });
