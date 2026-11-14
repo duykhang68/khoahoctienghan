@@ -1,0 +1,112 @@
+[
+  {
+    "label": "Tech Blog",
+    "link": "/techblog/"
+  },
+  {
+    "label": "Khám phá",
+    "link": "/"
+  },
+  {
+    "label": "Ngôn ngữ Hàn Quốc",
+    "items": [
+      {
+        "label": "Ngôn ngữ Hàn Quốc",
+        "link": "/ngon-ngu/"
+      },
+      {
+        "label": "Hangul và cấu trúc âm tiết",
+        "link": "/ngon-ngu/hangul/"
+      }
+    ]
+  },
+  {
+    "label": "Lịch sử Hàn Quốc",
+    "items": [
+      {
+        "label": "Lịch sử Hàn Quốc",
+        "link": "/lich-su/"
+      },
+      {
+        "label": "Tìm hiểu về triều đại Joseon",
+        "link": "/lich-su/joseon/"
+      }
+    ]
+  },
+  {
+    "label": "Văn hóa và xã hội",
+    "items": [
+      {
+        "label": "Văn hóa và xã hội",
+        "link": "/van-hoa/"
+      },
+      {
+        "label": "Văn hóa chào hỏi",
+        "link": "/van-hoa/chao-hoi/"
+      }
+    ]
+  },
+  {
+    "label": "Ẩm thực",
+    "items": [
+      {
+        "label": "Ẩm thực",
+        "link": "/am-thuc/"
+      }
+    ]
+  },
+  {
+    "label": "Địa lý và du lịch",
+    "items": [
+      {
+        "label": "Địa lý và du lịch",
+        "link": "/dia-ly-du-lich/"
+      }
+    ]
+  },
+  {
+    "label": "Kinh tế và công nghệ",
+    "items": [
+      {
+        "label": "Kinh tế và công nghệ",
+        "link": "/kinh-te-cong-nghe/"
+      }
+    ]
+  },
+  {
+    "label": "Giáo dục và du học",
+    "items": [
+      {
+        "label": "Giáo dục và du học",
+        "link": "/giao-duc-du-hoc/"
+      }
+    ]
+  },
+  {
+    "label": "Giải trí và Hallyu",
+    "items": [
+      {
+        "label": "Giải trí và Hallyu",
+        "link": "/hallyu/"
+      }
+    ]
+  },
+  {
+    "label": "Đời sống tại Hàn Quốc",
+    "items": [
+      {
+        "label": "Đời sống tại Hàn Quốc",
+        "link": "/doi-song/"
+      }
+    ]
+  },
+  {
+    "label": "Chính trị và thể chế",
+    "items": [
+      {
+        "label": "Chính trị và thể chế",
+        "link": "/the-che/"
+      }
+    ]
+  }
+]

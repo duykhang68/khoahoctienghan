@@ -6,12 +6,12 @@ test('all knowledge pages navigate to the canonical Tech Blog URL',async({page})
  for(const route of routes){
   const response=await page.goto('./'+route+'/');
   expect(response?.ok(),route).toBe(true);
-  const links=page.locator('a').filter({hasText:/^\s*Tech Blog\s*$/});
+  const links=page.locator('.sidebar-pane a[href$="/techblog/"]');
   expect(await links.count(),route).toBeGreaterThan(0);
   for(const link of await links.all())expect(await link.evaluate(a=>new URL((a as HTMLAnchorElement).href).pathname),route).toBe(expected);
  }
  await page.goto('./ngon-ngu/');
- const link=page.locator('.sidebar-pane a').filter({hasText:/^\s*Tech Blog\s*$/}).first();
+ const link=page.locator('.sidebar-pane a[href$="/techblog/"]').first();
  // Starlight 0.42 uses a native popover trigger, not the old custom element.
  const menu=page.locator('button[popovertarget="starlight__sidebar"]');
  if(await menu.isVisible()){

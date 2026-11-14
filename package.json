@@ -7,9 +7,10 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "node scripts/check-content.mjs",
-    "test:engineering": "node --test tests/engineering.test.mjs",
-    "test:e2e": "playwright test"
+    "check": "node scripts/check-content.mjs && node local-editor/check-menu.mjs",
+    "test:engineering": "node --test tests/engineering.test.mjs tests/local-editor.test.mjs",
+    "test:e2e": "playwright test",
+    "editor": "node local-editor/server.mjs"
   },
   "engines": {
     "node": ">=24"
