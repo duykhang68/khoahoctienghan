@@ -1,8 +1,31 @@
 ---
 import TechBlog from '../../layouts/TechBlog.astro';
-import posts from '../../data/techblog/posts.json';
-export function getStaticPaths(){return posts.map((post:any)=>({params:{slug:post.slug},props:{post}}))}
-const {post}=Astro.props;
+import TechSidebar from '../../components/TechSidebar.astro';
+import {posts,dateLabel,readingMinutes,coverURL,type TechPost} from '../../lib/techblog';
+export function getStaticPaths(){return posts.map(post=>({params:{slug:post.slug},props:{post}}))}
+const {post}=Astro.props as {post:TechPost};
 const base=import.meta.env.BASE_URL.replace(/\/$/,'');
+const cover=coverURL(post.cover,base);
 ---
-<TechBlog title={post.title} description={post.summary}><a href={base+'/techblog/'}>← Tech Blog</a><article><h1>{post.title}</h1><time datetime={post.date}>{new Intl.DateTimeFormat('vi-VN',{dateStyle:'long',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(post.date))}</time><p class="lead">{post.summary}</p>{post.sections.map((section:any)=><section><h2>{section.heading}</h2>{section.paragraphs.map((p:string)=><p>{p}</p>)}</section>)}<h2>Issue tham khảo</h2><ul>{post.issues.map((number:number)=><li><a href={'https://github.com/duykhang68/khoahoctienghan/issues/'+number}>Issue #{number}</a></li>)}</ul></article></TechBlog>
+<TechBlog title={post.title} description={post.summary} cover={cover}>
+  <div class="tech-shell detail-shell">
+    <a class="back-link" href={base+'/techblog/'}>← Tất cả bài viết</a>
+    <article class="article">
+      <header class="article-heading">
+        <div class="post-meta"><time datetime={post.date}>{dateLabel(post.date)}</time><span>{readingMinutes(post)} phút đọc</span></div>
+        <h1>{post.title}</h1>
+        {post.author&&<div class="byline"><span class="author-avatar" aria-hidden="true">{post.author.trim().slice(0,1)}</span>{post.author}</div>}
+      </header>
+      {cover&&<figure class="article-cover"><img src={cover} alt={post.coverAlt||''} width="1200" height="675" fetchpriority="high" decoding="async"/></figure>}
+      <div class="editorial-grid article-grid">
+        <div class="article-body">
+          <p class="article-lead">{post.summary}</p>
+          {post.sections.map((section,i)=><section aria-labelledby={'section-'+i}><h2 id={'section-'+i}>{section.heading}</h2>{section.paragraphs.map(p=><p>{p}</p>)}</section>)}
+          {post.issues.length>0&&<section><h2>Issue tham khảo</h2><ul>{post.issues.map(number=><li><a href={'https://github.com/duykhang68/khoahoctienghan/issues/'+number}>Issue #{number}</a></li>)}</ul></section>}
+          <div class="article-end"><a class="read-link" href={base+'/techblog/'}>← Quay lại Engineering Blog</a></div>
+        </div>
+        <TechSidebar currentSlug={post.slug}/>
+      </div>
+    </article>
+  </div>
+</TechBlog>
