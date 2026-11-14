@@ -16,3 +16,5 @@ Từ các vương quốc cổ đến thời hiện đại. Đây là trang tổn
 ## Nguồn tra cứu
 
 - [Nguồn thông tin chính thức](https://www.korea.net/)
+
+- [Báo Chosun Ilbo: lịch sử, hoạt động và tranh cãi](/khoahoctienghan/lich-su/bao-chosun-ilbo-lich-su-hoat-dong-va-tranh-cai/)
