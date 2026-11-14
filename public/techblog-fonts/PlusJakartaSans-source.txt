@@ -1,0 +1,4 @@
+Upstream: https://github.com/tokotype/PlusJakartaSans/tree/18d1cd2f7ea10481919d2f05c1f7064b7307fc26
+Original variable WOFF2 blob: eebac44580986b89ed54b1dfc23209ce82ebc073
+License: SIL OFL 1.1 (see PlusJakartaSans-OFL.txt).
+Uber Move not redistributed; owner-provided licensed webfonts pending.

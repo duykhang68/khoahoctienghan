@@ -62,3 +62,24 @@
 .research-hero[data-cover-kind=decorative] .editorial-cover{aspect-ratio:auto;height:clamp(64px,10vw,120px)}
 .research-hero>img{max-height:320px}
 @media(max-width:640px){.research-hero>img{max-height:200px}.research-hero[data-cover-kind=decorative]{margin-bottom:18px}}
+
+/* Uber-inspired article: retain the metadata rail and compact decorative cover. */
+.research-article-page,.research-article-page #content{background:#fff;color:var(--ink)}
+.research-article-shell{max-width:var(--max)}
+.research-article .research-heading h1{font-family:var(--display);font-weight:700;line-height:1.18;color:var(--ink)}
+.research-hero>img,.research-hero .editorial-cover{border-radius:0;background:#f6f6f6}
+.research-hero .editorial-cover img{background:#f6f6f6}
+.research-reading-grid{grid-template-columns:minmax(150px,192px) minmax(0,760px)}
+.research-article .article-body{max-width:760px;color:var(--ink)}
+.research-article .article-body h2,.research-article .article-body h3{font-family:var(--display);color:var(--ink);font-weight:700}
+.research-meta,.research-meta .post-meta,.research-meta a,.research-meta .share-link{color:#333}
+.research-meta dt{color:var(--ink)}
+.research-hero figcaption,.research-share .share-status{color:var(--muted)}
+.research-share,.research-article .article-disclosure,.research-article .article-body .reference-list li,.research-article .article-end{border-color:var(--line)}
+.research-article .article-body a:not(.read-link){color:var(--ink)}
+.research-article .article-body a:hover{color:#333}
+.research-article .article-end .read-link{background:#000;color:#fff;border-color:#000;border-radius:8px;font-weight:500}
+.research-article .article-end .read-link:hover{background:#333;color:#fff}
+.research-article .disclosure-count{background:#eee;color:#333}
+@media(max-width:800px){.research-reading-grid{grid-template-columns:minmax(0,1fr)}.research-article .article-body{max-width:none}.research-meta{border-color:var(--line)}}
+@media(max-width:640px){.research-article .article-body p,.research-article .article-body li{font-size:16px;line-height:1.75}}
