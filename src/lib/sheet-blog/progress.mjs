@@ -8,7 +8,8 @@ export function parseQueueIssue(issue){
  let s;try{s=JSON.parse(line.slice(prefix.length,-4))}catch{return null}
  if(!s||!digest(s.id)||!sha(s.source)||!['QUEUED','WAITING_CI','MERGED','VERIFIED'].includes(s.phase))return null;
  const detail=String(issue.body||'').split('\n').find(l=>l.startsWith('**Trạng thái:** '))?.slice('**Trạng thái:** '.length).trim()||'';
- return {id:s.id,source:s.source,phase:s.phase,number:issue.number,title:String(issue.title||'').replace(/^\[Editor V2\]\s*/,''),closed:issue.state==='closed',detail,head:sha(s.head)?s.head:null,base:sha(s.base)?s.base:null,merge:sha(s.merge)?s.merge:null,verified:sha(s.verified)?s.verified:null,pr:positive(s.pr)?s.pr:null,route:typeof s.route==='string'&&/^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(s.route)?s.route:null};
+ const sheetSync=['PENDING','WAITING_CONFIG','SYNCED','BLOCKED'].includes(s.sheetSync?.status)?{status:s.sheetSync.status}:null;
+ return {id:s.id,source:s.source,phase:s.phase,number:issue.number,title:String(issue.title||'').replace(/^\[Editor V2\]\s*/,''),closed:issue.state==='closed',detail,sheetSync,head:sha(s.head)?s.head:null,base:sha(s.base)?s.base:null,merge:sha(s.merge)?s.merge:null,verified:sha(s.verified)?s.verified:null,pr:positive(s.pr)?s.pr:null,route:typeof s.route==='string'&&/^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(s.route)?s.route:null};
 }
 export function progressFor(item,evidence={}){
  if(!item.number)return {done:1,status:'Chờ GitHub tiếp nhận Issue',tone:'waiting'};

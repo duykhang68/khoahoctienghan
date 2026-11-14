@@ -1,6 +1,7 @@
 import {sheetsClient,scope,rowDraft,recommendDestination} from './model.mjs';
 import {githubClient} from '../editor-v2/github.mjs';
 import {mountQueueProgress} from './progress-browser.mjs';
+import {sheetSource} from './source.mjs';
 import {slugify,buildDocument} from '../editor-v2/model.mjs';
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 export function mountSheetBlog(root){
@@ -106,6 +107,7 @@ export function mountSheetBlog(root){
    const fresh=await google.read(item.row);
    if(JSON.stringify(fresh)!==JSON.stringify(selectedRow))throw Error('Nội dung nguồn đã đổi. Đóng và mở lại bài để kiểm tra trước khi gửi.');
    const draft=rowDraft(item,fresh,topics,$('[data-kind]').value,$('[data-category]').value);
+   draft.sheetSource=await sheetSource(item.row,fresh);
    await buildDocument(draft.blocks);
    const route=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+slugify(draft.title)+'/';
    const check=await fetch(route,{cache:'no-store',redirect:'error'});

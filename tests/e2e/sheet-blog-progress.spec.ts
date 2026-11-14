@@ -24,7 +24,7 @@ test('progress dashboard orders FIFO, updates stages and preserves stale snapsho
  await page.route('https://api.github.com/**',route=>{
   const u=new URL(route.request().url());expect(route.request().method()).toBe('GET');expect(route.request().headers()['authorization']).toBeUndefined();
   if(fail)return route.fulfill({status:403,json:{}});
-  if(u.pathname.endsWith('/issues'))return route.fulfill({json:[issue(12,'QUEUED'),issue(11,phase,{head,base,pr:15,merge,verified:merge,route:'ngon-ngu/bai-11/'},phase==='VERIFIED'),{...issue(10,'QUEUED'),user:{login:'other'}}]});
+  if(u.pathname.endsWith('/issues'))return route.fulfill({json:[issue(12,'QUEUED'),issue(11,phase,{head,base,pr:15,merge,verified:merge,route:'ngon-ngu/bai-11/',sheetSync:{status:phase==='VERIFIED'?'SYNCED':'PENDING',attempts:0}},phase==='VERIFIED'),{...issue(10,'QUEUED'),user:{login:'other'}}]});
   if(u.pathname.endsWith('/ci.yml/runs'))return route.fulfill({json:{workflow_runs:[{id:123,head_sha:head,head_repository:{full_name:repo},head_branch:'content/editor-fifo-11-'+base.slice(0,12),event:'pull_request',status:'in_progress'}]}});
   if(u.pathname.endsWith('/release.yml/runs'))return route.fulfill({json:{workflow_runs:[{id:124,head_sha:merge,head_repository:{full_name:repo},head_branch:'main',event:'workflow_run',status:'in_progress'}]}});
   if(u.pathname.endsWith('/actions/runs/124/jobs'))return route.fulfill({json:{jobs:[{name:'deploy',status:'completed',conclusion:'success'}]}});
@@ -41,6 +41,7 @@ test('progress dashboard orders FIFO, updates stages and preserves stale snapsho
  phase='VERIFIED';await refresh.click();await expect(section.locator('[data-progress-done]')).toHaveText('1');
  await section.locator('summary').click();await expect(first.locator('progress')).toHaveJSProperty('value',6);
  await expect(first.getByRole('link',{name:'Mở bài đã đăng'})).toBeVisible();
+ await expect(first.getByText('Đã ghi commit ID vào content id_vn',{exact:true})).toBeVisible();
  fail=true;await refresh.click();await expect(section.locator('[data-progress-status]')).toContainText('Dữ liệu lần cập nhật trước');
  await expect(section.locator('[data-progress-done]')).toHaveText('1');
  await page.setViewportSize({width:375,height:812});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);

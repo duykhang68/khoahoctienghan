@@ -24,6 +24,7 @@ export function mountQueueProgress(root,{client=queueClient()}={}){
    const track=make('ol',undefined,'sb-progress-track');
    stages.forEach((name,i)=>{const state=i<p.done?'done':i===p.done?(p.tone==='blocked'?'blocked':'active'):'pending';const li=make('li');li.dataset.state=state;const dot=make('span',state==='done'?'✓':state==='blocked'?'!':String(i+1),'sb-progress-dot');dot.setAttribute('aria-hidden','true');li.append(dot,make('span',name));if(i===p.done)li.setAttribute('aria-current','step');track.append(li)});el.append(track);
    const foot=make('div',undefined,'sb-progress-foot');foot.append(make('strong',p.status,'sb-progress-current'),make('small',p.done+'/'+stages.length+' mốc hoàn thành'));
+   if(row.sheetSync){const labels={PENDING:'Chờ ghi content id_vn',WAITING_CONFIG:'Chờ kết nối Google để ghi content id_vn',SYNCED:'Đã ghi commit ID vào content id_vn',BLOCKED:'Chưa ghi được content id_vn · Cần kiểm tra Issue'};foot.append(make('small',labels[row.sheetSync.status]))}
    const links=make('div',undefined,'sb-progress-links');links.append(link('Commit '+row.source.slice(0,7),github+'/commit/'+row.source));if(row.number)links.append(link('Issue #'+row.number,github+'/issues/'+row.number));if(row.pr)links.append(link('PR #'+row.pr,github+'/pull/'+row.pr));
    const run=ev.ci||ev.cd;if(Number.isSafeInteger(run?.id)&&run.id>0)links.append(link('CI/CD',github+'/actions/runs/'+run.id));if(p.done===6&&row.route)links.append(link('Mở bài đã đăng',site+row.route));foot.append(links);el.append(foot);return el;
   }
