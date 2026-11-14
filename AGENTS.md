@@ -9,6 +9,7 @@
 - Read engineering/lessons before making changes. Check installed dependency versions and official migration docs. Reuse regression tests.
 
 ## CI and CD
+- Automated branch updates and known-fixer writes use the dedicated repository-scoped GitHub App token only; defer if absent. Require native pull_request CI, not dispatch-only CI. Never expose keys or give the App ruleset bypass.
 - Low-privilege PR CI: content, regression, full build, static smoke tests and secret-pattern check. Fail closed; never remove or weaken a gate to make it green.
 - Squash merge one logical PR; intermediate branch commits may fail, but final integrated HEAD must pass. Exact HEAD and current base required for autonomous merge, enforced by GitHub ruleset. Only same-repo owner branches, no draft; sensitive changes (workflows, deployment, agents or engineering automation) require explicit review. Never auto-merge fork PRs.
 - Only successful CI on current main may deploy. Reuse that exact artifact; never execute PR artifacts in privileged workflows. Deploy serialized; stale builds are SUPERSEDED, not FAILED. Merge independent PRs without waiting for prior production, but preserve dependency order. Real production failure triggers incident and recovery.

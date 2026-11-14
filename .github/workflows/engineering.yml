@@ -36,6 +36,17 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Create branch automation App token
+        id: branch-app
+        if: vars.ENGINEERING_APP_CLIENT_ID != '' && (github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository)
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        with:
+          client-id: ${{ vars.ENGINEERING_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ENGINEERING_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - run: node scripts/engineering-controller.mjs
         env:
           GH_TOKEN: ${{ github.token }}
+          BRANCH_APP_TOKEN: ${{ steps.branch-app.outputs.token }}
