@@ -5,13 +5,13 @@ const base=import.meta.env.BASE_URL.replace(/\/$/,'');
 const latest=posts.filter(p=>p.slug!==currentSlug).slice(0,5);
 ---
 <aside class="tech-sidebar" aria-label="Khám phá Engineering">
-  <section class="sidebar-section about-blog"><h2>Engineering Blog</h2><p>Những bài học thực tế về kiến trúc, chất lượng phần mềm và quá trình xây dựng Tri thức Hàn Quốc.</p><a href="https://github.com/duykhang68/khoahoctienghan">Mã nguồn trên GitHub <span aria-hidden="true">›</span></a></section>
+  <section class="sidebar-section about-blog"><h2>Tài nguyên</h2><ul class="resource-links"><li><a href={base+'/'}>Kho tri thức</a></li><li><a href={base+'/techblog/'}>Engineering Blog</a></li><li><a href="https://github.com/duykhang68/khoahoctienghan">Mã nguồn trên GitHub</a></li><li><a href="https://github.com/duykhang68/khoahoctienghan/issues">Theo dõi sự cố kỹ thuật</a></li></ul></section>
   <section class="sidebar-section" id="search">
     <h2>Tìm kiếm</h2>
     <form class="search-box" method="get" action={base+'/techblog/'}>
       <label class="sr-only" for="tech-query">Tìm kiếm bài viết</label>
       <input id="tech-query" name="q" type="search" placeholder="Tìm bài viết..." />
-      <button type="submit" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+      <button class="aws-button search-submit" type="submit" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
     </form>
   </section>
   <section class="sidebar-section">
