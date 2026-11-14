@@ -43,3 +43,12 @@ test('real WebP bytes are validated and staged with image references only',()=>{
 
 import {checkPositions} from '../src/lib/editor-block-position.mjs';
 test('visual insertion positions support start and middle and reject out of range',()=>{const s={paragraphs:['a','b'],visuals:[{afterParagraph:0}],images:[{afterParagraph:1}]};assert.doesNotThrow(()=>checkPositions(s));assert.throws(()=>checkPositions({...s,images:[{afterParagraph:3}]}),/position/)});
+
+test('only non-core unreferenced Knowledge leaves can be deleted',()=>{
+ const path='src/content/docs/ngon-ngu/extra.md',base=new Map(files);base.set(path,content);
+ const change={path,before:digest(content),content:null};
+ assert.equal(applyChanges(base,[change]).has(path),false);
+ assert.throws(()=>applyChanges(base,[{path:doc,before:digest(content),content:null}]),/Protected/);
+ const linked=new Map(base);linked.set(doc,content+'\n[Extra](/ngon-ngu/extra/)');
+ assert.throws(()=>applyChanges(linked,[change]),/still linked/);
+});

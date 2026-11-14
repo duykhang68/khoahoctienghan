@@ -10,28 +10,65 @@ async function request(path,data){
  const r=await fetch('/api/'+path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Editor-Nonce':nonce},body:JSON.stringify(data)});
  const v=await r.json();if(!r.ok)throw Error(v.error||'Không thể hoàn tất');return v;
 }
-const get=p=>drafts[p]?.content??snapshot.files[p]?.content;
+const get=p=>Object.hasOwn(drafts,p)?drafts[p].content:snapshot.files[p]?.content;
+const HISTORY_KEY='editor-revisions-v1';
+let history={base:'',entries:[],cursor:0},autoTimer=0;
+try{const saved=JSON.parse(localStorage.getItem(HISTORY_KEY)||'null');if(saved&&Array.isArray(saved.entries)&&Number.isInteger(saved.cursor))history=saved}catch{}
+function saveHistory(){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(history))}catch{/* Session history remains available; draft storage is authoritative. */}}
+function recordHistory(before,after){
+ const changes=[];for(const p of new Set([...Object.keys(before),...Object.keys(after)])){if(assetPath(p))continue;const prev=before[p]??null,next=after[p]??null;if(JSON.stringify(prev)!==JSON.stringify(next))changes.push({path:p,prev,next})}
+ if(!changes.length)return;
+ if(history.base!==snapshot.sha)history={base:snapshot.sha,entries:[],cursor:0};
+ history.entries=history.entries.slice(0,history.cursor);history.entries.push({at:new Date().toISOString(),changes});
+ while(history.entries.length>20||(history.entries.length>1&&JSON.stringify(history.entries).length>650000))history.entries.shift();
+ history.cursor=history.entries.length;saveHistory();
+}
+function renderHistory(){
+ $('undo').disabled=busy||!!conflicts.length||history.cursor===0;
+ $('redo').disabled=busy||!!conflicts.length||history.cursor>=history.entries.length;
+ const list=$('revisions');list.replaceChildren(new Option('Bắt đầu lịch sử','0'));
+ history.entries.forEach((entry,i)=>list.add(new Option(new Date(entry.at).toLocaleString('vi-VN')+' · '+entry.changes.length+' tệp',String(i+1))));
+ list.value=String(history.cursor);$('restore-revision').disabled=busy||!!conflicts.length||history.entries.length===0;
+}
+function dirtyArticle(){return !!active&&(postIndex>=0?$('editor').value!==JSON.stringify(postList[postIndex],null,2):active.startsWith('src/content/docs/')&&$('editor').value!==(get(active)||''))}
+function flushArticle(){clearTimeout(autoTimer);autoTimer=0;if(dirtyArticle())saveFile()}
+function scheduleAutosave(){clearTimeout(autoTimer);$('autosave-state').textContent='Đang soạn…';autoTimer=setTimeout(()=>{try{flushArticle()}catch(e){$('autosave-state').textContent='Chưa lưu';status(e.message)}},800)}
+function applyHistory(target){
+ try{
+  flushArticle();if(conflicts.length||history.base!==snapshot.sha||!Number.isInteger(target)||target<0||target>history.entries.length)return;
+  if(JSON.stringify(menu,null,2)+'\n'!==get(MENU)&&!confirm('Bỏ thay đổi menu chưa lưu để khôi phục bản nháp?'))return;
+  const next={...drafts};let cursor=history.cursor;
+  while(cursor!==target){const forward=cursor<target,entry=history.entries[forward?cursor:cursor-1];for(const c of entry.changes){const value=forward?c.next:c.prev;if(value===null)delete next[c.path];else next[c.path]=value}cursor+=forward?1:-1}
+  localStorage.setItem(KEY,JSON.stringify(next));drafts=next;history.cursor=cursor;saveHistory();
+  const selected=active,slug=postList?.[postIndex]?.slug;loadMenu();select(get(selected)==null?'':selected);
+  if(selected===POSTS&&slug&&postList){const n=postList.findIndex(p=>p.slug===slug);if(n>=0){postIndex=n;renderPosts();$('editor').value=JSON.stringify(postList[n],null,2);renderVisual()}}
+  status('Đã khôi phục phiên bản bản nháp local. Không thay đổi production.');
+ }catch(e){status(e.message)}
+}
+
 function stageMany(changes){
  const next={...drafts};
- for(const [p,content] of changes){const base=snapshot.files[p];if(content===base?.content)delete next[p];else next[p]={before:Object.hasOwn(next,p)?next[p].before:base?.hash??null,content};}
+ for(const [p,content] of changes){const base=snapshot.files[p];if(content===(base?.content??null))delete next[p];else next[p]={before:Object.hasOwn(next,p)?next[p].before:base?.hash??null,content};}
  try{localStorage.setItem(KEY,JSON.stringify(next))}catch{throw Error('Bộ nhớ nháp local đã đầy. Sync/Pull hoặc bỏ bản nháp không cần thiết trước khi chèn ảnh.')}
- drafts=next;renderFiles();state();
+ const before=drafts;drafts=next;recordHistory(before,next);renderFiles();state();
 }
 function stage(p,content){stageMany([[p,content]])}
 function state(){
  $('auth-state').textContent=login?'Connected · '+login:'Offline';
  $('draft-count').textContent=Object.keys(drafts).length+' thay đổi local'+(conflicts.length?' · '+conflicts.length+' xung đột':'');
  $('connect').disabled=busy||!!login;$('disconnect').disabled=busy||!login;$('pull').disabled=busy||!login;$('sync').disabled=busy||!login||!Object.keys(drafts).length||!!conflicts.length;
- $('discard').disabled=!active||!drafts[active];$('save').disabled=!active;
+ $('discard').disabled=!active||!drafts[active];$('save').disabled=!active||get(active)===null;
+ $('duplicate-article').disabled=busy||!active||(active===POSTS?postIndex<0:!active.startsWith('src/content/docs/'));
+ $('delete-article').disabled=$('duplicate-article').disabled||(active!==POSTS&&!canDeleteDoc(active));renderHistory();
 }
 async function action(fn){if(busy)return;busy=true;state();try{await fn()}catch(e){status(e.message)}finally{busy=false;state()}}
 function mergeSnapshot(s,source){
  const next={...drafts};conflicts=[];
  for(const [p,d] of Object.entries(drafts)){
-  if(s.files[p]?.content===d.content){delete next[p];continue;}
+  if((s.files[p]?.content??null)===d.content){delete next[p];continue;}
   if((s.files[p]?.hash??null)!==d.before)conflicts.push(p);
  }
- drafts=next;persist();snapshot=s;$('source').textContent=source+' · '+s.sha.slice(0,12);
+ drafts=next;persist();snapshot=s;if(history.base!==s.sha||conflicts.length){history={base:s.sha,entries:[],cursor:0};saveHistory();}$('source').textContent=source+' · '+s.sha.slice(0,12);
  renderFiles();loadMenu();if(active)select(active);state();
  if(conflicts.length)status('Xung đột: '+conflicts.join(', ')+'. Bản nháp vẫn còn; hủy bản nháp hoặc sao chép nội dung rồi Pull lại.');
 }
@@ -41,17 +78,13 @@ function name(p,content){
  return content?.match(/^title:\s*(.+)$/m)?.[1]?.replace(/^["']|["']$/g,'')||p.split('/').pop();
 }
 function renderFiles(){
- const term=$('filter').value.toLowerCase(),all=[...new Set([...Object.keys(snapshot.files),...Object.keys(drafts)])].filter(p=>p!==MENU&&p!==MEDIA_INDEX&&!assetPath(p)&&(scope==='all'||(scope==='tech'?p===POSTS:p.startsWith('src/content/docs/')))).sort();
+ const term=$('filter').value.toLowerCase(),all=[...new Set([...Object.keys(snapshot.files),...Object.keys(drafts)])].filter(p=>get(p)!=null&&p!==MENU&&p!==MEDIA_INDEX&&!assetPath(p)&&(scope==='all'||(scope==='tech'?p===POSTS:p.startsWith('src/content/docs/')))).sort();
  $('files').replaceChildren();
  for(const p of all){const title=name(p,get(p));if(!(title+' '+p).toLowerCase().includes(term))continue;const btn=document.createElement('button');btn.className='file'+(p===active?' active':'');btn.textContent=title;const small=document.createElement('small');small.textContent=p.replace('src/content/docs/','')+(drafts[p]?' · Bản nháp':'');if(drafts[p])small.className='dirty';btn.append(small);btn.onclick=()=>{if(!keepCurrent())return;select(p)};$('files').append(btn)}
 }
-function keepCurrent(){
- if(active&&postIndex>=0&&$('editor').value!==JSON.stringify(postList[postIndex],null,2))return confirm('Bài Tech Blog chưa lưu vào danh sách. Bỏ phần chưa lưu?');
- if(active&&postIndex<0&&$('editor').value!==(get(active)||''))return confirm('Nội dung chưa lưu local. Bỏ phần chưa lưu?');
- return true;
-}
+function keepCurrent(){try{flushArticle();return true}catch(e){status(e.message);return confirm('Không lưu được bản nháp. Bỏ phần chưa lưu?')}}
 function select(p){
- active=p;postIndex=-1;postList=null;$('file-title').textContent=name(p,get(p));$('file-path').textContent=p;
+ clearTimeout(autoTimer);autoTimer=0;active=p;postIndex=-1;postList=null;$('file-title').textContent=name(p,get(p));$('file-path').textContent=p;
  $('editor').disabled=false;$('editor').value=get(p)||'';$('preview').textContent=$('editor').value;
  $('post-tools').hidden=p!==POSTS;
  if(p===POSTS){try{postList=JSON.parse(get(p));postIndex=postList.length?0:-1;renderPosts();if(postIndex>=0)$('editor').value=JSON.stringify(postList[postIndex],null,2)}catch{status('Không đọc được dữ liệu bài viết; nội dung gốc vẫn nguyên vẹn.');}}
@@ -62,17 +95,57 @@ function renderPosts(){
 }
 $('post-select').onchange=()=>{if(!keepCurrent()){$('post-select').value=String(postIndex);return}postIndex=Number($('post-select').value);$('editor').value=postIndex<0?JSON.stringify(postList,null,2):JSON.stringify(postList[postIndex],null,2);renderVisual()};
 function saveFile(){
- if(postIndex>=0){const p=JSON.parse($('editor').value);postList[postIndex]=p;stage(POSTS,JSON.stringify(postList,null,2)+'\n');renderPosts();$('editor').value=JSON.stringify(p,null,2);}
+ if(postIndex>=0){const p=JSON.parse($('editor').value),next=postList.slice();next[postIndex]=p;stage(POSTS,JSON.stringify(next,null,2)+'\n');postList=next;renderPosts();$('editor').value=JSON.stringify(p,null,2);}
  else{if(!active.startsWith('src/content/docs/'))throw Error('Nội dung này chưa hỗ trợ biên tập trực quan.');stage(active,$('editor').value);}
- status('Đã lưu bản nháp local: '+active);
+ $('autosave-state').textContent='Đã lưu local';status('Đã lưu bản nháp local: '+active);
 }
-$('save').onclick=()=>{try{saveFile()}catch(e){status(e.message)}};
+$('save').onclick=()=>{try{clearTimeout(autoTimer);autoTimer=0;saveFile()}catch(e){status(e.message)}};
 $('save-post').onclick=$('save').onclick;
 $('new-post').onclick=()=>{if(!postList||!keepCurrent())return;const slug=prompt('Slug bài Tech Blog (a-z, 0-9, dấu gạch ngang)');if(!slug||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||postList.some(p=>p.slug===slug)){status('Slug không hợp lệ hoặc đã tồn tại');return}const parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T');postList.push({slug,title:'Tiêu đề mới',summary:'Mô tả bài viết',date:parts+'+07:00',sections:[{heading:'Giới thiệu',paragraphs:['Nội dung']}],issues:[]});postIndex=postList.length-1;renderPosts();stage(POSTS,JSON.stringify(postList,null,2)+'\n');$('editor').value=JSON.stringify(postList[postIndex],null,2);renderVisual();status('Bài mới đã được tạo dưới dạng bản nháp local')};
 document.querySelectorAll('[data-scope]').forEach(b=>b.onclick=()=>{scope=b.dataset.scope;document.querySelectorAll('[data-scope]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderFiles()});
 $('filter').oninput=renderFiles;
 $('discard').onclick=()=>{if(active&&confirm('Hủy bản nháp '+active+'?')){delete drafts[active];conflicts=conflicts.filter(p=>p!==active);persist();select(active);state()}};
-$('new').onclick=()=>{if(!keepCurrent())return;const slug=prompt('Đường dẫn bài học, ví dụ ngon-ngu/tu-vung (không có phần mở rộng)');if(!slug||! /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){status('Đường dẫn không hợp lệ');return}const p='src/content/docs/'+slug+'.md';if(get(p)||get(p+'x')){status('Bài đã tồn tại');return}stage(p,'---\ntitle: Bài mới\ndescription: Mô tả bài mới\n---\n\nNội dung bài viết.\n');select(p)};
+$('new').onclick=()=>{if(!keepCurrent())return;const slug=prompt('Đường dẫn bài học, ví dụ ngon-ngu/tu-vung (không có phần mở rộng)');if(!slug||! /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)){status('Đường dẫn không hợp lệ');return}const p='src/content/docs/'+slug+'.mdx';if(get(p)||get(p.slice(0,-1))){status('Bài đã tồn tại');return}stage(p,'---\ntitle: Bài mới\ndescription: Mô tả bài mới\n---\n\nNội dung bài viết.\n');select(p)};
+const leafDoc=/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)+[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/;
+function canDeleteDoc(path){return leafDoc.test(path)&&!/(?:\/index|\/ngon-ngu\/hangul|\/lich-su\/joseon|\/van-hoa\/chao-hoi)\.mdx?$/.test(path)}
+function dateNow(){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T')+'+07:00'}
+function docPaths(){return [...new Set([...Object.keys(snapshot.files),...Object.keys(drafts)])].filter(p=>p.startsWith('src/content/docs/')&&get(p)!=null)}
+function duplicateArticle(){
+ if(!active||!keepCurrent())return;
+ const slug=prompt('Slug mới (chỉ chữ thường, số và dấu gạch ngang)');if(!slug||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return status('Slug không hợp lệ.');
+ if(active===POSTS&&postIndex>=0){
+  if(postList.some(p=>p.slug===slug))return status('Slug đã tồn tại.');
+  const copy=JSON.parse($('editor').value);copy.slug=slug;copy.title+=' (bản sao)';copy.date=dateNow();
+  const next=[...postList,copy];stage(POSTS,JSON.stringify(next,null,2)+'\n');postList=next;postIndex=next.length-1;renderPosts();$('editor').value=JSON.stringify(copy,null,2);renderVisual();
+ }else if(active.startsWith('src/content/docs/')){
+  const path=active.replace(/[^/]+$/,slug+(active.endsWith('.mdx')?'.mdx':'.md'));
+  if(get(path)!=null||get(path.replace(/\.mdx?$/,path.endsWith('.mdx')?'.md':'.mdx'))!=null)return status('Đường dẫn đã tồn tại.');
+  const source=$('editor').value;if(!/^---\r?\n/.test(source))throw Error('Không thể sao chép metadata an toàn.');
+  const records=knowledgeMedia(),original=records[routeForDoc(active)];const changes=[[path,source]];if(original){records[routeForDoc(path)]=copyVisual(original);changes.push([MEDIA_INDEX,JSON.stringify(records,null,2)+'\n'])}
+  // Copy catalogue IDs to keep edits isolated; do not alter original article.
+  if(source.includes('<KnowledgeVisual')){let copy=source;const catalogue=JSON.parse(get(cataloguePath)||'{}'),ids=new Map();copy=copy.replace(/<KnowledgeVisual\s+id="([a-z0-9-]+)"\s*\/>/g,(_m,id)=>{if(!Object.hasOwn(catalogue,id))throw Error('Thiếu minh họa nguồn');if(!ids.has(id)){const next='visual-'+crypto.randomUUID();ids.set(id,next);catalogue[next]=copyVisual(catalogue[id])}return '<KnowledgeVisual id="'+ids.get(id)+'" />'});changes[0][1]=copy;changes.push([cataloguePath,JSON.stringify(catalogue,null,2)+'\n'])}
+  stageMany(changes);select(path);
+ }
+ status('Đã nhân bản thành bài mới local. Chưa xuất bản.');
+}
+function deleteArticle(){
+ if(!active||!keepCurrent())return;
+ if(active===POSTS&&postIndex>=0){const selected=postList[postIndex];if(!confirm('Đưa bài '+selected.title+' vào danh sách xóa? Chỉ xuất bản khi PR merge.'))return;const next=postList.filter((_,i)=>i!==postIndex);stage(POSTS,JSON.stringify(next,null,2)+'\n');select(POSTS);status('Đã đánh dấu xóa bài Tech Blog; có thể Undo.');return}
+ if(!canDeleteDoc(active))throw Error('Trang nền tảng, chuyên mục và bài kiểm thử cốt lõi được bảo vệ.');
+ const route='/'+routeForDoc(active)+'/',menuText=get(MENU)||'';
+ if(menuText.includes('"'+route+'"')||docPaths().some(p=>p!==active&&(get(p)||'').includes(route)))throw Error('Bài còn được liên kết trong menu/nội dung. Gỡ liên kết trước khi xóa.');
+ if(!confirm('Đánh dấu xóa '+route+'? Chưa thay đổi GitHub; có thể Undo.'))return;
+ const records=knowledgeMedia(),catalogue=JSON.parse(get(cataloguePath)||'{}'),changes=[[active,null]];
+ if(Object.hasOwn(records,routeForDoc(active))){delete records[routeForDoc(active)];changes.push([MEDIA_INDEX,JSON.stringify(records,null,2)+'\n'])}
+ const remaining=docPaths().filter(p=>p!==active).map(p=>get(p)).join('\n');let changed=false;for(const m of (get(active)||'').matchAll(/<KnowledgeVisual\s+id="([a-z0-9-]+)"\s*\/>/g)){if(!remaining.includes('"'+m[1]+'"')&&Object.hasOwn(catalogue,m[1])){delete catalogue[m[1]];changed=true}}
+ if(changed)changes.push([cataloguePath,JSON.stringify(catalogue,null,2)+'\n']);
+ stageMany(changes);select('');status('Đã đánh dấu xóa bài Knowledge Base; có thể Undo.');
+}
+$('duplicate-article').onclick=()=>{try{duplicateArticle()}catch(e){status(e.message)}};
+$('delete-article').onclick=()=>{try{deleteArticle()}catch(e){status(e.message)}};
+$('undo').onclick=()=>{try{flushArticle();applyHistory(history.cursor-1)}catch(e){status(e.message)}};
+$('redo').onclick=()=>applyHistory(history.cursor+1);
+$('restore-revision').onclick=()=>{if(confirm('Khôi phục bản nháp đã chọn?'))applyHistory(Number($('revisions').value))};
 function tab(m){if(m&&!keepCurrent())return;$('content-panel').hidden=m;$('menu-panel').hidden=!m;$('tab-content').setAttribute('aria-pressed',String(!m));$('tab-menu').setAttribute('aria-pressed',String(m))}
 $('tab-content').onclick=()=>tab(false);$('tab-menu').onclick=()=>tab(true);
 function loadMenu(){try{menu=JSON.parse(get(MENU)||'[]');renderMenu()}catch{status('Không đọc được menu JSON')}}
@@ -96,9 +169,9 @@ $('add-menu').onclick=()=>{menu.push({label:'Menu mới',link:'/'});renderMenu()
 $('save-menu').onclick=()=>{stage(MENU,JSON.stringify(menu,null,2)+'\n');status('Đã lưu menu local')};
 $('connect').onclick=()=>action(async()=>{const value=$('token').value.trim();$('token').value='';const r=await request('connect',{token:value});login=r.login;status('Đã kết nối. Nhấn Pull GitHub để tải bản online.')});
 $('disconnect').onclick=()=>action(async()=>{await request('disconnect',{});login=null;status('Đã ngắt kết nối, bản nháp vẫn được giữ.')});
-function unsaved(){return (active&&postIndex<0&&$('editor').value!==(get(active)||''))||(active&&postIndex>=0&&$('editor').value!==JSON.stringify(postList[postIndex],null,2))||JSON.stringify(menu,null,2)+'\n'!==get(MENU)}
-$('pull').onclick=()=>action(async()=>{if(unsaved()&&!confirm('Thay đổi chưa lưu local sẽ bị bỏ. Tiếp tục Pull?'))return;const s=await request('pull',{});status('Đã tải GitHub, giữ các bản nháp không xung đột.');mergeSnapshot(s,'GitHub main')});
-$('sync').onclick=()=>action(async()=>{if(unsaved()){status('Hãy lưu nội dung/menu đang chỉnh trước khi Sync.');return}const refs=(get(POSTS)||'')+'\n'+(get(MEDIA_INDEX)||'');const changes=Object.entries(drafts).filter(([path])=>!assetPath(path)||refs.includes(path.slice('public'.length))).map(([path,d])=>({path,...d}));if(!changes.length){status('Không có thay đổi nội dung hoặc ảnh đã chèn để Sync.');return}if(!confirm('Tạo PR với '+changes.length+' tệp? Không ghi trực tiếp main.'))return;const p=await request('sync',{changes});const link=el('a','PR #'+p.number+' · '+p.sha.slice(0,12));link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';$('pr').replaceChildren(link,document.createTextNode(' — Đã gửi, chờ CI/merge/production. Bản nháp giữ đến khi Pull thấy nội dung đã merge.'));$('pr').hidden=false;status('Đã tạo PR #'+p.number+'; không phải đã triển khai.')});
+function unsaved(){return dirtyArticle()||JSON.stringify(menu,null,2)+'\n'!==get(MENU)}
+$('pull').onclick=()=>action(async()=>{flushArticle();if(unsaved()&&!confirm('Thay đổi chưa lưu local sẽ bị bỏ. Tiếp tục Pull?'))return;const s=await request('pull',{});status('Đã tải GitHub, giữ các bản nháp không xung đột.');mergeSnapshot(s,'GitHub main')});
+$('sync').onclick=()=>action(async()=>{flushArticle();if(unsaved()){status('Hãy lưu nội dung/menu đang chỉnh trước khi Sync.');return}const refs=(get(POSTS)||'')+'\n'+(get(MEDIA_INDEX)||'');const changes=Object.entries(drafts).filter(([path])=>!assetPath(path)||refs.includes(path.slice('public'.length))).map(([path,d])=>({path,...d}));if(!changes.length){status('Không có thay đổi nội dung hoặc ảnh đã chèn để Sync.');return}if(!confirm('Tạo PR với '+changes.length+' tệp? Không ghi trực tiếp main.'))return;const p=await request('sync',{changes});const link=el('a','PR #'+p.number+' · '+p.sha.slice(0,12));link.href=p.url;link.target='_blank';link.rel='noopener noreferrer';$('pr').replaceChildren(link,document.createTextNode(' — Đã gửi, chờ CI/merge/production. Bản nháp giữ đến khi Pull thấy nội dung đã merge.'));$('pr').hidden=false;status('Đã tạo PR #'+p.number+'; không phải đã triển khai.')});
 
 function visualTitle(text){return el('p',text,'eyebrow')}
 const cleanText=value=>String(value??'').replace(/\u00a0/g,' ').replace(/\r?\n/g,' ');
@@ -290,7 +363,7 @@ function renderVisual(){
  if(active===POSTS&&postIndex>=0){
   let post;try{post=JSON.parse($('editor').value)}catch{root.append(el('p','Không thể mở bài viết an toàn.'));return}
   if(!post||!Array.isArray(post.sections)){root.append(el('p','Cấu trúc bài viết chưa hỗ trợ.'));return}
-  const update=()=>{$('editor').value=JSON.stringify(post,null,2)};
+  const update=()=>{$('editor').value=JSON.stringify(post,null,2);scheduleAutosave()};
   root.append(visualTitle('Tech Blog · Soạn trực tiếp'),editable('h1','Tiêu đề',post.title,v=>{post.title=v;update()}),editable('p','Mô tả',post.summary,v=>{post.summary=v;update()}),el('small','Slug: '+post.slug+' · '+post.date));
   if(/^\/media\/editor\/[a-f0-9]{64}\.webp$/.test(post.cover||''))root.append(imageCard({src:post.cover,alt:post.coverAlt,caption:post.coverCaption,width:1600,height:900},()=>{delete post.cover;delete post.coverAlt;delete post.coverCaption;update();renderVisual()},true));
   post.sections.forEach((s,i)=>{
@@ -314,7 +387,7 @@ function renderVisual(){
  const raw=$('editor').value,m=raw.match(/^(---\r?\n)([\s\S]*?)(\r?\n---(?:\r?\n|$))([\s\S]*)$/);
  if(!m){root.append(el('p','Cấu trúc đặc biệt: giữ nguyên nội dung để tránh mất dữ liệu.'));return}
  let front=m[2];let body=m[4];
- const update=()=>{$('editor').value=m[1]+front+m[3]+body};
+ const update=()=>{$('editor').value=m[1]+front+m[3]+body;scheduleAutosave()};
  root.append(visualTitle('Knowledge Base · Soạn trực tiếp'));
  for(const [key,label] of [['title','Tiêu đề'],['description','Mô tả']]){
   const pattern=new RegExp('^'+key+':[ \\t]*([^\\r\\n]*)','m'),line=front.match(pattern);
@@ -429,5 +502,5 @@ $('image-drop').ondragleave=()=>{$('image-drop').classList.remove('drop-target')
 $('image-drop').ondrop=e=>{e.preventDefault();$('image-drop').classList.remove('drop-target');selectedImage=e.dataTransfer.files[0];optimizeImage(selectedImage)};
 
 document.addEventListener('paste',e=>{if(!$('image-preview').closest('details').open)return;const file=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));if(file){e.preventDefault();selectedImage=file;optimizeImage(file)}});
-window.addEventListener('beforeunload',e=>{if(unsaved()){e.preventDefault();e.returnValue=''}});
+window.addEventListener('beforeunload',e=>{try{flushArticle()}catch{}if(unsaved()){e.preventDefault();e.returnValue=''}});
 (async()=>{try{const session=await request('session');nonce=session.nonce;login=session.login;mergeSnapshot(await request('local'),'Checkout local');if(!conflicts.length)status('Sẵn sàng soạn offline.');}catch(e){status(e.message);state()}})();

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {validateMenu,routesFromPaths} from '../src/lib/knowledge-menu.mjs';
 import {checkPositions} from '../src/lib/editor-block-position.mjs';
+import {validateKnowledgeVisuals} from '../src/lib/knowledge-visual-validation.mjs';
 import {validateVisual} from '../src/lib/tech-visual-validation.mjs';
 import {MEDIA_INDEX,mediaPath,validateMedia,validateMediaIndex} from '../src/lib/editor-media.mjs';
 export const MENU='src/data/knowledge-menu.json';
@@ -17,6 +18,7 @@ export function applyChanges(files,changes){
   seen.add(c.path);
   const old=files.get(c.path)??null;
   assert(digest(old)===c.before,'Xung đột nội dung tại '+c.path+'; Pull và đối chiếu trước khi đồng bộ');
+  if(c.content===null){assert(old!==null&&/^src\/content\/docs\/(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)+[a-z0-9]+(?:-[a-z0-9]+)*\.mdx?$/.test(c.path)&&!/(?:\/index|\/ngon-ngu\/hangul|\/lich-su\/joseon|\/van-hoa\/chao-hoi)\.mdx?$/.test(c.path),'Protected deletion');next.delete(c.path);continue}
   assert(typeof c.content==='string'&&c.content.length>0&&Buffer.byteLength(c.content)<=2_000_000,'Nội dung trống hoặc vượt giới hạn');
   if(mediaPath(c.path)){validateMedia(c.path,c.content);assert(old===null||old===c.content,'Cannot overwrite immutable WebP');}
   next.set(c.path,c.content);
@@ -40,7 +42,11 @@ export function applyChanges(files,changes){
   const slug=p.replace(/\.mdx?$/,'');assert(!docs.has(slug),'Trùng tên Markdown/MDX: '+p);docs.add(slug);
   assert(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(v)&&/^title:\s*\S.+/m.test(v)&&/^description:\s*\S.+/m.test(v),'Thiếu title/description: '+p);
  }
+ const pages=[...next].filter(([path])=>path.startsWith('src/content/docs/')).map(([path,content])=>({path,content}));
+ if(next.has(VISUALS))validateKnowledgeVisuals(JSON.parse(next.get(VISUALS)),pages);
  const routes=routesFromPaths(next.keys(),posts);
+ for(const c of changes)if(c.content===null){const route='/'+c.path.slice('src/content/docs/'.length).replace(/\.mdx?$/,'')+'/';assert(!pages.some(p=>p.content.includes(route)),'Article still linked: '+route)}
+
  validateMenu(JSON.parse(next.get(MENU)),routes);
  const knowledgeRoutes=routesFromPaths(next.keys(),[]);knowledgeRoutes.delete('/techblog/');
  const used=validateMediaIndex(JSON.parse(next.get(MEDIA_INDEX)||'{}'),posts,knowledgeRoutes,p=>next.has(p)?validateMedia(p,next.get(p)):null);
@@ -50,7 +56,7 @@ export function applyChanges(files,changes){
 export function reconcile(local,remote,drafts){
  const result={...drafts},conflicts=[];
  for(const [path,d] of Object.entries(drafts)){
-  if(remote[path]?.content===d.content){delete result[path];continue;}
+  if((remote[path]?.content??null)===d.content){delete result[path];continue;}
   const incoming=remote[path]?.hash??null;
   if(incoming!==d.before)conflicts.push(path);
  }

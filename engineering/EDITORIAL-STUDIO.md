@@ -28,3 +28,7 @@ Actual browser editing without source code; local crop/contain and upload/insert
 
 ## E07 candidate — block placement
 - Tech Blog visual blocks and body images have a validated paragraph boundary position; old articles without a position retain their original rendering order. The canvas and static page follow the same position rule. Existing reference sections keep their disclosure behavior. Supported Knowledge MDX can insert new catalogue visual blocks at a selected block boundary without exposing source. Markdown-to-MDX migration and inline Knowledge images remain pending, as does pixel-exact live Astro preview.
+
+## E08–E09 candidate — article lifecycle and local revisions
+- Create, edit, duplicate and explicitly stage deletion for Tech Blog and non-core unlinked Knowledge leaves. Knowledge duplicates keep sibling paths and independent catalogue IDs; linked/protected routes are refused. Server repeats deletion/ref validation, writes only via PR. No automatic deletion of published binary assets.
+- Debounced autosave on the visual canvas and save-before-navigation. Bounded local draft transaction history (up to 20 revisions, normally <=650 KB), Undo/Redo and restore; reset on changed base or conflicts. Image bytes are retained separately in drafts and only synced if referenced. History is best-effort persistent subject to browser storage, not GitHub version rollback. Full rich-text lossless editing and authenticated acceptance remain pending.

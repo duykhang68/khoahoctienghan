@@ -76,13 +76,14 @@ const server=http.createServer(async(req,res)=>{
     const snap=await remote();
     const old=new Map(Object.entries(snap.files).map(([p,v])=>[p,v.content]));
     applyChanges(old,data.changes);
-    const diff=data.changes.filter(c=>old.get(c.path)!==c.content);
+    const diff=data.changes.filter(c=>(old.get(c.path)??null)!==c.content);
     if(!diff.length)throw Error('Không có thay đổi mới');
     const base=(await gh(prefix+'/git/ref/heads/main')).object.sha;
     if(base!==snap.sha)throw Error('Main vừa thay đổi; Pull lại trước khi Sync');
     const entries=[];
     for(const c of diff){
-     if(mediaPath(c.path)){const blob=await gh(prefix+'/git/blobs','POST',{content:c.content,encoding:'base64'});entries.push({path:c.path,mode:'100644',type:'blob',sha:blob.sha})}
+     if(c.content===null)entries.push({path:c.path,mode:'100644',type:'blob',sha:null});
+     else if(mediaPath(c.path)){const blob=await gh(prefix+'/git/blobs','POST',{content:c.content,encoding:'base64'});entries.push({path:c.path,mode:'100644',type:'blob',sha:blob.sha})}
      else entries.push({path:c.path,mode:'100644',type:'blob',content:c.content});
     }
     const tree=await gh(prefix+'/git/trees','POST',{base_tree:snap.tree,tree:entries});
