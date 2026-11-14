@@ -1534,5 +1534,674 @@
         ]
       }
     ]
+  },
+  {
+    "slug": "engineering-intelligence-stack-researcher-auto-fixer",
+    "title": "Engineering Intelligence Stack: Giải phẫu bộ công cụ tự nghiên cứu, tự sửa lỗi và phát hành của blog",
+    "summary": "Nghiên cứu mã nguồn của hệ thống kỹ thuật đứng sau Tri thức Hàn Quốc: Engineering Controller, AI Researcher, Auto Fixer, Smart Retry, kho kinh nghiệm, Branch Sync, Auto Merge, Release Recovery và cổng kiểm chứng production. Vì sao giới hạn quyền tự động hóa lại là nền tảng của một hệ thống thông minh đáng tin cậy?",
+    "date": "2026-11-14T19:37:14+07:00",
+    "issues": [
+      2,
+      3,
+      66,
+      69,
+      71
+    ],
+    "sections": [
+      {
+        "heading": "01 — Một website tĩnh có hệ thần kinh kỹ thuật",
+        "paragraphs": [
+          "Người đọc thấy một blog chạy bằng Astro và Starlight. Phía sau là hệ thống phát triển hướng sự kiện: GitHub Actions kiểm thử thay đổi, một bộ điều phối tiếp nhận tín hiệu, các quy tắc phân loại lỗi, một bộ sửa lỗi đã biết, một agent nghiên cứu và các cổng phát hành. Tên Engineering Intelligence Stack trong bài là cách gọi tổng thể kiến trúc, không phải tên một sản phẩm độc lập hay một dịch vụ AI mới được cài đặt.",
+          "Bài viết này tiếp nối Engineering Researcher: Bộ não phía sau hệ thống CI/CD tự phục hồi, nhưng đi sâu vào toàn bộ các thành phần và hợp đồng giữa chúng theo mã nguồn main khảo sát ngày 14/11/2026. Điểm quan trọng nhất là bộ điều phối JavaScript không phải LLM; AI Researcher là lớp nghiên cứu được vận hành riêng theo lịch. Chúng ta không tuyên bố hệ thống tự chữa được mọi lỗi hoặc đang chạy một mô hình AI thường trực trong runner."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Kiến trúc tổng thể",
+            "caption": "Sơ đồ khái niệm từ ba workflow và các module kỹ thuật hiện hành; các nhánh quyết định được diễn giải ở phần sau.",
+            "items": [
+              {
+                "label": "01 · GitHub Events",
+                "detail": "PR, push main, kết quả CI/CD, lịch dự phòng",
+                "icon": "pull"
+              },
+              {
+                "label": "02 · Engineering Controller",
+                "detail": "Điều phối, thu chứng cứ, phân loại",
+                "icon": "file"
+              },
+              {
+                "label": "03 · Fixer / Researcher",
+                "detail": "Phép sửa đã biết hoặc nghiên cứu nguyên nhân mới",
+                "icon": "shield"
+              },
+              {
+                "label": "04 · GitHub Rules + CI",
+                "detail": "Tích hợp đúng HEAD, kiểm tra chất lượng",
+                "icon": "merge"
+              },
+              {
+                "label": "05 · Release + Verify",
+                "detail": "Artifact tin cậy, GitHub Pages, exact SHA",
+                "icon": "cloud"
+              },
+              {
+                "label": "06 · Engineering Knowledge",
+                "detail": "Issue, regression, lesson và bài hồi cứu",
+                "icon": "check"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Bản đồ mã nguồn và vai trò; AI Researcher là tác vụ bên ngoài repo.",
+            "columns": [
+              "Thành phần",
+              "Vị trí",
+              "Trách nhiệm"
+            ],
+            "rows": [
+              [
+                "Controller",
+                "scripts/engineering-controller.mjs",
+                "Điều phối sự kiện và trạng thái"
+              ],
+              [
+                "Policy + Auto Fixer",
+                "scripts/engineering-policy.mjs",
+                "Phân loại, phép sửa hẹp, retry"
+              ],
+              [
+                "Branch Auth",
+                "scripts/branch-auth.mjs",
+                "Token và native PR CI"
+              ],
+              [
+                "Release Recovery",
+                "scripts/release-recovery.mjs",
+                "Khôi phục handoff bị thiếu"
+              ],
+              [
+                "Incident Publisher",
+                "scripts/incident-publication.mjs",
+                "Điều kiện hồi cứu"
+              ],
+              [
+                "Researcher",
+                "Tác vụ AI định kỳ",
+                "Nghiên cứu, đề xuất bản vá"
+              ],
+              [
+                "Knowledge",
+                "engineering/lessons/",
+                "Tri thức và hồi quy"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — Event-driven Controller: trung tâm điều phối, không phải chatbot",
+        "paragraphs": [
+          "Workflow Engineering · Learn and Reconcile nhận push trên main, kết quả hoàn thành CI/CD, các sự kiện mở hoặc đưa PR về trạng thái sẵn sàng, issue đóng, dispatch thủ công và lịch cron phút 32 mỗi 6 giờ theo UTC. Bản thân job cũng có điều kiện lọc trước khi cấp runner: bỏ qua các run không thuộc repository, CD thành công và CI bị hủy; đối với workflow_run, nhận CI thành công hoặc CI/CD thất bại. Concurrency group engineering-reconciliation không hủy run đang thực thi, nhưng không nên hiểu đây là hàng đợi lưu mọi sự kiện vô hạn.",
+          "Mã điều phối chạy từ main đáng tin cậy, không checkout và thực thi mã từ PR chưa được tin cậy trong workflow có quyền ghi. Nó đọc run, log lỗi nếu truy cập được và thông tin job; nội dung log chỉ là dữ liệu không đáng tin, không được dùng làm câu lệnh. Issue tự động dùng marker theo run ID hoặc theo cặp PR và HEAD để tránh trùng trong từng đơn vị đó. Đây chưa phải cơ chế nhận diện một nguyên nhân duy nhất xuyên qua tất cả các run.",
+          "Researcher định kỳ được giao việc nghiên cứu bổ sung; khác với lịch reconciliation sáu giờ của workflow. Việc CI phát hiện lỗi không tự chứng minh rằng AI được gọi ngay lập tức. Tách hai tầng giúp phần lớn hành động phổ biến không cần gọi mô hình ngôn ngữ."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Từ tín hiệu đến hồ sơ sự cố",
+            "caption": "Luồng phát hiện dựa trên engineering.yml và controller.",
+            "items": [
+              {
+                "label": "Sự kiện GitHub",
+                "detail": "Kiểm tra loại event và nguồn repository",
+                "icon": "pull"
+              },
+              {
+                "label": "Admission gate",
+                "detail": "Chỉ xử lý kết quả phù hợp",
+                "icon": "shield"
+              },
+              {
+                "label": "Trusted main",
+                "detail": "Tải controller từ main",
+                "icon": "file"
+              },
+              {
+                "label": "Phân loại",
+                "detail": "Run, job, log, SHA",
+                "icon": "check"
+              },
+              {
+                "label": "Incident dedup",
+                "detail": "Marker định danh, không chép log thô",
+                "icon": "file"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — Classifier: sáu kết quả, sáu ý nghĩa",
+        "paragraphs": [
+          "Hàm classify là bộ quyết định xác định trước. Nó không phân tích mọi lỗi bằng AI mà dùng metadata và chữ ký lỗi cụ thể. Một run không thất bại trả IGNORE; trường hợp release cũ bị từ chối theo dấu hiệu legacy trả SUPERSEDED. Hai chuỗi đặc trưng lỗi schema Starlight phải đồng thời xuất hiện để nhận STARLIGHT_SIDEBAR. Lỗi protection môi trường trả ENVIRONMENT_BLOCKED. Các dấu hiệu mạng, DNS hoặc runner mất liên lạc có thể trả TRANSIENT nếu không kèm một số dấu hiệu lỗi xác định. Phần còn lại là UNKNOWN.",
+          "Sáu kết quả dưới đây là các giá trị trong mã nguồn, không phải số lượng sự cố thực tế. Conflict được phát hiện riêng qua branchSyncDecision, không phải một giá trị trả về của classify. Việc phân loại bằng biểu thức chính quy có thể bỏ sót hoặc phân loại nhầm; UNKNOWN là lựa chọn an toàn hơn khi không đủ bằng chứng."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Danh mục kết quả của classify và hành vi tương ứng; không dùng như thống kê tần suất.",
+            "columns": [
+              "Kết quả",
+              "Điều kiện khái quát",
+              "Hành vi"
+            ],
+            "rows": [
+              [
+                "IGNORE",
+                "Không phải failure",
+                "Không xử lý như lỗi"
+              ],
+              [
+                "SUPERSEDED",
+                "Release legacy đã lỗi thời",
+                "Không mở bug incident"
+              ],
+              [
+                "STARLIGHT_SIDEBAR",
+                "Hai dấu hiệu schema đã biết",
+                "Xét điều kiện fixer"
+              ],
+              [
+                "ENVIRONMENT_BLOCKED",
+                "Protection môi trường",
+                "Không tự retry"
+              ],
+              [
+                "TRANSIENT",
+                "Dấu hiệu tạm thời phù hợp",
+                "Retry có giới hạn"
+              ],
+              [
+                "UNKNOWN",
+                "Chưa nhận diện được",
+                "Điều tra; không vá mù"
+              ]
+            ]
+          },
+          {
+            "kind": "swatches",
+            "caption": "Màu minh họa quyết định trong bài, không phải bảng màu dashboard hiện hành.",
+            "items": [
+              {
+                "label": "Đã xác minh",
+                "color": "#16835D",
+                "detail": "Evidence hợp lệ"
+              },
+              {
+                "label": "Chờ xử lý",
+                "color": "#2563EB",
+                "detail": "Điều tra / CI mới"
+              },
+              {
+                "label": "Lỗi tạm thời",
+                "color": "#D97706",
+                "detail": "Xét retry"
+              },
+              {
+                "label": "Bị chặn",
+                "color": "#DC2626",
+                "detail": "Thiếu điều kiện"
+              },
+              {
+                "label": "Đã bị thay thế",
+                "color": "#64748B",
+                "detail": "Không coi là lỗi mới"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Auto Fixer: một phép sửa hẹp, không phải AI viết lại repository",
+        "paragraphs": [
+          "Ở snapshot này chỉ có một phép sửa tự động cụ thể trong controller: migration nhóm sidebar Starlight. Issue #2 mô tả Starlight từ phiên bản 0.39 loại bỏ cú pháp nhóm autogenerate cũ. Cấu hình mới phải đặt autogenerate trong mảng items của nhóm. Hàm migrateSidebar chỉ thay một mẫu văn bản hẹp có tên thư mục chữ thường, chữ số hoặc dấu gạch ngang và collapsed: true; những hình thức cú pháp khác có thể không khớp và cần nghiên cứu riêng.",
+          "Controller chỉ xét fixer nếu run lỗi đúng loại CI, SHA trùng HEAD của PR trusted, có token GitHub App chuyên dụng và danh sách file không có thay đổi nhạy cảm ngoài ngoại lệ cấu hình được phép. Sau khi đọc nội dung tại HEAD, nó chỉ tạo commit nếu phép thay thế thực sự đổi nội dung và ref vẫn đúng SHA; cập nhật nhánh không force. CI native của HEAD mới phải chạy lại. Không có token hoặc bản vá không khớp thì không ép sửa.",
+          "Regression test xác nhận phép biến đổi hẹp, không thay đổi nội dung không liên quan và có tính idempotent: áp dụng lần nữa không làm biến đổi kết quả. Issue #2 đã ghi CI xanh tại 5d305dc75c604e26cbb832cf6b12e07ac19ce216 (run 43571412647), nhưng đó là bằng chứng CI của bản sửa, không chứng minh nó do Auto Fixer tạo hoặc đã lên production. File lesson vẫn ghi candidate pending; hai hồ sơ chưa đồng bộ nên phải phân biệt mức bằng chứng."
+        ],
+        "visuals": [
+          {
+            "kind": "code",
+            "language": "javascript",
+            "caption": "Ví dụ cấu hình cũ gây lỗi, được giản lược theo mẫu fixer thực tế.",
+            "code": "{ label: 'Ngôn ngữ', autogenerate: { directory: 'ngon-ngu' }, collapsed: true }"
+          },
+          {
+            "kind": "code",
+            "language": "javascript",
+            "caption": "Cấu hình mới theo schema Starlight; ví dụ minh họa, không phải diff của một lần chạy.",
+            "code": "{\n  label: 'Ngôn ngữ',\n  collapsed: true,\n  items: [{ autogenerate: { directory: 'ngon-ngu' } }]\n}"
+          },
+          {
+            "kind": "flow",
+            "title": "Hàng rào an toàn của Auto Fixer",
+            "caption": "Điều kiện quan trọng trong controller; nếu không đạt, không tự động ghi bản vá.",
+            "items": [
+              {
+                "label": "Đúng chữ ký STARLIGHT_SIDEBAR",
+                "detail": "Hai dấu hiệu cấu hình phải khớp",
+                "icon": "file"
+              },
+              {
+                "label": "Đúng PR và exact HEAD",
+                "detail": "Nhánh owner cùng repository, không draft",
+                "icon": "pull"
+              },
+              {
+                "label": "Đúng phạm vi và App token",
+                "detail": "Không sửa hạ tầng ngoài phạm vi phép sửa",
+                "icon": "shield"
+              },
+              {
+                "label": "Tạo commit tối thiểu",
+                "detail": "Không force push; HEAD chưa đổi",
+                "icon": "merge"
+              },
+              {
+                "label": "Native PR CI",
+                "detail": "Xác minh phiên bản mới trước merge",
+                "icon": "check"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "05 — Smart Retry: biết khi nào không nên chạy lại",
+        "paragraphs": [
+          "canRetry chỉ cho TRANSIENT khi công việc còn hiện hành và run_attempt nhỏ hơn 3. Điều này nghĩa là tối đa ba lượt tổng cộng, bao gồm lượt đầu, tức tối đa hai lần retry tự động nếu các điều kiện tiếp tục thỏa mãn. Controller gọi rerun-failed-jobs chứ không mặc định chạy lại toàn bộ workflow. UNKNOWN, ENVIRONMENT_BLOCKED và conflict không thuộc quy tắc retry tự động này.",
+          "Nếu mạng tạm thời gián đoạn, một lần chạy lại có thể đủ. Nếu một assertion Playwright liên tục thất bại, thực thi lại không thay thế việc nghiên cứu nguyên nhân. Issue #71 là ví dụ: Astro build xanh, bước E2E đỏ, nhưng chưa đủ chứng cứ xác định lỗi chương trình hay test. Retry mù làm tăng chi phí mà không chứng minh chất lượng."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "variant": "summary",
+            "title": "Ngân sách Smart Retry",
+            "caption": "Giới hạn được mã hóa, không phải số lượt đã thực hiện hay tỷ lệ sửa thành công.",
+            "unit": "lượt",
+            "source": "canRetry trong scripts/engineering-policy.mjs, khảo sát 14/11/2026",
+            "items": [
+              {
+                "label": "Lần chạy ban đầu",
+                "value": "1",
+                "color": "#2563EB"
+              },
+              {
+                "label": "Retry có điều kiện tối đa",
+                "value": "2",
+                "color": "#D97706"
+              }
+            ]
+          },
+          {
+            "kind": "flow",
+            "title": "Ví dụ khi lỗi tạm thời tái diễn",
+            "caption": "Kịch bản giả định đủ ba lượt; không phải lịch sử workflow thật.",
+            "items": [
+              {
+                "label": "Lượt 1",
+                "detail": "TRANSIENT, công việc còn hiện hành"
+              },
+              {
+                "label": "Lượt 2",
+                "detail": "Chỉ retry nếu vẫn hợp lệ"
+              },
+              {
+                "label": "Lượt 3",
+                "detail": "Lượt cuối trong ngân sách tự động"
+              },
+              {
+                "label": "Dừng",
+                "detail": "Nếu vẫn lỗi, chuyển điều tra thay vì retry vô hạn"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "06 — Engineering Researcher: trí thông minh dựa trên chứng cứ",
+        "paragraphs": [
+          "Researcher xử lý phần quy tắc không giải quyết được: lỗi lạ, xung đột ngữ nghĩa, tương thích dependency và hồ sơ chưa đủ thông tin. Quy trình được mô tả trong AGENTS.md: đọc engineering/lessons trước; kiểm tra run/job/PR và SHA; nghiên cứu tài liệu chính thức đúng phiên bản; tái hiện; đề xuất bản vá nhỏ nhất; bổ sung regression; xác minh và ghi bằng chứng. Đây là hợp đồng hành vi, không phải bảo đảm AI luôn tìm ra nguyên nhân hay tự triển khai thành công.",
+          "Tại Issue #66 và #69, controller ghi nhận conflict với PR và HEAD. Researcher cần hiểu ý định của cả hai nhánh, không chọn toàn bộ ours/theirs. Tại Issue #71, nó cần tìm assertion thất bại và đối chiếu thay đổi giao diện. Với Issue #3 về môi trường GitHub Pages, cách xử lý thuộc quyền cấu hình hạ tầng; không tự hạ protection. Thiếu bằng chứng hoặc quyền là một lý do hợp lệ để báo BLOCKED.",
+          "Researcher có thể đề xuất hoặc tạo patch/PR khi được phép, nhưng không phải một dịch vụ tự huấn luyện. Trí nhớ kỹ thuật là các lesson, issue, regression và mã đã review. Không có bằng chứng trong controller rằng nó tự phát sinh các fixer mới từ log hoặc gọi LLM sau mỗi run. Một phép sửa mới muốn trở thành known fixer phải qua thiết kế có phạm vi rõ, kiểm thử, review và quy trình merge."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "variant": "cycle",
+            "title": "Vòng lặp của Engineering Researcher",
+            "centerLabel": [
+              "Engineering",
+              "Researcher"
+            ],
+            "caption": "Quy trình nghiên cứu theo hợp đồng kỹ thuật; kết quả không được coi là verified trước khi đủ chứng cứ.",
+            "items": [
+              {
+                "label": "Phát hiện",
+                "detail": "Run, job, PR, exact SHA"
+              },
+              {
+                "label": "Nghiên cứu",
+                "detail": "Tài liệu và tái hiện"
+              },
+              {
+                "label": "Sửa lỗi",
+                "detail": "Bản vá tối thiểu"
+              },
+              {
+                "label": "Xác minh",
+                "detail": "Regression và CI"
+              },
+              {
+                "label": "Ghi nhớ",
+                "detail": "Issue và lesson"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Phân biệt Auto Fixer và AI Researcher.",
+            "columns": [
+              "Tiêu chí",
+              "Auto Fixer",
+              "Researcher"
+            ],
+            "rows": [
+              [
+                "Cơ chế",
+                "Quy tắc, phép biến đổi xác định",
+                "Suy luận và nghiên cứu"
+              ],
+              [
+                "Mức tự do",
+                "Chữ ký đã biết, phạm vi hẹp",
+                "Lỗi mới, cần phân tích"
+              ],
+              [
+                "Tác nhân",
+                "Controller trong GitHub Actions",
+                "Agent AI định kỳ"
+              ],
+              [
+                "Điều kiện dừng",
+                "Không khớp, thiếu quyền, đổi HEAD",
+                "Thiếu bằng chứng hoặc quyền"
+              ],
+              [
+                "Kiểm chứng",
+                "Native CI của SHA mới",
+                "Regression, CI và production nếu cần"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "07 — Branch Sync, Auto Label và Auto Merge không phải một quyền duy nhất",
+        "paragraphs": [
+          "Controller bổ sung label dựa trên tiêu đề, nhánh và file thay đổi, giữ label thủ công. Label chỉ là metadata, không cấp quyền merge. Đối với PR của owner cùng repo, nhánh có prefix được phép và không draft, bộ đồng bộ kiểm tra quan hệ với main. Nếu behind và GitHub xác nhận mergeable, nó yêu cầu update-branch với expected_head_sha, sử dụng App token; HTTP 202 chỉ xác nhận nhận yêu cầu. Controller không polling vô hạn HEAD cũ mà chờ CI native trên HEAD mới. Nếu conflict, mở incident và chuyển nghiên cứu.",
+          "Dependabot có nhánh xử lý riêng: chỉ yêu cầu rebase bằng comment với marker chống trùng đối với PR phù hợp đã được bật auto-merge; không ghi commit lên nhánh Dependabot và không tự cấp quyền merge. Với PR owner, controller kiểm tra exact native pull_request CI, trạng thái base hiện hành, job pass và ruleset strict có expected integration. Khi đủ điều kiện, nó gọi squash merge kèm match-head-commit. Mỗi vòng merge tối đa một PR thành công rồi dispatch CI cho main mới.",
+          "Workflow, automation, policy, dependency, cấu hình và phần lớn thay đổi test vẫn là vùng nhạy cảm cần review riêng. Có ngoại lệ hẹp cho regression browser spec thêm/sửa đi cùng source UI/UX hợp lệ. Không được hiểu việc có auto-merge đồng nghĩa mọi PR đều được duyệt. Native GitHub Rulesets mới là lớp thực thi các điều kiện nền tảng."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "PR từ lúc chưa đồng bộ đến khi đủ điều kiện",
+            "caption": "Luồng tổng hợp cho PR owner đủ điều kiện, trong trường hợp không conflict.",
+            "items": [
+              {
+                "label": "Nhận PR",
+                "detail": "Gắn label mô tả và kiểm tra owner",
+                "icon": "pull"
+              },
+              {
+                "label": "Đồng bộ với main",
+                "detail": "Expected HEAD, App token nếu cần",
+                "icon": "merge"
+              },
+              {
+                "label": "Native PR CI",
+                "detail": "Kết quả trên exact HEAD",
+                "icon": "shield"
+              },
+              {
+                "label": "Review + Ruleset",
+                "detail": "Tách vùng nhạy cảm; strict required check",
+                "icon": "check"
+              },
+              {
+                "label": "Squash Merge",
+                "detail": "Match HEAD; main mới chạy CI",
+                "icon": "merge"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Đồng bộ không đồng nghĩa phê duyệt merge.",
+            "columns": [
+              "Trạng thái",
+              "Ý nghĩa",
+              "Xử lý"
+            ],
+            "rows": [
+              [
+                "UPDATE",
+                "Nhánh behind và mergeable",
+                "Yêu cầu cập nhật"
+              ],
+              [
+                "CONFLICT",
+                "GitHub báo không mergeable",
+                "Tạo incident, nghiên cứu"
+              ],
+              [
+                "CURRENT",
+                "Nhánh ahead hợp lệ",
+                "Tìm native CI"
+              ],
+              [
+                "UNKNOWN / NO_CHANGES",
+                "Thiếu dữ liệu hoặc không có thay đổi phù hợp",
+                "Chờ hoặc không merge"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "08 — Quality Gate, Release Recovery và Production Verifier",
+        "paragraphs": [
+          "CI P0 · Knowledge Base CI chạy dependency từ lockfile bằng npm ci, security check, kiểm tra nội dung, engineering regression, Astro build, kiểm tra build tĩnh, cài Chromium headless shell và Playwright E2E. CI thông thường có quyền contents: read; job handoff riêng có quyền actions: write khi dispatch trên main. Chỉ CI main không phải PR tạo artifact knowledge-base-release có release-sha.json. Không đưa artifact từ PR chưa tin cậy sang deployment đặc quyền.",
+          "Controller khôi phục CI còn thiếu của main; khi CI main thành công nhưng thiếu CD, release-recovery kiểm tra run đúng SHA, job thành công, artifact chưa hết hạn và main còn hiện hành. Có thời gian ân hạn 60 giây sau CI; nếu CD đang chạy, đã có run thành công, hoặc có run lỗi/hủy vẫn cần xử lý thì không dispatch bừa. Đây là cơ chế recovery khi thiếu trigger, không phải một vòng retry CD thất bại. Trạng thái EXISTS của quyết định recovery cho biết có CD run success, không tự chứng minh production đang phục vụ SHA đó.",
+          "CD chọn SHA current main có CI hợp lệ, tải đúng artifact, kiểm marker và không chấp nhận symlink trong dist. Trước deploy kiểm lại main; SHA đã lỗi thời trở thành SUPERSEDED. Job deploy có quyền Pages và OIDC riêng. Job verify kiểm release-sha.json công khai và ba route root, Hangul, Tech Blog; tối đa 12 lượt kiểm tra marker trong loop với sleep 5 giây, mỗi request có timeout riêng. Đây là kiểm chứng nhận dạng bản phát hành và khả dụng của route mẫu, không thay cho mọi kiểm thử hành vi hay screenshot của từng bài."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Chuỗi phát hành có nguồn gốc rõ ràng",
+            "caption": "Luồng CD thành công khi main vẫn hiện hành; không phải trạng thái production tại thời điểm viết.",
+            "items": [
+              {
+                "label": "CI trên main",
+                "detail": "Security, content, engineering, build, E2E",
+                "icon": "shield"
+              },
+              {
+                "label": "Artifact đã kiểm thử",
+                "detail": "dist + release-sha.json",
+                "icon": "file"
+              },
+              {
+                "label": "Release prepare",
+                "detail": "Đối chiếu run, job, artifact, exact SHA",
+                "icon": "check"
+              },
+              {
+                "label": "Deploy GitHub Pages",
+                "detail": "Kiểm lại main trước deployment",
+                "icon": "cloud"
+              },
+              {
+                "label": "Production verify",
+                "detail": "Marker và route công khai",
+                "icon": "check"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "caption": "Các quyết định của releaseRecoveryDecision trong mã hiện hành.",
+            "columns": [
+              "Kết quả",
+              "Điều kiện khái quát"
+            ],
+            "rows": [
+              [
+                "WAITING_CI",
+                "Chưa có CI main phù hợp"
+              ],
+              [
+                "ACTIVE",
+                "CD cùng SHA chưa kết thúc"
+              ],
+              [
+                "EXISTS",
+                "Đã có CD run success"
+              ],
+              [
+                "BLOCKED",
+                "Có CD kết thúc lỗi/hủy hoặc trạng thái cần điều tra"
+              ],
+              [
+                "GRACE",
+                "Chưa qua 60 giây hoặc thiếu timestamp hợp lệ"
+              ],
+              [
+                "MISSING",
+                "Chưa có CD đủ điều kiện; xét recovery dispatch"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "09 — Hệ thống học bằng tri thức lưu trữ, không phải tự đào tạo mô hình",
+        "paragraphs": [
+          "Engineering/lessons giữ bài học kỹ thuật có nguồn gốc, điều kiện tái hiện, cách sửa, regression và SHA xác minh. Bộ regression trong tests/engineering.test.mjs kiểm tra stale release, giới hạn retry, idempotency của migration, native guard, branch auth, bảo mật, label, incident publication và recovery. Các quy tắc phải được kiểm tra khi thay đổi hệ thống.",
+          "Một điểm nâng cấp so với bài Researcher xuất bản trước là cơ chế xuất bản. Mã hiện tại yêu cầu issue engineering thuộc nguồn tin cậy, đóng với lý do completed, marker verified-sha đúng dạng, link run trong cùng repo, run CI/CD success trên exact SHA, không có marker duplicate hoặc unverified và chưa có bài hoặc PR tương ứng. Controller chỉ tạo issue ứng viên [Tech Blog] Bugfix retrospective; Researcher phải đối chiếu nguyên nhân, lesson, tài liệu, regression, production khi có liên quan và soạn bài qua PR. Quy tắc hiện hành là một incident đã xác minh, một bài độc lập, không gom năm incident như phiên bản cũ. Bài này là nghiên cứu hệ thống, không phải một bản hồi cứu tự sinh.",
+          "Cần phân biệt tính xác thực của bằng chứng CI với kiểm chứng độc lập chất lượng nội dung. Kiểm tra marker là điều kiện kỹ thuật, không bảo đảm mọi lời mô tả issue là đúng. Việc deduplicate hiện dựa trên slug, nhánh PR quy ước và marker queue, nên chưa thay thế review nội dung."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "title": "Từ lỗi đến bài viết kỹ thuật",
+            "caption": "Quy trình incident publication hiện hành, không phải lệnh xuất bản vô điều kiện.",
+            "items": [
+              {
+                "label": "Issue completed",
+                "detail": "Nguồn tin cậy; incident hợp lệ",
+                "icon": "file"
+              },
+              {
+                "label": "Verified SHA + Run",
+                "detail": "CI/CD success khớp chính xác",
+                "icon": "check"
+              },
+              {
+                "label": "Kiểm tra trùng",
+                "detail": "Slug, nhánh PR, marker ứng viên",
+                "icon": "shield"
+              },
+              {
+                "label": "Researcher viết bài",
+                "detail": "Root cause, fix, regression, tài liệu",
+                "icon": "file"
+              },
+              {
+                "label": "Content PR và CI/CD",
+                "detail": "Một lỗi, một bài; không bỏ gate",
+                "icon": "cloud"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "10 — Đánh giá trưởng thành: đã có gì và còn thiếu gì?",
+        "paragraphs": [
+          "Hiện có thể đọc mã nguồn của classifier, fixer hẹp, retry, branch synchronization, merge guard, release recovery, incident publication và các regression. Chưa có đủ dữ liệu trong phạm vi nghiên cứu để công bố tỷ lệ tự sửa thành công, thời gian phát hiện trung bình, mức giảm chi phí hoặc số giờ tiết kiệm; không nên tạo biểu đồ phần trăm giả. Cũng chưa thực hiện một cuộc audit live mọi quyền, ruleset, trạng thái App và mọi workflow của hệ thống.",
+          "Hướng cải thiện đề xuất: phân loại lỗi E2E tốt hơn bằng signature đã lọc và test name; gom fingerprint root cause qua nhiều run; chuẩn hóa lesson status với issue evidence; đo số lần retry hữu ích, số lỗi tái diễn và thời gian từ phát hiện đến xác minh. Mỗi fixer mới nên có positive test, negative test, idempotency, giới hạn file, kiểm tra SHA và đường thoát an toàn. Các bước này là đề xuất nghiên cứu, không phải tính năng đã triển khai trong bài.",
+          "Sức mạnh thực sự của hệ thống không phải quyền tự động sửa bất kỳ thứ gì. Đó là khả năng nhận ra khi nào biết đủ để hành động, khi nào cần tìm hiểu thêm, và khi nào phải dừng để giữ an toàn cho người đọc."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Đề xuất đo lường trong tương lai; chưa có số liệu đo trong bài.",
+            "columns": [
+              "Chỉ số",
+              "Cách đo"
+            ],
+            "rows": [
+              [
+                "Time to triage",
+                "Từ run failure đến issue phân loại"
+              ],
+              [
+                "Time to verified fix",
+                "Từ phát hiện đến evidence SHA hợp lệ"
+              ],
+              [
+                "Known-fixer precision",
+                "Số bản vá hợp lệ trên số lần fixer áp dụng"
+              ],
+              [
+                "Retry usefulness",
+                "Lượt retry phục hồi trên tổng retry"
+              ],
+              [
+                "Recurrence",
+                "Sự cố cùng root cause tái diễn"
+              ],
+              [
+                "False closure",
+                "Incident đóng khi thiếu bằng chứng"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Tài liệu và mã nguồn tham khảo",
+        "paragraphs": [
+          "Engineering Controller: https://github.com/duykhang68/khoahoctienghan/blob/main/scripts/engineering-controller.mjs",
+          "Engineering Policy: https://github.com/duykhang68/khoahoctienghan/blob/main/scripts/engineering-policy.mjs",
+          "Branch Auth: https://github.com/duykhang68/khoahoctienghan/blob/main/scripts/branch-auth.mjs",
+          "Release Recovery: https://github.com/duykhang68/khoahoctienghan/blob/main/scripts/release-recovery.mjs",
+          "Incident Publication: https://github.com/duykhang68/khoahoctienghan/blob/main/scripts/incident-publication.mjs",
+          "Engineering tests: https://github.com/duykhang68/khoahoctienghan/blob/main/tests/engineering.test.mjs",
+          "Engineering workflow: https://github.com/duykhang68/khoahoctienghan/blob/main/.github/workflows/engineering.yml",
+          "CI workflow: https://github.com/duykhang68/khoahoctienghan/blob/main/.github/workflows/ci.yml",
+          "CD workflow: https://github.com/duykhang68/khoahoctienghan/blob/main/.github/workflows/release.yml",
+          "Engineering contract: https://github.com/duykhang68/khoahoctienghan/blob/main/AGENTS.md",
+          "Engineering lessons: https://github.com/duykhang68/khoahoctienghan/tree/main/engineering/lessons",
+          "GitHub Docs — GITHUB_TOKEN: https://docs.github.com/en/actions/concepts/security/github_token",
+          "GitHub Docs — Rulesets: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+          "Starlight — Configuration reference: https://starlight.astro.build/reference/configuration/",
+          "Bài nghiên cứu trước: https://duykhang68.github.io/khoahoctienghan/techblog/engineering-researcher-bo-nao-cua-self-healing-ci-cd/"
+        ]
+      }
+    ]
   }
 ]
