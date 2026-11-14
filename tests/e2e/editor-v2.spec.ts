@@ -1,0 +1,24 @@
+import {test,expect} from '@playwright/test';
+test('independent online editor composes, previews, saves local draft and gates publishing',async({page})=>{
+ await page.goto('./techblog/editorv2/');
+ await expect(page.getByRole('heading',{name:'Editor V2.'})).toBeVisible();
+ await page.getByRole('textbox',{name:'Tiêu đề',exact:true}).fill('Bản thử Editor V2');
+ await page.getByRole('textbox',{name:'Đoạn văn 1'}).fill('Nội dung trực quan tiếng Việt');
+ await page.getByRole('button',{name:'Tiêu đề',exact:true}).click();
+ await page.getByRole('textbox',{name:'Tiêu đề H2 2'}).fill('Phần tiếp theo');
+ await page.getByLabel('Nơi xuất bản').selectOption('knowledge');
+ await page.getByLabel('Chuyên mục',{exact:true}).selectOption('ngon-ngu');
+ await page.getByLabel('Nhãn',{exact:true}).fill('TOPIK, Hangul');
+ await page.getByLabel('Bài thuộc Series').check();
+ await page.getByLabel('Tên Series').fill('Học tiếng Hàn');
+ await expect(page.locator('[data-route]')).toContainText('/ngon-ngu/ban-thu-editor-v2/');
+ await page.getByRole('button',{name:'Xem trước',exact:true}).click();
+ await expect(page.locator('[data-preview-body]')).toContainText('Nội dung trực quan tiếng Việt');
+ await expect(page.locator('[data-preview-body] h2')).toHaveText('Phần tiếp theo');
+ await expect(page.getByRole('button',{name:'Gửi bài → Draft PR'})).toBeDisabled();
+ await expect(page.locator('[data-save-status]')).toContainText('Đã lưu');
+ await page.reload();
+ await expect(page.getByRole('textbox',{name:'Tiêu đề',exact:true})).toHaveValue('Bản thử Editor V2');
+ await expect(page.getByLabel('Tên Series')).toHaveValue('Học tiếng Hàn');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+});
