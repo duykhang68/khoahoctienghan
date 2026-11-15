@@ -1,26 +1,19 @@
-import {courseLevels} from '../course/common.mjs';
-import {curriculumId,validateCurriculum,validateLessonBlocks,validateQuizQuestions} from '../course/validation.mjs';
+import {calculateCourseMetrics,buildCourseWorkspace} from '../../core/course/dashboard-selectors.mjs';
+import {validateCurriculum,validateLessonBlocks,validateQuizQuestions} from '../course/validation.mjs';
 
 // P2.1: read-only course overview. Missing storage is not an empty catalogue.
 export async function courseOverview(env){
  if(!env.COURSE_DB||typeof env.COURSE_DB.prepare!=='function')return {status:'unconfigured'};
  try{
   const row=await env.COURSE_DB.prepare("SELECT COUNT(*) AS total, COUNT(CASE WHEN status='draft' THEN 1 END) AS drafts, COUNT(CASE WHEN status='ready' THEN 1 END) AS ready, COUNT(CASE WHEN status='archived' THEN 1 END) AS archived FROM courses").first();
-  if(!row||!['total','drafts','ready','archived'].every(k=>Number.isSafeInteger(row[k])&&row[k]>=0)||row.total!==row.drafts+row.ready+row.archived)throw Error('invalid counts');
-  return {status:'ready',total:row.total,drafts:row.drafts,ready:row.ready,archived:row.archived};
+  return calculateCourseMetrics(row);
  }catch{return {status:'unavailable'};}
 }
 // Bounded, read-only workspace: no course content or media credentials are returned to the browser.
 async function courseWorkspace(env){
  try{
   const rows=(await env.COURSE_DB.prepare("SELECT c.id,c.title,c.slug,c.level,c.status,c.updated_at,k.structure, (SELECT count(*) FROM json_each(k.structure) ch,json_each(ch.value,'$.lessons') l JOIN course_lesson_documents d ON d.course_id=c.id AND d.lesson_id=json_extract(l.value,'$.id') WHERE json_array_length(d.document)>0) AS authored, (SELECT count(*) FROM json_each(k.structure) ch,json_each(ch.value,'$.lessons') l JOIN course_lesson_quizzes q ON q.course_id=c.id AND q.lesson_id=json_extract(l.value,'$.id') WHERE json_array_length(q.document)>0) AS quizzes, (SELECT count(*) FROM course_lesson_media m WHERE m.course_id=c.id) AS media FROM courses c LEFT JOIN course_curricula k ON k.course_id=c.id ORDER BY c.updated_at DESC,c.id LIMIT 24").all()).results;
-  if(!Array.isArray(rows)||rows.length>24)throw Error('invalid workspace');
-  return {status:'ready',rows:rows.map(c=>{
-   if(!curriculumId.test(c.id)||!['draft','ready','archived'].includes(c.status)||!courseLevels.includes(c.level)||!['authored','quizzes','media'].every(k=>Number.isSafeInteger(c[k])&&c[k]>=0))throw Error('invalid row');
-   const chapters=c.structure==null?[]:validateCurriculum(JSON.parse(c.structure)),lessons=chapters.flatMap(ch=>ch.lessons);
-   if(c.authored>lessons.length||c.quizzes>lessons.length)throw Error('invalid lesson counts');
-   return {...c,structure:undefined,chapters:chapters.length,lessons:lessons.length,lessonItems:lessons.slice(0,8)};
-  })};
+  return buildCourseWorkspace(rows);
  }catch{return {status:'unavailable',rows:[]};}
 }
 async function courseList(db){return (await db.prepare('SELECT id,slug,title,description,level,status,version FROM courses ORDER BY updated_at DESC,id LIMIT 100').all()).results;}

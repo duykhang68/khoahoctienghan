@@ -1,4 +1,5 @@
 import test from 'node:test';
+import './course-core.test.mjs';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
 import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken,validateQuizQuestions} from './worker.mjs';

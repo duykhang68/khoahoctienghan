@@ -1,5 +1,6 @@
 import {courseEscape,courseLabels} from '../course/common.mjs';
 import {releaseChecks} from '../course/validation.mjs';
+import {buildCoursePreviewModel} from '../../core/course/preview-model.mjs';
 
 function releasePage(state){
  const {row,release}=state,esc=courseEscape,checks=releaseChecks(row),ready=checks.every(x=>x[1]);
@@ -9,7 +10,7 @@ function releasePage(state){
 // P2.7: owner-only, read-only preview. Never serialize answer keys.
 export function coursePreviewPage(curr,selected,blocks){
  const esc=courseEscape,base='/admin/courses/'+esc(curr.id)+'/preview/';
- const entries=curr.chapters.flatMap(ch=>ch.lessons),pos=entries.findIndex(l=>l.id===selected?.id);
+ const {entries,pos}=buildCoursePreviewModel(curr,selected);
  const link=l=>base+esc(l.id)+'/';
  const render=b=>{
   if(b.kind==='image')return '<figure><img loading="lazy" src="'+esc(b.src)+'" width="'+b.width+'" height="'+b.height+'" alt="'+esc(b.alt)+'"></figure>';
