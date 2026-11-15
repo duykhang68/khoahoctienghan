@@ -35,7 +35,7 @@ CREATE VIEW course_release_readiness AS
 CREATE TRIGGER release_course_insert AFTER INSERT ON courses BEGIN
  INSERT INTO course_review_revision VALUES(NEW.id,1);
 END;
-CREATE TRIGGER release_course_edit AFTER UPDATE ON courses BEGIN
+CREATE TRIGGER release_course_edit AFTER UPDATE ON courses WHEN NOT (OLD.status='draft' AND NEW.status='ready') BEGIN
  UPDATE course_review_revision SET revision=revision+1 WHERE course_id=NEW.id;
 END;
 CREATE TRIGGER release_revision_curriculum_insert AFTER INSERT ON course_curricula BEGIN
