@@ -3,7 +3,10 @@ import worker from '../../back-office/worker.mjs';
 import {fixtureDb,ownerCookie,origin,config} from '../../back-office/course-integration-fixture.mjs';
 
 test('Course Management Studio: create edit archive, filter views, dirty drawer and conflict',async({page})=>{
- const {sql,db}=fixtureDb(),path='/admin/courses/manage/',url=origin+path,cookie=await ownerCookie(),env={...config,COURSE_DB:db};
+ const {sql,db}=fixtureDb(),path='/admin/courses/manage/',url=origin+path,cookie=await ownerCookie();
+ // D1 supports unbound .first()/.all() as well as bound statements.
+ const COURSE_DB={prepare(query:string){const prepared=db.prepare(query);return {...prepared,...prepared.bind()};}};
+ const env={...config,COURSE_DB};
  const get=(h={})=>worker.fetch(new Request(url,{headers:h}),env);
  try{
   expect((await get()).status).toBe(303);expect((await get({Cookie:cookie,Accept:'application/json'})).status).toBe(200);
@@ -18,6 +21,9 @@ test('Course Management Studio: create edit archive, filter views, dirty drawer 
   await page.getByLabel('Tìm khóa học').fill('tieng han');await expect(page.locator('#cm-results [data-course-id]')).toHaveCount(1);
   await page.getByRole('button',{name:'Sẵn sàng',exact:true}).click();await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.locator('#cm-clear').click();
   await page.getByRole('button',{name:'Lưới',exact:true}).click();await expect(page.locator('.cm-card')).toHaveCount(1);await page.getByRole('button',{name:'Bảng',exact:true}).click();await expect(page.getByRole('table')).toBeVisible();
+  await page.getByLabel('Trình độ',{exact:true}).selectOption('advanced');await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.getByLabel('Trình độ',{exact:true}).selectOption('all');
+  await page.getByLabel('Cập nhật từ').fill('2100-01-01');await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.locator('#cm-clear').click();
+  await page.getByLabel('Sắp xếp').selectOption('title');await expect(page.locator('#cm-results [data-course-id]')).toHaveCount(1);
   await page.getByRole('button',{name:'Xem chi tiết Tiếng Hàn sơ cấp'}).click();await expect(page.locator('#cm-inspector')).toContainText('tieng-han-so-cap');
   await page.locator('#cm-inspector').getByRole('button',{name:'Chỉnh sửa khóa học'}).click();await expect(drawer.getByLabel('Đường dẫn (slug)')).toHaveAttribute('readonly','');
   await drawer.getByLabel('Tên khóa học').fill('Nội dung chưa lưu');page.once('dialog',d=>d.dismiss());await page.keyboard.press('Escape');await expect(drawer).toBeVisible();
