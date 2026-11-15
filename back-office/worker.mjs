@@ -1,3 +1,6 @@
+import {courseLevels,courseLabels,courseSlug,validateCourseInput} from './course-management/core.mjs';
+import {courseMutation,courseManagementRoute} from './course-management/route.mjs';
+export {courseSlug,validateCourseInput};
 import {schedulerApi,runScheduler} from './server-scheduler.mjs';
 import {validateMedia} from '../src/lib/editor-v2/media.mjs';
 // P0.1: isolated Worker, Google Identity Services (OIDC), no Cloudflare Access.
@@ -126,46 +129,6 @@ function courseDashboard(data,workspace,nonce){
 // Zero remains a conflict; missing or invalid metadata must not confirm a write.
 const courseWriteChanged=result=>result?.success!==false&&Number.isSafeInteger(result?.meta?.changes)&&result.meta.changes>0;
 const courseEscape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
-const courseLevels=['beginner','intermediate','advanced','all'];
-const courseLabels={beginner:'Sơ cấp',intermediate:'Trung cấp',advanced:'Cao cấp',all:'Mọi trình độ',draft:'Bản nháp',ready:'Sẵn sàng',archived:'Lưu trữ'};
-export function courseSlug(title){
- return String(title??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,100).replace(/-+$/g,'');
-}
-export function validateCourseInput(input){
- const title=typeof input.title==='string'?input.title.trim():'',description=typeof input.description==='string'?input.description.trim():'',slug=typeof input.slug==='string'?input.slug.trim():'',level=input.level;
- if(!title||title.length>200||description.length>4000||slug.length>100||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||!courseLevels.includes(level))throw Error('INVALID_COURSE');
- return {title,description,slug,level};
-}
-async function courseList(db){return (await db.prepare('SELECT id,slug,title,description,level,status,version FROM courses ORDER BY updated_at DESC,id LIMIT 100').all()).results;}
-function courseManager(rows){
- const esc=courseEscape,options=selected=>courseLevels.map(k=>'<option value="'+k+'"'+(selected===k?' selected':'')+'>'+courseLabels[k]+'</option>').join('');
- const fields=(c={})=>'<label>Tên khóa học<input name="title" required maxlength="200" value="'+esc(c.title)+'"></label><label>Đường dẫn (slug)<input name="slug" required maxlength="100" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="'+esc(c.slug)+'"'+(c.id?' readonly':'')+'></label><label>Trình độ<select name="level">'+options(c.level)+'</select></label><label>Mô tả<textarea name="description" maxlength="4000" rows="4">'+esc(c.description)+'</textarea></label>';
- return '<style>main{max-width:1100px}*{box-sizing:border-box}.cm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}.cm-card{padding:20px;border:1px solid #cbd5e1;border-radius:16px;background:#f4f0ff;overflow-wrap:anywhere}.cm-card form{display:grid;gap:12px}.cm-card label{display:grid;gap:5px;font-weight:600}.cm-card input,.cm-card textarea,.cm-card select{width:100%;min-width:0;padding:10px;font:inherit;border:1px solid #94a3b8;border-radius:8px;background:white}.cm-card button{min-height:44px}.cm-card details{margin:12px 0}</style><nav><a href="/admin/courses/">Tổng quan khóa học</a> · <a href="/admin/">Trung tâm quản trị</a></nav><h1>Quản lý khóa học</h1><p>Khóa học riêng tư · chưa mở bán.</p><div class="cm-grid"><section class="cm-card"><h2>Tạo khóa học</h2><form id="course-create" method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="create">'+fields()+'<button>Tạo bản nháp</button></form></section><section><h2>Danh sách khóa học</h2><p>Hiển thị tối đa 100 khóa học cập nhật gần nhất.</p>'+(rows.length?rows.map(c=>'<article class="cm-card"><h3>'+esc(c.title)+'</h3><p>'+esc(courseLabels[c.status])+' · '+esc(courseLabels[c.level])+'</p><p>'+esc(c.slug)+'</p><p><a href="/admin/courses/'+esc(c.id)+'/preview/">Xem trước khóa học</a></p><p><a href="/admin/courses/'+esc(c.id)+'/publishing/">Bản nháp &amp; Phát hành</a></p>'+(c.status==='draft'?'<p><a href="/admin/courses/'+esc(c.id)+'/curriculum/">Xây dựng giáo trình</a></p>':'')+(c.status==='draft'?'<details><summary>Chỉnh sửa khóa học</summary><form method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="edit"><input type="hidden" name="id" value="'+esc(c.id)+'"><input type="hidden" name="version" value="'+esc(c.version)+'">'+fields(c)+'<button>Lưu thay đổi</button></form></details>':'')+(c.status==='draft'?'<details><summary>Lưu trữ khóa học</summary><form method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="archive"><input type="hidden" name="id" value="'+esc(c.id)+'"><input type="hidden" name="version" value="'+esc(c.version)+'"><label><input type="checkbox" name="confirm" value="yes" required>Xác nhận lưu trữ bản nháp</label><button>Lưu trữ</button></form></details>':'')+'</article>').join(''):'<p>Chưa có khóa học.</p>')+'</section></div>';
-}
-async function courseMutation(req,env){
- const url=new URL(req.url);
- if(req.headers.get('Origin')!==url.origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/x-www-form-urlencoded')return reply('Forbidden',403);
- if(!env.COURSE_DB)return reply('Chưa cấu hình cơ sở dữ liệu khóa học',503);
- let input;try{const reader=req.body?.getReader();if(!reader)return reply('Invalid request',400);let size=0,body='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>65536){await reader.cancel();return reply('Payload too large',413);}body+=decoder.decode(value,{stream:true});}body+=decoder.decode();const params=new URLSearchParams(body);if(new Set(params.keys()).size!==[...params.keys()].length)return reply('Invalid request',400);input=Object.fromEntries(params);}catch{return reply('Invalid request',400);}
- const db=env.COURSE_DB, action=input.action, timestamp=Date.now(), session=await open(getCookie(req,sessionName),env,'session');
- if(!session)return reply('Forbidden',403);
- try{
-  if(action==='create'){
-   const c=validateCourseInput({...input,slug:input.slug||courseSlug(input.title)}),id=crypto.randomUUID();
-   const result=await db.prepare("INSERT INTO courses(id,slug,title,description,level,status,version,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,'draft',1,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(id,c.slug,c.title,c.description,c.level,timestamp,timestamp,session.sub).run();
-   if(!courseWriteChanged(result))return reply('Đường dẫn đã tồn tại',409);
-  }else if(action==='edit'||action==='archive'){
-   if(!/^[0-9a-f-]{36}$/.test(input.id||'')||!/^\d{1,10}$/.test(input.version||'')||Number(input.version)<1)return reply('Invalid request',400);
-   const version=Number(input.version);
-   let statement;
-   if(action==='edit'){const c=validateCourseInput(input);statement=db.prepare("UPDATE courses SET title=?,description=?,level=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND slug=? AND version=? AND status='draft'").bind(c.title,c.description,c.level,timestamp,session.sub,input.id,c.slug,version);}
-   else{if(input.confirm!=='yes')return reply('Cần xác nhận lưu trữ',400);statement=db.prepare("UPDATE courses SET status='archived',version=version+1,updated_at=?,updated_by=? WHERE id=? AND version=? AND status='draft'").bind(timestamp,session.sub,input.id,version);}
-   const result=await statement.run();if(!courseWriteChanged(result))return reply('Dữ liệu đã thay đổi. Quay lại và tải lại trang.',409);
-  }else return reply('Invalid request',400);
-  return redirect('/admin/courses/manage/');
- }catch(e){return e?.message==='INVALID_COURSE'?reply('Thông tin khóa học không hợp lệ',400):reply('Không lưu được khóa học',503);}
-}
-
 const curriculumId=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export function validateCurriculum(value){
  if(!Array.isArray(value)||value.length>100)throw Error('INVALID_CURRICULUM');
@@ -604,9 +567,9 @@ export default {async fetch(req,env){
   const permitted=new Set(['utm_source','utm_medium','utm_campaign','utm_term','utm_content']);
   if([...url.searchParams].every(([key,value])=>permitted.has(key)&&value.length<=256))return redirect(url.pathname);
  }
- if(url.pathname==='/admin/courses/manage/'&&req.method==='POST'){if(url.search)return reply('Invalid request',400);return courseMutation(req,env);}
+ if(url.pathname==='/admin/courses/manage/'&&req.method==='POST'){if(url.search)return reply('Invalid request',400);return courseMutation(req,env,{reply,redirect,open,getCookie,sessionName,courseWriteChanged});}
  if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
- if(url.pathname==='/admin/courses/manage/'){if(url.search)return reply('Invalid request',400);if(!env.COURSE_DB)return reply('Chưa cấu hình cơ sở dữ liệu khóa học',503);try{const nonce=random();const script='const form=document.getElementById("course-create"),title=form.elements.namedItem("title"),slug=form.elements.namedItem("slug");const makeSlug='+courseSlug.toString()+';let manual=false;title.addEventListener("input",()=>{if(!manual)slug.value=makeSlug(title.value)});slug.addEventListener("input",()=>{manual=slug.value!=="";if(!manual)slug.value=makeSlug(title.value)});';return reply(req.method==='HEAD'?null:page(courseManager(await courseList(env.COURSE_DB))+'<script nonce="'+nonce+'">'+script+'</script>'),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});}catch{return reply('Không tải được danh sách khóa học',503);}}
+ if(url.pathname==='/admin/courses/manage/'){if(url.search)return reply('Invalid request',400);return courseManagementRoute(req,env,{reply,page,random,courseOverview});}
  if(url.pathname==='/admin/courses/'){if(url.search)return reply('Invalid request',400);const data=await courseOverview(env),workspace=data.status==='ready'?await courseWorkspace(env):{status:'unavailable',rows:[]},nonce=random();return reply(req.method==='HEAD'?null:page(courseDashboard(data,workspace,nonce)),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"});}
  if(url.pathname==='/admin/schedules/')return reply(req.method==='HEAD'?null:page(editorBundle.schedulesHtml+'<script type="module" src="/admin/assets/editor-v2/server-schedule-browser.mjs"></script>'),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});
  if(url.pathname==='/admin/api/library/'){
