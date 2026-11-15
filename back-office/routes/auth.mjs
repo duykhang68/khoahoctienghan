@@ -1,0 +1,19 @@
+import {reply,redirect,page,htmlHeaders} from '../http.mjs';
+import {authorized,random,now,seal,open,cookie,getCookie,sessionName,challengeName} from '../auth/session.mjs';
+
+export async function routeAuth(req,env,url,verifyGoogle){
+ if(url.pathname==='/auth/login'&&req.method==='GET'){
+  if(await authorized(req,env))return redirect('/admin/');
+  const nonce=random(), scriptNonce=random(), challenge=await seal({kind:'challenge',nonce,origin:url.origin,exp:now()+300},env);
+  const script='<script nonce="'+scriptNonce+'">window.onGoogleLibraryLoad=()=>{google.accounts.id.initialize({client_id:'+JSON.stringify(env.GOOGLE_CLIENT_ID)+',nonce:'+JSON.stringify(nonce)+',auto_select:false,callback:async r=>{try{const res=await fetch("/auth/session",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({credential:r.credential})});if(res.ok)location.replace("/admin/");else document.getElementById("msg").textContent="Đăng nhập thất bại ("+res.status+"): "+(await res.text()).slice(0,180)+". Tải lại trang để thử lại.";}catch{document.getElementById("msg").textContent="Lỗi kết nối.";}}});google.accounts.id.renderButton(document.getElementById("google"),{theme:"outline",size:"large"});};</script><script src="https://accounts.google.com/gsi/client" async></script>';
+  return reply(page('<header><small>TRI THỨC HÀN QUỐC</small><h1>Back Office</h1><p>Chỉ tài khoản quản trị được cấp quyền.</p><div id="google"></div><p id="msg" role="status"></p></header>'+script),200,{...htmlHeaders,'Set-Cookie':cookie(challengeName,challenge,300),'Cross-Origin-Opener-Policy':'same-origin-allow-popups','Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+scriptNonce+"' https://accounts.google.com/gsi/client; style-src 'unsafe-inline' https://accounts.google.com/gsi/style; frame-src https://accounts.google.com/gsi/; connect-src 'self' https://accounts.google.com/gsi/; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});
+ }
+ if(url.pathname==='/auth/session'&&req.method==='POST'){
+  if(req.headers.get('Origin')!==url.origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/json')return reply('Forbidden',403);
+  const challenge=await open(getCookie(req,challengeName),env,'challenge');
+  if(!challenge)return reply('Phiên đăng nhập hết hạn.',403);
+  let stage='AUTH_BODY';try{const reader=req.body?.getReader();if(!reader)throw Error('empty body');let size=0,raw='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>16384){await reader.cancel();throw Error('too large');}raw+=decoder.decode(value,{stream:true});}raw+=decoder.decode();const {credential}=JSON.parse(raw);stage='AUTH_VERIFY_RUNTIME';const c=await verifyGoogle(credential,challenge.nonce,env);stage='AUTH_SESSION';const session=await seal({kind:'session',origin:url.origin,sub:c.sub,email:c.email,exp:now()+28800},env);stage='AUTH_COOKIE';const res=reply('OK',200);res.headers.append('Set-Cookie',cookie(sessionName,session,28800));res.headers.append('Set-Cookie',cookie(challengeName,'',0));return res;}catch(e){const codes={'invalid claims':'AUTH_CLAIMS','nonce':'AUTH_NONCE','identity':'AUTH_IDENTITY','allowlist':'AUTH_DENIED','non-authoritative email':'AUTH_IDENTITY','keys unavailable':'AUTH_KEYS','invalid keys':'AUTH_KEYS','unknown key':'AUTH_KEYS','invalid signature':'AUTH_SIGNATURE','invalid algorithm':'AUTH_SIGNATURE','invalid credential':'AUTH_CREDENTIAL','key import':'AUTH_KEY_IMPORT','signature runtime':'AUTH_SIGNATURE_RUNTIME'};const code=Object.hasOwn(codes,e?.message)?codes[e.message]:stage;return reply(code,403,{'Set-Cookie':cookie(challengeName,'',0)});}
+ }
+ if(url.pathname==='/auth/logout'&&req.method==='POST'){if(req.headers.get('Origin')!==url.origin)return reply('Forbidden',403);return redirect('/auth/login',[cookie(sessionName,'',0),cookie(challengeName,'',0)]);}
+ return null;
+}

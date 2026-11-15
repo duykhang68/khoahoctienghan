@@ -24,7 +24,10 @@ test('P2.8 publishing workspace reports actual gates, prevents stale approval an
   const confirm=page.getByRole('checkbox');await expect(confirm).not.toBeChecked();await approve.click();await expect(page).toHaveURL(url);expect(sql.prepare('SELECT count(*) AS n FROM course_releases').get()?.n).toBe(0);
   const reviewed=revision();sql.prepare('UPDATE course_lesson_documents SET version=2 WHERE course_id=? AND lesson_id=?').run(id,lesson);expect(revision()).not.toBe(reviewed);
   await confirm.check();const stale=page.waitForResponse(res=>res.url()===url&&res.request().method()==='POST');await approve.click();expect((await stale).status()).toBe(409);expect(sql.prepare('SELECT count(*) AS n FROM course_releases').get()?.n).toBe(0);
-  await page.goto(url);await confirm.check();await approve.click();
+  await page.goto(url);await confirm.check();
+  const approveResp=page.waitForResponse(res=>res.url()===url&&res.request().method()==='POST');await approve.click();
+  expect((await approveResp).status()).toBe(303);expect((await approveResp).headers()['location']).toBe(path);
+  await page.goto(url);
   await expect(page.getByRole('heading',{name:'Phiên bản v2'})).toBeVisible();await expect(approve).toBeDisabled();await expect(page.getByRole('checkbox')).toHaveCount(0);
   const release=sql.prepare('SELECT version,revision FROM course_releases').get();expect(release?.version).toBe(2);expect(release?.revision).toBe(revision());expect(sql.prepare('SELECT count(*) AS n FROM course_release_lessons').get()?.n).toBe(1);
   expect(()=>sql.exec('DELETE FROM course_releases')).toThrow(/IMMUTABLE_RELEASE/);
