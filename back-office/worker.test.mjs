@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -302,4 +302,16 @@ test('P2.4 lesson route is private; save requires membership, draft, origin and 
  member=false;assert.equal((await post(0)).status,404);member=true;
  status='archived';assert.equal((await post(0)).status,409);status='draft';
  assert.equal((await post(0)).status,200);assert.equal((await post(0)).status,409);assert.equal((await post(1)).status,200);assert.equal(mutations,2);
+});
+
+test('P2.5 media rejects foreign folder, shortcuts, unsupported content and download restriction',()=>{
+ const folder='folder_1234567',file={id:'file_1234567890',name:'한글.mp4',mimeType:'video/mp4',size:'100',parents:[folder],trashed:false,capabilities:{canDownload:true}};
+ assert.equal(eligibleCourseMedia(file,folder),true);
+ for(const patch of [{parents:['elsewhere123']},{mimeType:'application/vnd.google-apps.shortcut'},{mimeType:'text/html'},{trashed:true},{capabilities:{canDownload:false}}])assert.equal(eligibleCourseMedia({...file,...patch},folder),false);
+});
+test('P2.5 anonymous media endpoints deny access and missing service account fails closed',async()=>{
+ const path='/admin/courses/11111111-1111-4111-8111-111111111111/lessons/22222222-2222-4222-8222-222222222222/media/';
+ assert.equal((await worker.fetch(req(path),env)).status,403);
+ assert.equal((await worker.fetch(req(path+'stream/file_1234567890/'),env)).status,403);
+ await assert.rejects(courseDriveToken({},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
 });
