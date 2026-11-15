@@ -132,6 +132,22 @@ test('private routes reject expired, wrong-origin, malformed and revoked-admin s
  const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/','/admin/library/','/admin/categories/','/admin/drafts/','/admin/pipeline/'];
  const assets=['/admin/api/dashboard/','/admin/api/library/','/admin/api/categories/','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/editor-v2/media.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs','/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'];
  const good=await signed();
+ // R2: dispatcher must preserve origin/session and method ordering across route modules.
+ for(const [path,method,status] of [
+  ['/admin/assets/editor-v2/entry.mjs','POST',405],
+  ['/admin/api/dashboard/','POST',405],
+  ['/admin/courses/manage/?utm_source=smoke','GET',303],
+  ['/admin/courses/manage/?utm_source=smoke','POST',400],
+  ['/admin/courses/','POST',405],
+  ['/admin/not-a-route/','GET',404],
+  ['/admin/not-a-route/','POST',405]
+ ]){
+  const response=await worker.fetch(req(path,{method,headers:{Cookie:good}}),env);
+  assert.equal(response.status,status,method+' '+path);
+  const anonymous=await worker.fetch(req(path,{method}),env);
+  assert.equal(anonymous.status,path.startsWith('/admin/courses/manage/')&&method==='GET'?303:403,method+' '+path);
+ }
+
  for(const [cookie,config] of [[await signed({exp:1}),env],[await signed({origin:'https://other.test'}),env],[await signed({kind:'challenge'}),env],[await signed({sub:''}),env],['__Host-bo_session=invalid.signature',env],[good,{...env,ADMIN_EMAILS:'other@gmail.com'}]]){
   for(const path of [...pages,...assets]){const res=await worker.fetch(req(path,{headers:{Cookie:cookie}}),config);assert.equal(res.status,pages.includes(path)?303:403,path);assert.equal(res.headers.get('cache-control'),'no-store');assert.doesNotMatch(await res.text(),/data-editor-v2|data-sheet-blog|id="trend"/);const head=await worker.fetch(req(path,{method:'HEAD',headers:{Cookie:cookie}}),config);assert.equal(head.status,403,path);}
  }
