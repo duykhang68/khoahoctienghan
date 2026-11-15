@@ -1,0 +1,54 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {queueHead,receiptCandidates} from '../core/publication/queue.mjs';
+import {planQueueRebuild,nativeRunDecision,isQueuePR} from '../core/publication/pr-policy.mjs';
+import {preparedPatch,mergedPatch,verifiedPatch,rebuildPatch} from '../core/publication/transition.mjs';
+import {exactReleaseRuns,releaseJobsVerified,verifiedProductionTip} from '../core/publication/verification.mjs';
+import {sheetReceiptDecision,sheetFailureReceipt} from '../core/publication/receipt.mjs';
+import {scheduleDue} from '../core/scheduler/validation.mjs';
+import {schedulerReady,headDisposition,receiptMatches,leaseDeadline,awaitingDeadline} from '../core/scheduler/transition.mjs';
+import {planScheduleFailure} from '../core/scheduler/retry-policy.mjs';
+import {createProductionVerifier} from '../scripts/publication/production-verifier.mjs';
+import {sensitiveFile} from '../core/engineering/merge-policy.mjs';
+const freeze=x=>{if(x&&typeof x==='object'){Object.values(x).forEach(freeze);Object.freeze(x)}return x};
+const a='a'.repeat(40),b='b'.repeat(40),id='c'.repeat(64),repo='duykhang68/khoahoctienghan';
+const issue=(number,phase,state='open')=>({number,state,user:{login:'github-actions[bot]'},body:'<!-- editor-v2-fifo:'+JSON.stringify({id,source:a,phase})+' -->'});
+test('R6 FIFO cannot bypass closed or unverified head',()=>{
+ const issues=freeze([issue(13,'QUEUED'),issue(12,'MERGED','closed'),issue(11,'VERIFIED','closed')]);
+ assert.equal(queueHead(issues).number,12);assert.equal(queueHead(issues).closed,true);
+ const state=freeze({number:12,phase:'QUEUED',id,source:a});
+ const prepared=freeze({...state,...preparedPatch(a,b,'techblog/test/')});
+ assert.equal(planQueueRebuild(prepared,{state:'closed'},b),'MANUALLY_CLOSED');
+ assert.equal(planQueueRebuild(prepared,{state:'open'},b),'REBUILD');
+ assert.deepEqual(rebuildPatch(),{set:{phase:'QUEUED'},remove:['head','base','pr','rebuild','route']});
+ assert.deepEqual(mergedPatch(b),{phase:'MERGED',merge:b});assert.deepEqual(verifiedPatch(a),{phase:'VERIFIED',verified:a});
+ assert.equal(nativeRunDecision({status:'completed',conclusion:'failure'}),'BLOCK');assert.equal(nativeRunDecision({status:'queued'}),'WAIT');
+ assert.equal(isQueuePR({head:{repo:{full_name:repo},ref:'content/editor-fifo-12-'+a.slice(0,12),sha:b},base:{ref:'main'},body:'altered'},prepared,repo),false);
+});
+test('R6 live release proof requires exact repo, jobs and stable marker',async()=>{
+ const runs=freeze([{id:1,head_sha:b,head_repository:{full_name:repo},conclusion:'success'},{id:2,head_sha:a,head_repository:{full_name:repo},conclusion:'success'}]);
+ const jobs=freeze(['prepare','deploy','verify'].map(name=>({name,conclusion:'success'})));
+ assert.equal(exactReleaseRuns(runs,b,repo).length,1);assert.equal(releaseJobsVerified(jobs),true);assert.equal(releaseJobsVerified(jobs.slice(0,2)),false);assert.equal(verifiedProductionTip(b,true,a),null);
+ let markers=0;
+ const verifier=createProductionVerifier({repo,site:'https://example.test/',clock:()=>42,api:path=>path.startsWith('git/commits/')?{parents:[{sha:a}]}:path.includes('/jobs')?{jobs}:{workflow_runs:runs},fetcher:async url=>url.includes('release-sha.json')?{ok:true,json:async()=>({sha:++markers===1?b:a})}:{ok:true}});
+ assert.equal(await verifier({merge:a,route:'techblog/test/'}),null);
+});
+test('R6 Sheet receipt requires closed verified state and bounds retries',()=>{
+ const state=freeze({phase:'VERIFIED',closed:true,pr:1,merge:a,verified:b,route:'techblog/test/',sheetSync:{status:'PENDING',attempts:2}});
+ assert.deepEqual(sheetReceiptDecision(state,true,true),{kind:'write',attempts:3});
+ assert.equal(sheetReceiptDecision({...state,closed:false},true,true).value.code,'PRODUCTION_NOT_VERIFIED');
+ assert.equal(sheetFailureReceipt(true,true,'GOOGLE_NETWORK',3).status,'BLOCKED');assert.equal(sheetFailureReceipt(true,true,'GOOGLE_NETWORK',2).status,'PENDING');assert.equal(receiptCandidates([state]).length,1);
+});
+test('R6 Scheduler explicit clock, consent, lease and retry boundaries',()=>{
+ const now=Date.parse('2026-11-15T00:00:00Z');
+ assert.equal(scheduleDue({consent:true,dueLocal:'2026-11-15T07:00:01'},now),now+1000);
+ assert.throws(()=>scheduleDue({consent:false},now),/CONSENT_REQUIRED/);assert.throws(()=>scheduleDue({consent:true,dueLocal:'2026-11-15T07:00:00'},now),/INVALID_DATE/);
+ assert.equal(schedulerReady(true,now-300000,now),true);assert.equal(schedulerReady(true,now+1,now),false);
+ assert.equal(headDisposition({state:'blocked'}),'blocked');assert.equal(headDisposition({state:'awaiting_issue'}),'awaiting_issue');
+ const claimed=freeze({id,route:'techblog/test/',receipt_sha:a});
+ assert.equal(receiptMatches(claimed,{id,route:claimed.route,sha:b}),false);assert.equal(receiptMatches(claimed,{id,route:claimed.route,sha:a}),true);
+ assert.equal(leaseDeadline(now),now+600000);assert.equal(awaitingDeadline(now),now+900000);
+ assert.deepEqual(planScheduleFailure({status:429},2,now),{state:'retry',nextAt:now+240000,errorCode:'UPSTREAM_TEMPORARY'});
+ assert.equal(planScheduleFailure({status:429},3,now).state,'blocked');
+ for(const path of ['core/publication/transition.mjs','core/scheduler/retry-policy.mjs','back-office/repositories/scheduler.mjs'])assert.equal(sensitiveFile(path),true);
+});
