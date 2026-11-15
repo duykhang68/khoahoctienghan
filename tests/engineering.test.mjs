@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import './branch-sync.test.mjs';
 import './pr-labels.test.mjs';
+import './engineering-core.test.mjs';
 import assert from 'node:assert/strict';
 import {classify,canRetry,migrateSidebar,nativePolicyReady,latestRun,sensitiveFile,trustedPR,releaseName,ciName,checkName} from '../scripts/engineering-policy.mjs';
 const run={name:releaseName,head_sha:'old',conclusion:'failure',run_attempt:1};
