@@ -235,6 +235,64 @@ async function saveLesson(req,env,courseId,lessonId){
   return reply(JSON.stringify({version:input.version+1}),200,{'Content-Type':'application/json; charset=utf-8'});
  }catch{return reply('Không lưu được bài học',503);}
 }
+async function quizState(db,courseId,lessonId){
+ const curr=await curriculumState(db,courseId);if(!curr)return null;
+ const lesson=curr.chapters.flatMap(c=>c.lessons).find(l=>l.id===lessonId);if(!lesson)return null;
+ const row=await db.prepare('SELECT version,document FROM course_lesson_quizzes WHERE course_id=? AND lesson_id=?').bind(courseId,lessonId).first();
+ return {courseId,lessonId,title:lesson.title,courseTitle:curr.title,status:curr.status,version:row?.version??0,questions:row?validateQuizQuestions(JSON.parse(row.document)):[]};
+}
+async function saveQuiz(req,env,courseId,lessonId){
+ const u=new URL(req.url);if(req.headers.get('Origin')!==u.origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/json')return reply('Forbidden',403);
+ if(!env.COURSE_DB)return reply('Chưa cấu hình COURSE_DB',503);
+ let input;try{const reader=req.body?.getReader();if(!reader)return reply('Invalid request',400);let size=0,body='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>quizBudget+4096){await reader.cancel();return reply('Bài học vượt giới hạn dung lượng',413);}body+=decoder.decode(value,{stream:true});}input=JSON.parse(body+decoder.decode());if(!input||!Number.isSafeInteger(input.version)||input.version<0||input.version>=2147483647)throw Error('INVALID_QUIZ');input.questions=validateQuizQuestions(input.questions);}catch(e){return reply(e?.message==='QUIZ_TOO_LARGE'?'Bài học vượt giới hạn dung lượng':'Nội dung hoặc ảnh không hợp lệ',e?.message==='QUIZ_TOO_LARGE'?413:400);}
+ try{
+  const db=env.COURSE_DB,current=await quizState(db,courseId,lessonId);if(!current)return reply('Không tìm thấy bài học',404);
+  if(current.status!=='draft'||current.version!==input.version)return reply('Bản nháp đã thay đổi. Tải lại trang.',409);
+  const session=await open(getCookie(req,sessionName),env,'session');if(!session)return reply('Forbidden',403);
+  const doc=JSON.stringify(input.questions),stamp=Date.now();
+  const guard="EXISTS(SELECT 1 FROM courses c JOIN course_curricula k ON k.course_id=c.id, json_each(k.structure) ch, json_each(ch.value,'$.lessons') l WHERE c.id=? AND c.status='draft' AND json_extract(l.value,'$.id')=?)";
+  const stmt=input.version===0?db.prepare("INSERT INTO course_lesson_quizzes(course_id,lesson_id,version,document,updated_at,updated_by) SELECT ?,?,1,?,?,? WHERE "+guard+" ON CONFLICT(course_id,lesson_id) DO NOTHING").bind(courseId,lessonId,doc,stamp,session.sub,courseId,lessonId):db.prepare("UPDATE course_lesson_quizzes SET version=version+1,document=?,updated_at=?,updated_by=? WHERE course_id=? AND lesson_id=? AND version=? AND "+guard).bind(doc,stamp,session.sub,courseId,lessonId,input.version,courseId,lessonId);
+  if((await stmt.run()).meta?.changes!==1)return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
+  return reply(JSON.stringify({version:input.version+1}),200,{'Content-Type':'application/json; charset=utf-8'});
+ }catch{return reply('Không lưu được bài học',503);}
+}
+const quizBudget=262144;
+export function validateQuizQuestions(value){
+ if(!Array.isArray(value)||value.length>100)throw Error('INVALID_QUIZ');
+ const seen=new Set();
+ const clean=value.map(q=>{
+  if(!q||typeof q.id!=='string'||!curriculumId.test(q.id)||seen.has(q.id)||!['single','boolean'].includes(q.kind))throw Error('INVALID_QUIZ');
+  seen.add(q.id);
+  const field=(v,max,required=true)=>{if(typeof v!=='string'||v.length>max||(required&&!v.trim()))throw Error('INVALID_QUIZ');return v.trim();};
+  const prompt=field(q.prompt,2000),explanation=field(q.explanation,2000,false);
+  if(!Array.isArray(q.options)||q.options.length<2||q.options.length>6||(q.kind==='boolean'&&q.options.length!==2))throw Error('INVALID_QUIZ');
+  const options=q.options.map(v=>field(v,500));
+  if(new Set(options).size!==options.length||!Number.isInteger(q.correct)||q.correct<0||q.correct>=options.length)throw Error('INVALID_QUIZ');
+  if(q.kind==='boolean'&&(options[0]!=='Đúng'||options[1]!=='Sai'))throw Error('INVALID_QUIZ');
+  return {id:q.id,kind:q.kind,prompt,options,correct:q.correct,explanation};
+ });
+ if(enc.encode(JSON.stringify(clean)).length>quizBudget)throw Error('QUIZ_TOO_LARGE');
+ return clean;
+}
+function quizBrowser(){
+ const state=JSON.parse(document.getElementById('quiz-state').value),root=document.getElementById('quiz-questions'),status=document.getElementById('quiz-status'),save=document.getElementById('quiz-save'),preview=document.getElementById('quiz-preview');
+ let dirty=false,busy=false;
+ const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
+ const button=(text,fn)=>{const b=el('button',text);b.type='button';b.onclick=fn;return b;};
+ const changed=()=>{dirty=true;save.disabled=busy;status.textContent='Chưa lưu';show();};
+ function show(){preview.replaceChildren();state.questions.forEach((q,i)=>{const box=el('fieldset');box.append(el('legend',(i+1)+'. '+q.prompt));q.options.forEach((o,j)=>{const label=el('label'),radio=el('input');radio.type='radio';radio.name='preview-'+q.id;radio.onchange=()=>{feedback.textContent=j===q.correct?'Chính xác! '+q.explanation:'Chưa chính xác.';};label.append(radio,document.createTextNode(o));box.append(label);});const feedback=el('p');feedback.setAttribute('role','status');box.append(feedback);preview.append(box);});}
+ function render(){root.replaceChildren();state.questions.forEach((q,i)=>{const box=el('fieldset');box.append(el('legend','Câu '+(i+1)));const field=(label,value,fn,max)=>{const l=el('label',label),input=el('textarea');input.value=value;input.maxLength=max;input.oninput=()=>{fn(input.value);changed();};l.append(input);box.append(l);};field('Câu hỏi',q.prompt,v=>q.prompt=v,2000);q.options.forEach((o,j)=>{const line=el('div'),label=el('label','Đáp án đúng '+(j+1)),radio=el('input');radio.type='radio';radio.name='correct-'+q.id;radio.checked=q.correct===j;radio.onchange=()=>{q.correct=j;changed();};label.prepend(radio);line.append(label);box.append(line);if(q.kind==='single')field('Lựa chọn '+(j+1),o,v=>q.options[j]=v,500);else line.append(el('span',o));});if(q.kind==='single'){box.append(button('Thêm lựa chọn',()=>{if(q.options.length<6){q.options.push('');changed();render();}}),button('Bỏ lựa chọn cuối',()=>{if(q.options.length>2){q.options.pop();q.correct=Math.min(q.correct,q.options.length-1);changed();render();}}));}field('Giải thích',q.explanation,v=>q.explanation=v,2000);box.append(button('Lên',()=>move(i,-1)),button('Xuống',()=>move(i,1)),button('Xóa câu',()=>{state.questions.splice(i,1);changed();render();}));root.append(box);});show();}
+ function move(i,d){const n=i+d;if(n<0||n>=state.questions.length)return;[state.questions[i],state.questions[n]]=[state.questions[n],state.questions[i]];changed();render();}
+ function add(kind){if(state.questions.length>=100)return;state.questions.push({id:crypto.randomUUID(),kind,prompt:'',options:kind==='boolean'?['Đúng','Sai']:['',''],correct:0,explanation:''});changed();render();}
+ document.getElementById('quiz-single').onclick=()=>add('single');document.getElementById('quiz-boolean').onclick=()=>add('boolean');
+ save.onclick=async()=>{if(busy)return;busy=true;save.disabled=true;const snapshot=JSON.stringify({version:state.version,questions:state.questions});try{const response=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:snapshot});if(!response.ok)throw Error(await response.text());state.version=(await response.json()).version;dirty=JSON.stringify(state.questions)!==JSON.stringify(JSON.parse(snapshot).questions);status.textContent=dirty?'Có thay đổi chưa lưu':'Đã lưu bản nháp';}catch(e){status.textContent='Không lưu: '+e.message;}finally{busy=false;save.disabled=!dirty;}};
+ window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});render();
+}
+function quizPage(state,nonce){
+ const esc=courseEscape,top='<nav><a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/">← Soạn bài</a></nav><p>P2.6 · QUIZ BUILDER</p><h1>'+esc(state.title)+'</h1>';
+ if(state.status!=='draft')return top+'<p>Chỉ bản nháp được chỉnh sửa.</p>';
+ return top+'<style>main{max-width:1200px}.quiz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}.quiz-grid section{background:#f1edfc;padding:16px;border-radius:14px;min-width:0}.quiz-grid section+section{background:#e5f4ee}.quiz-grid fieldset{min-width:0;background:white;border:1px solid #cbd5e1;border-radius:10px;margin:12px 0;padding:12px;overflow-wrap:anywhere}.quiz-grid label{display:block;margin:8px 0}.quiz-grid textarea{display:block;width:100%;box-sizing:border-box;font:inherit;min-height:64px}button{min-height:44px;margin:4px}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #2563eb}</style><button id="quiz-single">+ Trắc nghiệm</button><button id="quiz-boolean">+ Đúng / Sai</button><button id="quiz-save" disabled>Lưu bản nháp</button><p id="quiz-status" role="status">Chưa có thay đổi</p><div class="quiz-grid"><section><h2>Soạn câu hỏi</h2><div id="quiz-questions"></div></section><section><h2>Làm thử</h2><div id="quiz-preview"></div></section></div><textarea hidden id="quiz-state">'+esc(JSON.stringify(state))+'</textarea><script nonce="'+nonce+'">('+quizBrowser.toString()+')();</script>';
+}
 function lessonBrowser(optimizeMedia){
  const state=JSON.parse(document.getElementById('lesson-state').value),root=document.getElementById('lesson-blocks'),preview=document.getElementById('lesson-preview'),status=document.getElementById('lesson-status'),save=document.getElementById('lesson-save'),tools=document.getElementById('lesson-tools'),file=document.getElementById('lesson-file');
  let blocks=state.blocks,version=state.version,dirty=false,busy=false;
@@ -261,7 +319,7 @@ function lessonBrowser(optimizeMedia){
  window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});render();updatePreview();
 }
 function lessonPage(state,nonce){
- const esc=courseEscape,top='<nav><a href="/admin/courses/'+esc(state.courseId)+'/curriculum/">Giáo trình</a> · <a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/media/">Video &amp; Audio</a> · <a href="/admin/courses/manage/">Quản lý khóa học</a> · <a href="/admin/courses/'+esc(state.courseId)+'/preview/'+esc(state.lessonId)+'/">Xem trước bài học</a></nav><p>P2.4 · VISUAL LESSON EDITOR</p><h1>'+esc(state.title)+'</h1><p>'+esc(state.courseTitle)+'</p>';
+ const esc=courseEscape,top='<nav><a href="/admin/courses/'+esc(state.courseId)+'/curriculum/">Giáo trình</a> · <a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/media/">Video &amp; Audio</a> · <a href="/admin/courses/manage/">Quản lý khóa học</a> · <a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/quiz/">Quiz Builder</a> · <a href="/admin/courses/'+esc(state.courseId)+'/preview/'+esc(state.lessonId)+'/">Xem trước bài học</a></nav><p>P2.4 · VISUAL LESSON EDITOR</p><h1>'+esc(state.title)+'</h1><p>'+esc(state.courseTitle)+'</p>';
  if(state.status!=='draft')return top+'<p>Chỉ bản nháp mới được chỉnh sửa nội dung.</p>';
  return top+'<style>main{max-width:1260px}.le-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px}.le-panel{min-width:0;background:#f1edfc;border-radius:16px;padding:16px;overflow-wrap:anywhere}.le-preview{background:#e5f4ee;min-width:0}.le-block{background:white;padding:12px;border:1px solid #d7d2e6;border-radius:12px;margin:12px 0}.le-row,#lesson-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.le-row button,#lesson-tools button,#lesson-save{min-height:44px;font:inherit}.le-edit{white-space:pre-wrap;min-height:40px;padding:12px;border:1px solid #cbd5e1;border-radius:8px;outline-offset:3px}.le-note{background:#fff2cf;padding:12px;border-radius:8px}.le-paragraph,.le-bullet,.le-ordered,.le-quote{white-space:pre-wrap}.le-panel img{display:block;max-width:100%;height:auto;margin:8px auto}.le-panel figure{margin:14px 0}.le-panel input{box-sizing:border-box;width:100%;padding:10px;font:inherit}.le-panel button:focus-visible,.le-edit:focus-visible{outline:3px solid #2563eb}</style><p>Soạn bằng khối trực quan, không cần Markdown. Ảnh WebP tối đa 1600 px; tổng nội dung lưu tối đa 1,5 MB.</p><div id="lesson-tools" aria-label="Thêm khối nội dung"></div><input hidden type="file" id="lesson-file" accept="image/png,image/jpeg,image/webp,image/gif"><p role="status" id="lesson-status">Chưa có thay đổi.</p><button type="button" id="lesson-save" disabled>Lưu bản nháp</button><div class="le-grid"><section class="le-panel"><h2>Soạn nội dung</h2><div id="lesson-blocks"></div></section><section class="le-panel le-preview"><h2>Xem trước trực tiếp</h2><div id="lesson-preview"></div></section></div><textarea hidden id="lesson-state">'+esc(JSON.stringify(state))+'</textarea><script type="module" nonce="'+nonce+'">import {optimizeMedia} from "/admin/assets/editor-v2/media.mjs";('+lessonBrowser.toString()+')(optimizeMedia);</script>';
 }
@@ -386,6 +444,14 @@ export default {async fetch(req,env){
  if(!await authorized(req,env))return req.method==='GET'&&(url.pathname==='/'||url.pathname==='/admin/'||url.pathname==='/admin/engineering/'||url.pathname==='/admin/sheets/'||url.pathname==='/admin/editor/'||url.pathname==='/admin/library/'||url.pathname==='/admin/categories/'||url.pathname==='/admin/drafts/'||url.pathname==='/admin/pipeline/'||url.pathname==='/admin/schedules/'||url.pathname==='/admin/courses/'||url.pathname==='/admin/courses/manage/'||/^\/admin\/courses\/[0-9a-f-]{36}\/(?:curriculum|lessons\/[0-9a-f-]{36})\/$/.test(url.pathname))?redirect('/auth/login'):reply('Forbidden',403);
  const mediaMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/lessons\/([0-9a-f-]{36})\/media\/(?:stream\/([A-Za-z0-9_-]{10,150})\/)?$/);
  if(mediaMatch){const [,courseId,lessonId,streamId]=mediaMatch;if(!curriculumId.test(courseId)||!curriculumId.test(lessonId)||url.search)return reply('Invalid request',400);return lessonMedia(req,env,courseId,lessonId,streamId);}
+ const quizMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/lessons\/([0-9a-f-]{36})\/quiz\/$/);
+ if(quizMatch){
+  const [,courseId,lessonId]=quizMatch;if(!curriculumId.test(courseId)||!curriculumId.test(lessonId)||url.search)return reply('Invalid request',400);
+  if(req.method==='POST')return saveQuiz(req,env,courseId,lessonId);
+  if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
+  if(!env.COURSE_DB)return reply('Chưa cấu hình COURSE_DB',503);
+  try{const state=await quizState(env.COURSE_DB,courseId,lessonId);if(!state)return reply('Không tìm thấy bài học',404);const nonce=random();return reply(req.method==='HEAD'?null:page(quizPage(state,nonce)),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});}catch{return reply('Không tải được quiz',503);}
+ }
  const previewMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/preview\/(?:([0-9a-f-]{36})\/)?$/);
  if(previewMatch){
   const [,id,lessonId]=previewMatch;if(!curriculumId.test(id)||(lessonId&&!curriculumId.test(lessonId))||url.search)return reply('Invalid request',400);
