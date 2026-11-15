@@ -57,6 +57,7 @@ import './release-recovery.test.mjs';
 import './knowledge-visual-validation.test.mjs';
 
 import './studio-document.test.mjs';
+import './public-content-core.test.mjs';
 import './local-editor-core.test.mjs';
 
 import './editor-v2-queue.test.mjs';
