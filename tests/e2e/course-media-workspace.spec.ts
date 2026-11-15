@@ -29,13 +29,18 @@ test('P2.5 media workspace filters real associations, links and unlinks through 
   sql.prepare('INSERT INTO course_lesson_media VALUES(?,?,?,?,?)').run(id,l,missing,1,'fixture');
   expect((await call('','')).status).toBe(403);expect((await call('stream/'+audio+'/')).status).toBe(404);
   const stream=await call('stream/'+video+'/',cookie,{Range:'bytes=0-2'});expect(stream.status).toBe(206);expect(stream.headers.get('content-range')).toBe('bytes 0-2/3');
-  await page.route(origin+'/**',async route=>{const req=route.request();const res=await worker.fetch(new Request(req.url(),{method:req.method(),headers:{...await req.allHeaders(),Cookie:cookie},...(req.postData()!==null?{body:req.postData()!}:{})}),env);await route.fulfill({status:res.status,headers:Object.fromEntries(res.headers),body:Buffer.from(await res.arrayBuffer())});});
+  // Playwright routes only the first URL of a redirect chain. Follow the real
+  // Worker redirect inside this fixture so the GET remains authenticated and mocked.
+  await page.route(origin+'/**',async route=>{const req=route.request(),headers={...await req.allHeaders(),Cookie:cookie};let res=await worker.fetch(new Request(req.url(),{method:req.method(),headers,...(req.postData()!==null?{body:req.postData()!}:{})}),env);
+   if(res.status===303){expect(req.method()).toBe('POST');expect(res.headers.get('Location')).toBe(path);res=await worker.fetch(new Request(url,{headers:{Cookie:cookie}}),env);expect(res.status).toBe(200);}
+   await route.fulfill({status:res.status,headers:Object.fromEntries(res.headers),body:Buffer.from(await res.arrayBuffer())});});
   await page.goto(url);await expect(page.getByText('Đã kết nối · Chỉ đọc')).toBeVisible();await expect(page.getByRole('heading',{name:'Bài nghe 한글.mp4'})).toBeVisible();await expect(page.locator('video')).toHaveAttribute('src',path+'stream/'+video+'/');await expect(page.getByText('Foreign fixture')).toHaveCount(0);await expect(page.getByText('Chưa xác minh được file')).toBeVisible();
   await page.getByLabel('Tìm media').fill('phat am');await expect(page.locator('[data-dm-card]:visible')).toHaveCount(1);await page.getByLabel('Loại media').selectOption('video');await expect(page.locator('#dm-empty-filter')).toBeVisible();await page.getByRole('button',{name:'Đặt lại'}).click();await expect(page.locator('[data-dm-card]:visible')).toHaveCount(3);
-  await page.getByLabel('Liên kết',{exact:true}).selectOption('unlinked');await expect(page.locator('[data-dm-card]:visible')).toHaveCount(1);
+  await page.getByRole('combobox',{name:'Liên kết',exact:true}).selectOption('unlinked');await expect(page.locator('[data-dm-card]:visible')).toHaveCount(1);
   await page.getByRole('button',{name:'+ Gắn vào bài học',exact:true}).click();await expect(page.locator('audio')).toHaveAttribute('src',path+'stream/'+audio+'/');expect(sql.prepare('SELECT count(*) AS n FROM course_lesson_media').get()?.n).toBe(3);
   const audioCard=page.locator('[data-dm-card]').filter({has:page.getByRole('heading',{name:'Phát âm.mp3'})});await audioCard.getByRole('button',{name:'Bỏ liên kết'}).click();await expect(page.locator('audio')).toHaveCount(0);expect(sql.prepare('SELECT count(*) AS n FROM course_lesson_media').get()?.n).toBe(2);
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
-  offline=true;const response=await page.reload();expect(response?.status()).toBe(503);await expect(page.getByText('Không kết nối được Drive.',{exact:false})).toBeVisible();await expect(page.getByRole('button',{name:'Bỏ liên kết'})).toHaveCount(2);expect(sql.prepare('SELECT count(*) AS n FROM course_lesson_media').get()?.n).toBe(2);
+  // Explicit GET: the fixture folds 303 above, so reload would resubmit the form.
+  offline=true;const response=await page.goto(url);expect(response?.status()).toBe(503);await expect(page.getByText('Không kết nối được Drive.',{exact:false})).toBeVisible();await expect(page.getByRole('button',{name:'Bỏ liên kết'})).toHaveCount(2);expect(sql.prepare('SELECT count(*) AS n FROM course_lesson_media').get()?.n).toBe(2);
  }finally{await page.unrouteAll({behavior:'wait'});globalThis.fetch=original;sql.close();}
 });
