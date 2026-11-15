@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -208,4 +208,31 @@ test('P2.1 course page preserves private session boundary',async()=>{
  assert.equal((await worker.fetch(req('/admin/courses/',{headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,303);
  assert.equal((await worker.fetch(req('/admin/courses/',{headers,method:'POST'}),env)).status,405);
  assert.equal((await worker.fetch(req('/admin/courses/?x=1',{headers}),env)).status,400);
+});
+
+test('P2.2 course validation and private write boundary',async()=>{
+ assert.deepEqual(validateCourseInput({title:' Tiếng Hàn ',slug:'tieng-han',description:' 한글 ',level:'beginner'}),{title:'Tiếng Hàn',slug:'tieng-han',description:'한글',level:'beginner'});
+ for(const input of [{title:'',slug:'a',description:'',level:'all'},{title:'A',slug:'../a',description:'',level:'all'},{title:'A',slug:'a',description:'',level:'unknown'}])assert.throws(()=>validateCourseInput(input),/INVALID_COURSE/);
+ assert.equal((await worker.fetch(req('/admin/courses/manage/'),env)).status,303);
+ const secret=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',secret,new TextEncoder().encode(p))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/x-www-form-urlencoded'};
+ const body='action=create&title=Hangul&slug=hangul&description=Intro&level=beginner';
+ let calls=0;const db={prepare(sql){calls++;assert.match(sql,/INSERT INTO courses/);return {bind(...args){assert.equal(args[1],'hangul');return {run:async()=>({meta:{changes:1}})}}}}};
+ const post=(h=headers)=>req('/admin/courses/manage/',{method:'POST',headers:h,body});
+ assert.equal((await worker.fetch(post({...headers,Origin:'https://evil.test'}),{...env,COURSE_DB:db})).status,403);
+ assert.equal((await worker.fetch(post({...headers,Cookie:''}),{...env,COURSE_DB:db})).status,403);
+ assert.equal(calls,0);
+ assert.equal((await worker.fetch(post(),env)).status,503);
+ assert.equal((await worker.fetch(post(),{...env,COURSE_DB:db})).status,303);
+ assert.equal(calls,1);
+});
+
+test('P2.2 Vietnamese course slug normalization is stable and bounded',()=>{
+ assert.equal(courseSlug('Khóa học tiếng Hàn – Sơ cấp 1'),'khoa-hoc-tieng-han-so-cap-1');
+ assert.equal(courseSlug('Đọc & Viết TOPIK II'),'doc-viet-topik-ii');
+ assert.equal(courseSlug('  Tiếng Hàn   101  '),'tieng-han-101');
+ assert.equal(courseSlug('한글'),'');
+ assert.ok(courseSlug('a '.repeat(100)).length<=100);assert.ok(!courseSlug('a '.repeat(100)).endsWith('-'));
 });
