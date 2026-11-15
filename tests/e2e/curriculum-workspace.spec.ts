@@ -14,12 +14,17 @@ test('P2.3 visual builder reorders chapters, moves lessons into empty chapters a
   await expect(page.locator('#cb-chapter-count')).toHaveText('2');await expect(page.locator('#cb-lesson-count')).toHaveText('2');await expect(page.locator('#cb-version')).toHaveText('v1');
   await page.getByRole('button',{name:'Thu gọn tất cả'}).click();await expect(lesson).toBeHidden();await page.getByRole('button',{name:'Mở tất cả'}).click();await expect(lesson).toBeVisible();
   if(!/mobile/i.test(test.info().project.name)){
-   // Native HTML dragover needs two pointer moves over the target in Chromium.
+   // Start dragging before target.hover() scrolls the off-screen destination into view.
+   // Chromium also needs two pointer moves over the target for native dragover.
    // https://playwright.dev/docs/input#dragging-manually
    const handle=lesson.locator('.cb-handle'),target=second.locator('.cb-dropzone');
    await handle.hover();
+   await expect(target).not.toBeInViewport();
+   const start=await handle.boundingBox();expect(start).not.toBeNull();
    await page.mouse.down();
    try{
+    await page.mouse.move(start!.x+start!.width/2+10,start!.y+start!.height/2-10,{steps:5});
+    await expect(lesson).toHaveClass(/cb-dragging/);
     await target.hover();
     await target.hover();
     await expect(target).toHaveClass(/cb-drop-active/);
