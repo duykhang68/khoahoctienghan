@@ -17,3 +17,12 @@ test('unified dashboard uses real-shaped snapshot and trusted FIFO markers, pres
  fail=true;await page.getByRole('button',{name:'Cập nhật dữ liệu'}).click();await expect(page.locator('#studio-content-status')).toContainText('giữ dữ liệu lần trước');await expect(page.locator('#studio-queue-status')).toContainText('giữ dữ liệu lần trước');await expect(page.locator('#studio-tech')).toHaveText('12');await expect(page.locator('#studio-queue')).toHaveText('1');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
+test('P2.1 dashboard opens private Course Studio without fabricated counts',async({page,office})=>{
+ await page.goto(office+'/admin/');
+ await page.getByRole('link',{name:'Mở Course Studio'}).click();
+ await expect(page).toHaveURL(office+'/admin/courses/');
+ await expect(page.getByRole('heading',{name:'Quản trị khóa học'})).toBeVisible();
+ await expect(page.getByRole('status')).toContainText('Chưa cấu hình cơ sở dữ liệu khóa học');
+ for(const id of ['total','drafts','ready','archived'])await expect(page.locator('#course-'+id)).toHaveText('—');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+});
