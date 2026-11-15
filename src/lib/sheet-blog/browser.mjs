@@ -92,7 +92,9 @@ export function mountSheetBlog(root){
    c.requestAccessToken();
   }catch{finish();set('Không thể mở đăng nhập Google. Kiểm tra OAuth Web Client ID.')}
  });
- function clearGoogle(){googleEpoch++;google=null;rows=[];selected=null;selectedRow=null;selectedSource=null;submitted.clear();$('[data-sheet-filter]').value='';$('[data-source-fingerprint]').textContent='';$('[data-source-row]').textContent='';$('[data-preview]').textContent='';$('[data-preview-title]').textContent='';$('[data-preview-meta]').textContent='';if(dialog.open)dialog.close();$('[data-search]').value='';render();update();set('Đã ngắt Google trên trang.')}
+ function clearSelection(){selected=null;selectedRow=null;selectedSource=null;$('[data-consent]').checked=false;$('[data-source-fingerprint]').textContent='';$('[data-source-row]').textContent='';$('[data-preview]').textContent='';const details=root.querySelector('.sb-source-integrity');if(details)details.open=false;update()}
+ function closePreview(){if(dialog.open)dialog.close();clearSelection()}
+ function clearGoogle(){googleEpoch++;google=null;rows=[];selected=null;selectedRow=null;selectedSource=null;submitted.clear();$('[data-sheet-filter]').value='';$('[data-source-fingerprint]').textContent='';$('[data-source-row]').textContent='';$('[data-preview]').textContent='';$('[data-preview-title]').textContent='';$('[data-preview-meta]').textContent='';closePreview();$('[data-search]').value='';render();update();set('Đã ngắt Google trên trang.')}
  $('[data-google-logout]').addEventListener('click',()=>{if(!loading&&!sending)clearGoogle()});
  $('[data-sheet-filter]').addEventListener('change',()=>{page=1;render()});$('[data-refresh]').addEventListener('click',refresh);$('[data-search]').addEventListener('input',()=>{page=1;render()});
  $('[data-prev]').addEventListener('click',()=>{page--;render()});$('[data-next]').addEventListener('click',()=>{page++;render()});
@@ -103,10 +105,10 @@ export function mountSheetBlog(root){
  });
  $('[data-gh-logout]').addEventListener('click',()=>{if(!sending){github=null;$('[data-github-state]').textContent='Chưa kết nối';update()}});
  for(const key of ['[data-kind]','[data-category]','[data-consent]'])$(key).addEventListener('change',update);
- $('[data-close]').addEventListener('click',()=>{if(!sending)dialog.close()});
- $('[data-dialog-connect]').addEventListener('click',()=>{if(!sending){dialog.close();$('[data-gh-token]').focus();set('Kết nối GitHub rồi nhấn Đăng bài cạnh tiêu đề để tiếp tục.')}});
+ $('[data-close]').addEventListener('click',()=>{if(!sending)closePreview()});
+ $('[data-dialog-connect]').addEventListener('click',()=>{if(!sending){closePreview();$('[data-gh-token]').focus();set('Kết nối GitHub rồi nhấn Đăng bài cạnh tiêu đề để tiếp tục.')}});
  dialog.addEventListener('cancel',e=>{if(sending)e.preventDefault()});
- dialog.addEventListener('close',()=>{selected=null;selectedRow=null;selectedSource=null;$('[data-source-fingerprint]').textContent='';$('[data-source-row]').textContent='';$('[data-preview]').textContent='';update()});
+ dialog.addEventListener('close',()=>{if(!dialog.open)clearSelection()});
  $('[data-submit]').addEventListener('click',async()=>{
   if(!google||!github||!selected||!selectedRow||!selectedSource||sending||!$('[data-consent]').checked)return;
   const msg=$('[data-dialog-status]'),item=selected;
@@ -122,7 +124,7 @@ export function mountSheetBlog(root){
    if(check.ok)throw Error('URL bài đã tồn tại. Không gửi bài trùng.');
    if(check.status!==404)throw Error('Chưa kiểm tra được URL bài. Thử lại.');
    const result=await github.publish(draft,topics.map(t=>t.id),s=>msg.textContent=s);
-   submitted.set(JSON.stringify([item.row,item.title,item.group,item.topic]),result);queueProgress.record(result,item.title);dialog.close();render();set('Đã gửi commit '+result.sha.slice(0,7)+' · GitHub sẽ tiếp nhận Issue FIFO; chưa xuất bản.');
+   submitted.set(JSON.stringify([item.row,item.title,item.group,item.topic]),result);queueProgress.record(result,item.title);closePreview();render();set('Đã gửi commit '+result.sha.slice(0,7)+' · GitHub sẽ tiếp nhận Issue FIFO; chưa xuất bản.');
   }catch(e){msg.textContent=e.message}finally{sending=false;update()}
  });
  update();render();
