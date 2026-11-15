@@ -319,9 +319,89 @@ function lessonBrowser(optimizeMedia){
  window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});render();updatePreview();
 }
 function lessonPage(state,nonce){
- const esc=courseEscape,top='<nav><a href="/admin/courses/'+esc(state.courseId)+'/curriculum/">Giáo trình</a> · <a href="/admin/courses/manage/">Quản lý khóa học</a> · <a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/quiz/">Quiz Builder</a></nav><p>P2.4 · VISUAL LESSON EDITOR</p><h1>'+esc(state.title)+'</h1><p>'+esc(state.courseTitle)+'</p>';
+ const esc=courseEscape,top='<nav><a href="/admin/courses/'+esc(state.courseId)+'/curriculum/">Giáo trình</a> · <a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/media/">Video &amp; Audio</a> · <a href="/admin/courses/manage/">Quản lý khóa học</a> · <a href="/admin/courses/'+esc(state.courseId)+'/lessons/'+esc(state.lessonId)+'/quiz/">Quiz Builder</a></nav><p>P2.4 · VISUAL LESSON EDITOR</p><h1>'+esc(state.title)+'</h1><p>'+esc(state.courseTitle)+'</p>';
  if(state.status!=='draft')return top+'<p>Chỉ bản nháp mới được chỉnh sửa nội dung.</p>';
  return top+'<style>main{max-width:1260px}.le-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px}.le-panel{min-width:0;background:#f1edfc;border-radius:16px;padding:16px;overflow-wrap:anywhere}.le-preview{background:#e5f4ee;min-width:0}.le-block{background:white;padding:12px;border:1px solid #d7d2e6;border-radius:12px;margin:12px 0}.le-row,#lesson-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.le-row button,#lesson-tools button,#lesson-save{min-height:44px;font:inherit}.le-edit{white-space:pre-wrap;min-height:40px;padding:12px;border:1px solid #cbd5e1;border-radius:8px;outline-offset:3px}.le-note{background:#fff2cf;padding:12px;border-radius:8px}.le-paragraph,.le-bullet,.le-ordered,.le-quote{white-space:pre-wrap}.le-panel img{display:block;max-width:100%;height:auto;margin:8px auto}.le-panel figure{margin:14px 0}.le-panel input{box-sizing:border-box;width:100%;padding:10px;font:inherit}.le-panel button:focus-visible,.le-edit:focus-visible{outline:3px solid #2563eb}</style><p>Soạn bằng khối trực quan, không cần Markdown. Ảnh WebP tối đa 1600 px; tổng nội dung lưu tối đa 1,5 MB.</p><div id="lesson-tools" aria-label="Thêm khối nội dung"></div><input hidden type="file" id="lesson-file" accept="image/png,image/jpeg,image/webp,image/gif"><p role="status" id="lesson-status">Chưa có thay đổi.</p><button type="button" id="lesson-save" disabled>Lưu bản nháp</button><div class="le-grid"><section class="le-panel"><h2>Soạn nội dung</h2><div id="lesson-blocks"></div></section><section class="le-panel le-preview"><h2>Xem trước trực tiếp</h2><div id="lesson-preview"></div></section></div><textarea hidden id="lesson-state">'+esc(JSON.stringify(state))+'</textarea><script type="module" nonce="'+nonce+'">import {optimizeMedia} from "/admin/assets/editor-v2/media.mjs";('+lessonBrowser.toString()+')(optimizeMedia);</script>';
+}
+
+
+const driveId=/^[A-Za-z0-9_-]{10,150}$/;
+const driveTypes=new Set(['video/mp4','video/webm','audio/mpeg','audio/mp4','audio/wav','audio/ogg','audio/webm','audio/x-wav']);
+const driveBase='https://www.googleapis.com/drive/v3/files';
+const googleTokenUrl='https://oauth2.googleapis.com/token';
+const driveFields='id,name,mimeType,size,parents,trashed,capabilities(canDownload)';
+export async function courseDriveToken(env,fetcher=fetch){
+ if(!driveId.test(env.COURSE_MEDIA_FOLDER_ID||''))throw Error('DRIVE_CONFIG');
+ const account=JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON||'{}');
+ if(account.type!=='service_account'||typeof account.client_email!=='string'||!account.client_email.endsWith('.gserviceaccount.com')||typeof account.private_key!=='string')throw Error('DRIVE_CONFIG');
+ // Parse a PKCS#8 PEM envelope structurally; the key itself comes only from the Worker secret.
+ const lines=account.private_key.trim().split(/\r?\n/);
+ const boundary=/^-----(BEGIN|END) ([A-Z ]+)-----$/;
+ const first=boundary.exec(lines.shift()||''),last=boundary.exec(lines.pop()||'');
+ if(first?.[1]!=='BEGIN'||last?.[1]!=='END'||first[2]!=='PRIVATE KEY'||last[2]!==first[2])throw Error('DRIVE_CONFIG');
+ const raw=lines.join('').replace(/\s/g,'');
+ if(!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))throw Error('DRIVE_CONFIG');
+ const key=await crypto.subtle.importKey('pkcs8',Uint8Array.from(atob(raw),x=>x.charCodeAt(0)),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
+ const stamp=Math.floor(Date.now()/1000),part=x=>b64(enc.encode(JSON.stringify(x)));
+ const unsigned=part({alg:'RS256',typ:'JWT'})+'.'+part({iss:account.client_email,scope:'https://www.googleapis.com/auth/drive.readonly',aud:googleTokenUrl,iat:stamp,exp:stamp+300});
+ const assertion=unsigned+'.'+b64(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,enc.encode(unsigned)));
+ const response=await fetcher(googleTokenUrl,{method:'POST',redirect:'error',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion})});
+ if(!response.ok)throw Error('DRIVE_AUTH');
+ const token=(await response.json()).access_token;if(typeof token!=='string'||!token)throw Error('DRIVE_AUTH');return token;
+}
+async function driveGet(token,url,headers={},fetcher=fetch){return fetcher(url,{redirect:'error',headers:{...headers,Authorization:'Bearer '+token}});}
+export function eligibleCourseMedia(file,folder){
+ return !!file&&driveId.test(file.id||'')&&driveTypes.has(file.mimeType)&&file.trashed===false&&Array.isArray(file.parents)&&file.parents.includes(folder)&&file.capabilities?.canDownload===true&&typeof file.name==='string'&&file.name.length<=1000&&/^\d{1,15}$/.test(file.size||'')&&Number(file.size)>0;
+}
+async function courseDriveList(env,token){
+ const folder=env.COURSE_MEDIA_FOLDER_ID;
+ const check=await driveGet(token,driveBase+'/'+folder+'?fields=id,mimeType,trashed');
+ if(!check.ok)throw Error('DRIVE_FOLDER');const root=await check.json();if(root.id!==folder||root.mimeType!=='application/vnd.google-apps.folder'||root.trashed!==false)throw Error('DRIVE_FOLDER');
+ let page='',rows=[];
+ for(let i=0;i<5;i++){const p=new URLSearchParams({q:"'"+folder+"' in parents and trashed = false and (mimeType contains 'video/' or mimeType contains 'audio/')",fields:'nextPageToken,incompleteSearch,files('+driveFields+')',pageSize:'100',orderBy:'name'});if(page)p.set('pageToken',page);const response=await driveGet(token,driveBase+'?'+p);if(!response.ok)throw Error('DRIVE_LIST');const data=await response.json();if(!Array.isArray(data.files)||data.incompleteSearch)throw Error('DRIVE_LIST');rows.push(...data.files.filter(f=>eligibleCourseMedia(f,folder)));page=data.nextPageToken;if(!page)return {rows,truncated:false};}
+ return {rows,truncated:true};
+}
+async function courseDriveFile(env,token,id){
+ if(!driveId.test(id))return null;const res=await driveGet(token,driveBase+'/'+id+'?'+new URLSearchParams({fields:driveFields}));if(!res.ok)return null;const data=await res.json();return data.id===id&&eligibleCourseMedia(data,env.COURSE_MEDIA_FOLDER_ID)?data:null;
+}
+async function lessonMedia(req,env,courseId,lessonId,streamId){
+ const db=env.COURSE_DB;if(!db)return reply('Chưa cấu hình COURSE_DB',503);
+ const base='/admin/courses/'+courseId+'/lessons/'+lessonId+'/media/';
+ try{
+ const state=await curriculumState(db,courseId);if(!state||!state.chapters.some(c=>c.lessons.some(l=>l.id===lessonId)))return reply('Không tìm thấy bài học',404);
+ if(streamId){
+  if(req.method!=='GET')return reply('Method not allowed',405);
+  const attached=await db.prepare('SELECT file_id FROM course_lesson_media WHERE course_id=? AND lesson_id=? AND file_id=?').bind(courseId,lessonId,streamId).first();if(!attached)return reply('Not found',404);
+  const range=req.headers.get('Range');if(range&&!/^bytes=(?:\d{1,15}-\d{0,15}|-\d{1,15})$/.test(range))return reply('Invalid range',416);
+  const token=await courseDriveToken(env);const file=await courseDriveFile(env,token,streamId);if(!file)return reply('Not found',404);
+  const result=await driveGet(token,driveBase+'/'+streamId+'?alt=media',range?{Range:range}:{});
+  if(![200,206].includes(result.status)){await result.body?.cancel();return reply('Không phát được media',result.status===416?416:502);}
+  const extra={'Content-Type':file.mimeType,'Accept-Ranges':'bytes','Content-Disposition':'inline'};
+  for(const h of ['Content-Length','Content-Range']){const value=result.headers.get(h);if(value)extra[h]=value;}
+  return reply(result.body,result.status,extra);
+ }
+ if(req.method==='POST'){
+  if(req.headers.get('Origin')!==new URL(req.url).origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/x-www-form-urlencoded')return reply('Forbidden',403);
+  if(state.status!=='draft')return reply('Chỉ chỉnh sửa bản nháp',409);
+  const reader=req.body?.getReader();if(!reader)return reply('Invalid request',400);let size=0,body='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>4096){await reader.cancel();return reply('Payload too large',413);}body+=decoder.decode(value,{stream:true});}const form=new URLSearchParams(body+decoder.decode());if([...form.keys()].length!==2||form.getAll('action').length!==1||form.getAll('file').length!==1)return reply('Invalid request',400);const id=form.get('file'),action=form.get('action');if(!driveId.test(id||'')||!['attach','detach'].includes(action))return reply('Invalid request',400);
+  const session=await open(getCookie(req,sessionName),env,'session');if(!session)return reply('Forbidden',403);
+  const guard="EXISTS(SELECT 1 FROM courses c JOIN course_curricula k ON k.course_id=c.id, json_each(k.structure) ch, json_each(ch.value,'$.lessons') l WHERE c.id=? AND c.status='draft' AND json_extract(l.value,'$.id')=?)";
+  if(action==='attach'){
+   const token=await courseDriveToken(env),file=await courseDriveFile(env,token,id);if(!file)return reply('File không hợp lệ hoặc ngoài thư mục cho phép',400);
+   const result=await db.prepare("INSERT INTO course_lesson_media(course_id,lesson_id,file_id,linked_at,linked_by) SELECT ?,?,?,?,? WHERE "+guard+" AND (SELECT COUNT(*) FROM course_lesson_media WHERE course_id=? AND lesson_id=?)<30 ON CONFLICT DO NOTHING").bind(courseId,lessonId,id,Date.now(),session.sub,courseId,lessonId,courseId,lessonId).run();if(result.meta?.changes!==1)return reply('Đã gắn, vượt giới hạn hoặc bản nháp đã thay đổi',409);
+  }else{const result=await db.prepare("DELETE FROM course_lesson_media WHERE course_id=? AND lesson_id=? AND file_id=? AND "+guard).bind(courseId,lessonId,id,courseId,lessonId).run();if(result.meta?.changes!==1)return reply('Liên kết đã thay đổi',409);}
+  return redirect(base);
+ }
+ if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
+ const token=await courseDriveToken(env),listing=await courseDriveList(env,token);
+ const links=await db.prepare('SELECT file_id FROM course_lesson_media WHERE course_id=? AND lesson_id=? ORDER BY linked_at,file_id').bind(courseId,lessonId).all();
+ const linked=new Set(links.results.map(x=>x.file_id)),esc=courseEscape;
+ const action=(id,kind,label)=>state.status==='draft'?'<form method="post" action="'+base+'"><input type="hidden" name="file" value="'+esc(id)+'"><input type="hidden" name="action" value="'+kind+'"><button>'+label+'</button></form>':'';
+ const cards=listing.rows.map(f=>'<article class="dm-card"><strong>'+esc(f.name)+'</strong><p>'+esc(f.mimeType)+' · '+(Number(f.size)/1000000).toFixed(1)+' MB</p>'+(linked.has(f.id)?'<'+(f.mimeType.startsWith('video/')?'video':'audio')+' controls preload="none" src="'+base+'stream/'+esc(f.id)+'/"></'+(f.mimeType.startsWith('video/')?'video':'audio')+'>'+action(f.id,'detach','Bỏ liên kết'):action(f.id,'attach','Gắn vào bài học'))+'</article>').join('');
+ const missing=[...linked].filter(id=>!listing.rows.some(f=>f.id===id)).map(id=>'<p>Media ngoài danh sách hiện tại hoặc không còn truy cập được.'+action(id,'detach','Bỏ liên kết')+'</p>').join('');
+ const html='<style>main{max-width:1050px}.dm-card{padding:16px;background:#f0eafa;border-radius:12px;margin:12px 0;overflow-wrap:anywhere}.dm-card video,.dm-card audio{display:block;width:100%;max-height:480px;margin:12px 0}.dm-card button{min-height:44px}</style><nav><a href="/admin/courses/'+courseId+'/lessons/'+lessonId+'/">Soạn bài</a></nav><p>P2.5 · VIDEO & AUDIO MANAGEMENT</p><h1>Thư viện Google Drive</h1><p>Drive API: Đã kết nối · Chỉ đọc · '+listing.rows.length+' file hỗ trợ.</p><p>Tải file trực tiếp lên thư mục Google Drive, sau đó tải lại trang và gắn vào bài học. Không xóa file gốc khi bỏ liên kết.</p><p><a href="https://drive.google.com/drive/folders/'+esc(env.COURSE_MEDIA_FOLDER_ID)+'" target="_blank" rel="noopener noreferrer">Mở thư mục Drive</a></p>'+(listing.truncated?'<p>Danh sách giới hạn 500 mục; chỉ hiển thị thư mục gốc.</p>':'')+(cards||'<p>Chưa có video/audio hợp lệ trong thư mục gốc.</p>')+missing;
+ return reply(req.method==='HEAD'?null:page(html),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; media-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});
+ }catch{return reply('Không kết nối được Drive hoặc cơ sở dữ liệu. Kiểm tra cấu hình và quyền truy cập.',503);}
 }
 
 export default {async fetch(req,env){
@@ -341,6 +421,8 @@ export default {async fetch(req,env){
  }
  if(url.pathname==='/auth/logout'&&req.method==='POST'){if(req.headers.get('Origin')!==url.origin)return reply('Forbidden',403);return redirect('/auth/login',[cookie(sessionName,'',0),cookie(challengeName,'',0)]);}
  if(!await authorized(req,env))return req.method==='GET'&&(url.pathname==='/'||url.pathname==='/admin/'||url.pathname==='/admin/engineering/'||url.pathname==='/admin/sheets/'||url.pathname==='/admin/editor/'||url.pathname==='/admin/library/'||url.pathname==='/admin/categories/'||url.pathname==='/admin/drafts/'||url.pathname==='/admin/pipeline/'||url.pathname==='/admin/schedules/'||url.pathname==='/admin/courses/'||url.pathname==='/admin/courses/manage/'||/^\/admin\/courses\/[0-9a-f-]{36}\/(?:curriculum|lessons\/[0-9a-f-]{36})\/$/.test(url.pathname))?redirect('/auth/login'):reply('Forbidden',403);
+ const mediaMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/lessons\/([0-9a-f-]{36})\/media\/(?:stream\/([A-Za-z0-9_-]{10,150})\/)?$/);
+ if(mediaMatch){const [,courseId,lessonId,streamId]=mediaMatch;if(!curriculumId.test(courseId)||!curriculumId.test(lessonId)||url.search)return reply('Invalid request',400);return lessonMedia(req,env,courseId,lessonId,streamId);}
  const quizMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/lessons\/([0-9a-f-]{36})\/quiz\/$/);
  if(quizMatch){
   const [,courseId,lessonId]=quizMatch;if(!curriculumId.test(courseId)||!curriculumId.test(lessonId)||url.search)return reply('Invalid request',400);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,validateQuizQuestions} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken,validateQuizQuestions} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -302,6 +302,37 @@ test('P2.4 lesson route is private; save requires membership, draft, origin and 
  member=false;assert.equal((await post(0)).status,404);member=true;
  status='archived';assert.equal((await post(0)).status,409);status='draft';
  assert.equal((await post(0)).status,200);assert.equal((await post(0)).status,409);assert.equal((await post(1)).status,200);assert.equal(mutations,2);
+});
+
+test('P2.5 media rejects foreign folder, shortcuts, unsupported content and download restriction',()=>{
+ const folder='folder_1234567',file={id:'file_1234567890',name:'한글.mp4',mimeType:'video/mp4',size:'100',parents:[folder],trashed:false,capabilities:{canDownload:true}};
+ assert.equal(eligibleCourseMedia(file,folder),true);
+ for(const patch of [{parents:['elsewhere123']},{mimeType:'application/vnd.google-apps.shortcut'},{mimeType:'text/html'},{trashed:true},{capabilities:{canDownload:false}}])assert.equal(eligibleCourseMedia({...file,...patch},folder),false);
+});
+test('P2.5 anonymous media endpoints deny access and missing service account fails closed',async()=>{
+ const path='/admin/courses/11111111-1111-4111-8111-111111111111/lessons/22222222-2222-4222-8222-222222222222/media/';
+ assert.equal((await worker.fetch(req(path),env)).status,403);
+ assert.equal((await worker.fetch(req(path+'stream/file_1234567890/'),env)).status,403);
+ await assert.rejects(courseDriveToken({},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
+});
+
+test('P2.5 signs Google JWT using runtime-generated PKCS8 key; no static credential',async()=>{
+ const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+ const der=Buffer.from(await crypto.subtle.exportKey('pkcs8',pair.privateKey)).toString('base64');
+ const pem=['BEGIN','END'].map(k=>['-----'+k,'PRIVATE KEY-----'].join(' '));
+ const account={type:'service_account',client_email:'fixture@example.iam.gserviceaccount.com',private_key:[pem[0],...der.match(/.{1,64}/g),pem[1]].join('\n')};
+ const e={COURSE_MEDIA_FOLDER_ID:'folder_1234567',GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify(account)};
+ let called=0;
+ const token=await courseDriveToken(e,async(url,options)=>{
+  called++;assert.equal(url,'https://oauth2.googleapis.com/token');assert.equal(options.redirect,'error');
+  const jwt=options.body.get('assertion'),[h,p,s]=jwt.split('.');
+  assert.equal(JSON.parse(Buffer.from(h,'base64url').toString()).alg,'RS256');
+  const payload=JSON.parse(Buffer.from(p,'base64url').toString());assert.equal(payload.iss,account.client_email);assert.equal(payload.scope,'https://www.googleapis.com/auth/drive.readonly');assert.equal(payload.aud,url);
+  assert.equal(await crypto.subtle.verify('RSASSA-PKCS1-v1_5',pair.publicKey,Buffer.from(s,'base64url'),new TextEncoder().encode(h+'.'+p)),true);
+  return new Response(JSON.stringify({access_token:'fixture'}),{status:200});
+ });
+ assert.equal(token,'fixture');assert.equal(called,1);
+ await assert.rejects(courseDriveToken({...e,GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify({...account,private_key:der})},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
 });
 
 test('P2.6 quiz route is private; save requires membership, draft, origin and current version',async()=>{
