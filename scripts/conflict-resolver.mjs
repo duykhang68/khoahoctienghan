@@ -2,7 +2,7 @@
 import {isDeepStrictEqual} from 'node:util';
 import {sensitiveFile} from './engineering-policy.mjs';
 export const postsPath='src/data/techblog/posts.json';
-export const conflictEligible=p=>!p.draft&&!/^content\/editor-fifo-/.test(p.head?.ref||'')&&!/<!-- editor-fifo-issue:/.test(p.body||'')&&!/\bDO NOT MERGE\b/i.test((p.title||'')+' '+(p.body||''));
+export const conflictEligible=p=>!p.draft&&!/^content\/editor-fifo-/.test(p.head?.ref||'')&&!/<!-- editor-fifo-issue:/.test(p.body||'')&&!/\bDO NOT MERGE\b/i.test(p.title||'')&&!/^\s*(?:<!--\s*)?DO NOT MERGE(?:\s*-->)?\s*$/im.test(p.body||'');
 const sha=x=>typeof x==='string'&&/^[a-f0-9]{40}$/.test(x);
 const regular=e=>e?.type==='blob'&&e.mode==='100644'&&sha(e.sha);
 const equal=(a,b)=>!a&&!b||Boolean(a&&b&&a.sha===b.sha&&a.mode===b.mode&&a.type===b.type);

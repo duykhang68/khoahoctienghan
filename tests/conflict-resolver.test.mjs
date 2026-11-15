@@ -38,6 +38,8 @@ test('queue and explicit no-merge are excluded; repair verification is exact and
  assert.equal(conflictEligible({head:{ref:'content/editor-fifo-93-a'}}),false);
  assert.equal(conflictEligible({head:{ref:'feat/test'},title:'DO NOT MERGE'}),false);
  assert.equal(conflictEligible({head:{ref:'feat/test'},draft:true}),false);
+ assert.equal(conflictEligible({head:{ref:'feat/test'},body:'This documents DO NOT MERGE exclusions.'}),true);
+ assert.equal(conflictEligible({head:{ref:'feat/test'},body:'<!-- DO NOT MERGE -->'}),false);
  assert.equal(conflictEligible({head:{ref:'feat/test'}}),true);
  const i={state:'open',user:{login:'github-actions[bot]'},body:repairMarker(id(1),id(2))};
  assert.equal(verifiedRepair(i,id(1),id(2)),true);

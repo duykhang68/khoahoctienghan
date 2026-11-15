@@ -156,6 +156,7 @@ function resolveConflict(p,comparison){
  }
  const note='\n\n'+mark+'\nResolver 2.0: '+decision+'; base '+base+'; main '+main+'; HEAD '+p.head.sha+'; paths '+(plan.count??'unknown')+'; identical '+(plan.exact??'unknown')+'. Researcher: compare exact source and regression intent; for non-identical/protected code prepare a minimal reviewed repair or documented supersession, never blanket ours/theirs.';
  const save=extra=>api('issues/'+record.number,'PATCH',{body:record.body+note+extra});
+ if(!['EXACT_DUPLICATE','MERGED'].includes(decision)){save('\nStatus: RESEARCH_REQUIRED');return;}
  if(!appToken){console.log('APP_SETUP_REQUIRED PR #'+p.number+'; conflict write deferred');return;}
  if(!stillCurrent(p))return;
  if(decision==='EXACT_DUPLICATE'&&exactMainGreen()){
@@ -163,7 +164,11 @@ function resolveConflict(p,comparison){
   if(!trusted(fresh)||fresh.state!=='open'||fresh.head.sha!==p.head.sha||!stillCurrent(p))return;
   // REST PR close is not a compare-and-swap; recheck immutable HEAD/current main immediately before write.
   const closed=branchApi('pulls/'+p.number,'PATCH',{state:'closed'});
-  if(closed.state!=='closed'||closed.head?.sha!==p.head.sha){console.log('CLOSE_REVIEW_REQUIRED PR #'+p.number);return;}
+  if(closed.state!=='closed'||closed.head?.sha!==p.head.sha||!stillCurrent(p)){
+   // Non-atomic close: restore the open PR if the observed proof became stale.
+   if(closed.state==='closed'&&!closed.merged)branchApi('pulls/'+p.number,'PATCH',{state:'open'});
+   console.log('CLOSE_REVIEW_REQUIRED PR #'+p.number);return;
+  }
   api('issues/'+record.number,'PATCH',{state:'closed',state_reason:'not_planned',body:record.body+note+'\n\n<!-- superseded -->\nStatus: SUPERSEDED — identical regular blobs on exact green main; CI '+mainCI.html_url+'; no production claim.'});
   return;
  }
@@ -176,7 +181,13 @@ function resolveConflict(p,comparison){
   if(!stillCurrent(p))return;
   save('\n'+repairMarker(fixed.sha,main)+'\nStatus: WAITING_NATIVE_PR_CI');
   // Non-forced ref update; never bypass required checks or write main.
-  branchApi('git/refs/heads/'+encodeURIComponent(p.head.ref),'PATCH',{sha:fixed.sha,force:false});
+  try{branchApi('git/refs/heads/'+encodeURIComponent(p.head.ref),'PATCH',{sha:fixed.sha,force:false});}
+  catch{
+   if(api('git/ref/heads/'+encodeURIComponent(p.head.ref)).object.sha!==fixed.sha){
+    save('\nStatus: RESEARCH_REQUIRED — ref update rejected; no confirmed repair');
+    return;
+   }
+  }
   console.log('CONFLICT_FIX_COMMITTED PR #'+p.number+'; await native PR CI');return;
  }
  save('\nStatus: RESEARCH_REQUIRED');
