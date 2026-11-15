@@ -9,9 +9,10 @@ test('P2.3 owner can save, reload, edit and recover from a failed save',async({p
  const db=new DatabaseSync(':memory:');
  try{
   db.exec('PRAGMA foreign_keys=ON');
-  for(const file of ['course-schema.sql','course-management-migration.sql','course-curriculum-migration.sql'])db.exec(readFileSync('back-office/'+file,'utf8'));
+  for(const file of ['course-schema.sql','course-management-migration.sql','course-curriculum-migration.sql','course-lesson-migration.sql','course-media-migration.sql','course-quiz-migration.sql','course-release-migration.sql'])db.exec(readFileSync('back-office/'+file,'utf8'));
   db.prepare("INSERT INTO courses(id,slug,title,created_at,updated_at) VALUES(?,?,?,?,?)").run(id,'fixture-course','Tiếng Hàn',1,1);
-  const COURSE_DB={prepare(sql:string){return {bind(...args:any[]){return {first:async()=>db.prepare(sql).get(...args)??null,run:async()=>({meta:{changes:Number(db.prepare(sql).run(...args).changes)}})}}}}};
+  const writeCounts:number[]=[];
+  const COURSE_DB={prepare(sql:string){return {bind(...args:any[]){return {first:async()=>db.prepare(sql).get(...args)??null,run:async()=>{const before=Number(db.prepare('SELECT total_changes() AS n').get()?.n);db.prepare(sql).run(...args);const changes=Number(db.prepare('SELECT total_changes() AS n').get()?.n)-before;writeCounts.push(changes);return {success:true,meta:{changes}};}}}}}};
   const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'test-only-'.repeat(6),COURSE_DB};
   const payload=Buffer.from(JSON.stringify({kind:'session',origin,sub:'fixture',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),signature=createHmac('sha256',env.SESSION_SECRET).update(payload).digest('base64url');
   let fail=false;
@@ -31,10 +32,11 @@ test('P2.3 owner can save, reload, edit and recover from a failed save',async({p
   await expect(save).toBeEnabled();
   fail=true;await save.click();await expect(status).toContainText('503');await expect(save).toBeEnabled();await expect(page.getByRole('textbox',{name:'Tên bài 1.1'})).toHaveValue('Bài 1');
   fail=false;await save.click();await expect(status).toContainText('Phiên bản 1');await expect(save).toBeDisabled();
-  const row=db.prepare('SELECT version,structure FROM course_curricula WHERE course_id=?').get(id);expect(row?.version).toBe(1);
+  const row=db.prepare('SELECT version,structure FROM course_curricula WHERE course_id=?').get(id);expect(row?.version).toBe(1);expect(writeCounts).toEqual([2]);expect(db.prepare('SELECT revision FROM course_review_revision WHERE course_id=?').get(id)?.revision).toBe(2);
   const saved=JSON.parse(String(row?.structure));expect(saved[0].lessons[0].title).toBe('Bài 1');
+  const stale=await page.evaluate(async chapters=>{const res=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:0,chapters})});return res.status;},saved);expect(stale).toBe(409);expect(writeCounts).toEqual([2]);
   await page.reload();await expect(page.getByRole('textbox',{name:'Tên bài 1.1'})).toHaveValue('Bài 1');
   await page.getByRole('textbox',{name:'Tên bài 1.1'}).fill('Bài 2');await save.click();await expect(status).toContainText('Phiên bản 2');
-  const edited=db.prepare('SELECT version,structure FROM course_curricula WHERE course_id=?').get(id);expect(edited?.version).toBe(2);expect(JSON.parse(String(edited?.structure))[0].lessons[0].id).toBe(saved[0].lessons[0].id);
+  const edited=db.prepare('SELECT version,structure FROM course_curricula WHERE course_id=?').get(id);expect(edited?.version).toBe(2);expect(writeCounts).toEqual([2,2]);expect(db.prepare('SELECT revision FROM course_review_revision WHERE course_id=?').get(id)?.revision).toBe(3);expect(JSON.parse(String(edited?.structure))[0].lessons[0].id).toBe(saved[0].lessons[0].id);
  }finally{db.close();}
 });
