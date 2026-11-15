@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -227,4 +227,12 @@ test('P2.2 course validation and private write boundary',async()=>{
  assert.equal((await worker.fetch(post(),env)).status,503);
  assert.equal((await worker.fetch(post(),{...env,COURSE_DB:db})).status,303);
  assert.equal(calls,1);
+});
+
+test('P2.2 Vietnamese course slug normalization is stable and bounded',()=>{
+ assert.equal(courseSlug('Khóa học tiếng Hàn – Sơ cấp 1'),'khoa-hoc-tieng-han-so-cap-1');
+ assert.equal(courseSlug('Đọc & Viết TOPIK II'),'doc-viet-topik-ii');
+ assert.equal(courseSlug('  Tiếng Hàn   101  '),'tieng-han-101');
+ assert.equal(courseSlug('한글'),'');
+ assert.ok(courseSlug('a '.repeat(100)).length<=100);assert.ok(!courseSlug('a '.repeat(100)).endsWith('-'));
 });
