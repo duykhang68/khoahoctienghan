@@ -1,24 +1,25 @@
 import {queueClient,progressFor,stages} from './progress.mjs';
+import {isConfirmedProgress,progressGroups} from './core/progress.mjs';
+import {validReceipt,makeReceipt,readReceiptRows,putReceipt} from './core/local-receipts.mjs';
 const github='https://github.com/duykhang68/khoahoctienghan',site='https://duykhang68.github.io/khoahoctienghan/';
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 const link=(text,url)=>{const a=make('a',text);a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a};
 const receiptKey='kb.sheet-blog.public-submission-receipts.v1';
-const validReceipt=r=>r&&typeof r.title==='string'&&/^[a-f0-9]{64}$/.test(r.id||'')&&/^[a-f0-9]{40}$/.test(r.source||'');
 export function rememberPublicReceipt(result,title){
- const r={id:result.id,source:result.sha,title:String(title).slice(0,180)};
+ const r=makeReceipt(result,title);
  if(!validReceipt(r))return false;
- try{const old=JSON.parse(localStorage.getItem(receiptKey)||'[]');const rows=Array.isArray(old)?old.filter(validReceipt).map(x=>({id:x.id,source:x.source,title:x.title.slice(0,180)})):[];const all=new Map(rows.map(x=>[x.id,x]));all.set(r.id,r);localStorage.setItem(receiptKey,JSON.stringify([...all.values()].slice(-50)));return true}catch{return false}
+ try{const old=JSON.parse(localStorage.getItem(receiptKey)||'[]');const rows=readReceiptRows(old);localStorage.setItem(receiptKey,JSON.stringify(putReceipt(rows,r)));return true}catch{return false}
 }
 export function mountQueueProgress(root,{client=queueClient(),showEvidence=false}={}){
  if(!root)return {record(){},refresh(){}};
  const $=s=>root.querySelector(s),area=$('[data-progress-cards]'),stamp=$('[data-progress-status]'),button=$('[data-progress-refresh]');
  let rows=[],evidence={},busy=false,ready=false,error='',updated=null,again=false;
- const receipts=new Map(),valid=r=>r&&typeof r.title==='string'&&/^[a-f0-9]{64}$/.test(r.id||'')&&/^[a-f0-9]{40}$/.test(r.source||'');
- try{const x=JSON.parse(localStorage.getItem(receiptKey)||'[]');if(Array.isArray(x))for(const r of x)if(valid(r))receipts.set(r.id,{id:r.id,source:r.source,title:r.title.slice(0,180)})}catch{}
+ const receipts=new Map(),valid=validReceipt;
+ try{const x=JSON.parse(localStorage.getItem(receiptKey)||'[]');for(const r of readReceiptRows(x))receipts.set(r.id,r)}catch{}
  function persist(){try{localStorage.setItem(receiptKey,JSON.stringify([...receipts.values()].slice(-50)))}catch{}}
- const confirmed=r=>progressFor(r).done===6;
+ const confirmed=isConfirmedProgress;
  function render(){
-  const accepted=new Set(rows.map(r=>r.id)),pending=[...receipts.values()].filter(r=>!accepted.has(r.id)),open=rows.filter(r=>!confirmed(r)),done=rows.filter(confirmed).reverse();
+  const {pending,open,done}=progressGroups(rows,receipts);
   $('[data-progress-queued]').textContent=ready?String(open.length):'—';$('[data-progress-done]').textContent=ready?String(done.length):'—';$('[data-progress-sent]').textContent=String(pending.length);
   area.replaceChildren();
   function card(row,index){
@@ -51,6 +52,6 @@ export function mountQueueProgress(root,{client=queueClient(),showEvidence=false
   }catch(e){error='Chưa thể cập nhật GitHub: '+String(e.message||'Lỗi mạng')}
   finally{busy=false;button.disabled=false;render();if(again){again=false;void refresh()}}
  }
- function record(result,title){const r={id:result.id,source:result.sha,title:String(title).slice(0,180)};if(valid(r)){receipts.set(r.id,r);persist();render()}void refresh()}
+ function record(result,title){const r=makeReceipt(result,title);if(valid(r)){receipts.set(r.id,r);persist();render()}void refresh()}
  button.addEventListener('click',()=>void refresh());render();void refresh();return {record,refresh};
 }

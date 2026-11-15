@@ -2,7 +2,10 @@ import {sheetsClient,scope,rowDraft,recommendDestination} from './model.mjs';
 import {githubClient} from '../editor-v2/github.mjs';
 import {mountQueueProgress} from './progress-browser.mjs';
 import {sheetSource,verifyReviewedSource} from './source.mjs';
-import {slugify,buildDocument} from '../editor-v2/model.mjs';
+import {buildDocument} from '../editor-v2/model.mjs';
+import {validClient} from './core/contracts.mjs';
+import {rowKey,publisherPage,assertPreviewRow,assertUnchangedRow} from './core/sheet-rows.mjs';
+import {publisherRoute,canPreviewRoute} from './core/sheet-routing.mjs';
 const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
 export function mountSheetBlog(root){
  if(!root)return;
@@ -24,20 +27,16 @@ export function mountSheetBlog(root){
   $('[data-gh-logout]').hidden=!github;$('[data-gh-logout]').disabled=sending;
   const kind=$('[data-kind]').value,cat=$('[data-category]').value;
   $('[data-category-label]').hidden=kind!=='knowledge';
-  $('[data-route]').textContent=selected&&kind&&(kind!=='knowledge'||cat)?base+'/'+(kind==='tech'?'techblog':cat)+'/'+slugify(selected.title)+'/':'';
+  $('[data-route]').textContent=canPreviewRoute(selected,kind,cat)?publisherRoute(base,kind,cat,selected.title):'';
   $('[data-submit]').disabled=!google||!github||!selectedRow||!selectedSource||!$('[data-consent]').checked||!kind||(kind==='knowledge'&&!cat)||sending;
   $('[data-close]').disabled=sending;
   $('[data-dialog-connect]').hidden=!!github;$('[data-dialog-connect]').disabled=sending;
  };
- function validClient(value){return /^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(value)}
  function render(){
   const query=$('[data-search]').value.trim().toLocaleLowerCase('vi');
   const filter=$('[data-sheet-filter]').value;
-  const key=r=>JSON.stringify([r.row,r.title,r.group,r.topic]),state=r=>r.id?'marked':submitted.has(key(r))?'sent':'pending';
-  const matches=rows.filter(r=>r.title.toLocaleLowerCase('vi').includes(query)&&(!filter||state(r)===filter));
-  const totals={pending:0,sent:0,marked:0};for(const r of rows)totals[state(r)]++;
+  const {matches,totals,pages,page:nextPage}=publisherPage(rows,submitted,query,filter,page);page=nextPage;
   for(const k of Object.keys(totals))$('[data-sheet-'+k+']').textContent=google?String(totals[k]):'—';
-  const pages=Math.max(1,Math.ceil(matches.length/10));page=Math.min(page,pages);
   $('[data-count]').textContent=google?matches.length+' bài viết tiếng Việt':'Chưa tải danh sách';
   const area=$('[data-rows]');area.replaceChildren();
   for(const item of matches.slice((page-1)*10,page*10)){
@@ -45,7 +44,7 @@ export function mountSheetBlog(root){
    copy.append(make('small','VN · Dòng '+item.row+(item.topic?' · '+item.topic:'')),make('h3',item.title));
    if(item.id){
     const state=make('span','Đã có Content ID','sb-row-state');copy.append(state);button.textContent='Đã có Content ID';button.disabled=true;
-   }else if(submitted.has(JSON.stringify([item.row,item.title,item.group,item.topic]))){const link=make('a','Đã gửi commit');link.href=submitted.get(JSON.stringify([item.row,item.title,item.group,item.topic])).commitUrl;link.target='_blank';link.rel='noopener noreferrer';copy.append(link);button.disabled=true;button.textContent='Đã gửi FIFO';}
+   }else if(submitted.has(rowKey(item))){const link=make('a','Đã gửi commit');link.href=submitted.get(rowKey(item)).commitUrl;link.target='_blank';link.rel='noopener noreferrer';copy.append(link);button.disabled=true;button.textContent='Đã gửi FIFO';}
    else{copy.append(make('span','Chưa đăng','sb-row-state sb-row-pending'));button.addEventListener('click',()=>choose(item))}
    card.append(copy,button);area.append(card);
   }
@@ -58,11 +57,10 @@ export function mountSheetBlog(root){
   catch(e){if(google===client){rows=[];render();set(e.message)}}finally{loading=false;update()}
  }
  async function choose(item){
-  if(!google||loading||sending||item.id||submitted.has(JSON.stringify([item.row,item.title,item.group,item.topic])))return;const client=google;loading=true;update();set('Đang đọc nội dung cột C của bài đã chọn…');
+  if(!google||loading||sending||item.id||submitted.has(rowKey(item)))return;const client=google;loading=true;update();set('Đang đọc nội dung cột C của bài đã chọn…');
   try{
    const row=await client.read(item.row);if(google!==client)return;
-   if(String(row[1]??'').trim()!==item.title||String(row[0]??'').trim()!==item.id||String(row[3]??'').trim()!==item.group||String(row[4]??'').trim()!==item.topic)throw Error('Dòng nguồn đã thay đổi. Tải lại danh sách.');
-   if(!String(row[2]??'').trim())throw Error('Bài chưa có blog main content.');
+   assertPreviewRow(item,row);
    const reviewed=await sheetSource(item.row,row);if(google!==client)return;
    selected=item;selectedRow=row;selectedSource=reviewed;
    $('[data-source-fingerprint]').textContent=reviewed.fingerprint;
@@ -115,16 +113,16 @@ export function mountSheetBlog(root){
   sending=true;update();
   try{
    const fresh=await google.read(item.row);
-   if(JSON.stringify(fresh)!==JSON.stringify(selectedRow))throw Error('Nội dung nguồn đã đổi. Đóng và mở lại bài để kiểm tra trước khi gửi.');
+   assertUnchangedRow(fresh,selectedRow);
    const draft=rowDraft(item,fresh,topics,$('[data-kind]').value,$('[data-category]').value);
    draft.sheetSource=await verifyReviewedSource(selectedSource,item.row,fresh);
    await buildDocument(draft.blocks);
-   const route=base+'/'+(draft.kind==='tech'?'techblog':draft.category)+'/'+slugify(draft.title)+'/';
+   const route=publisherRoute(base,draft.kind,draft.category,draft.title);
    const check=await fetch('/admin/article-check'+route.slice(base.length),{cache:'no-store',redirect:'error'});
    if(check.ok)throw Error('URL bài đã tồn tại. Không gửi bài trùng.');
    if(check.status!==404)throw Error('Chưa kiểm tra được URL bài. Thử lại.');
    const result=await github.publish(draft,topics.map(t=>t.id),s=>msg.textContent=s);
-   submitted.set(JSON.stringify([item.row,item.title,item.group,item.topic]),result);queueProgress.record(result,item.title);closePreview();render();set('Đã gửi commit '+result.sha.slice(0,7)+' · GitHub sẽ tiếp nhận Issue FIFO; chưa xuất bản.');
+   submitted.set(rowKey(item),result);queueProgress.record(result,item.title);closePreview();render();set('Đã gửi commit '+result.sha.slice(0,7)+' · GitHub sẽ tiếp nhận Issue FIFO; chưa xuất bản.');
   }catch(e){msg.textContent=e.message}finally{sending=false;update()}
  });
  update();render();

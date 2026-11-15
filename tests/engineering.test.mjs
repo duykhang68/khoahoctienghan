@@ -61,6 +61,7 @@ import './studio-document.test.mjs';
 import './editor-v2-queue.test.mjs';
 import './publication-scheduler-core.test.mjs';
 import './sheet-writeback.test.mjs';
+import './sheet-publisher-core.test.mjs';
 
 import './conflict-resolver.test.mjs';
 import './release-catalog.test.mjs';
