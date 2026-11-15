@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken,validateQuizQuestions} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -333,4 +333,30 @@ test('P2.5 signs Google JWT using runtime-generated PKCS8 key; no static credent
  });
  assert.equal(token,'fixture');assert.equal(called,1);
  await assert.rejects(courseDriveToken({...e,GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify({...account,private_key:der})},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
+});
+
+test('P2.6 quiz route is private; save requires membership, draft, origin and current version',async()=>{
+ const id='11111111-1111-4111-8111-111111111111',ch='22222222-2222-4222-8222-222222222222',lesson='33333333-3333-4333-8333-333333333333',block='44444444-4444-4444-8444-444444444444',path='/admin/courses/'+id+'/lessons/'+lesson+'/quiz/';
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/json'};
+ let status='draft',member=true,stored=null,mutations=0;
+ const db={prepare(sql){return {bind(...args){return {first:async()=>sql.includes('LEFT JOIN course_curricula')?{id,title:'Course',status,version:1,structure:JSON.stringify([{id:ch,title:'Chương',lessons:member?[{id:lesson,title:'<script>한글</script>'}]:[]}])}:stored,run:async()=>{assert.match(sql,/json_each/);mutations++;stored={version:mutations,document:sql.startsWith('INSERT')?args[2]:args[0]};return {meta:{changes:1}};}}}}}};
+ const e={...env,COURSE_DB:db},questions=[{id:block,kind:'single',prompt:'한글',options:['A','B'],correct:1,explanation:'Giải thích'}];
+ assert.equal((await worker.fetch(req(path),e)).status,403);
+ const result=await worker.fetch(req(path,{headers}),e);assert.equal(result.status,200);assert.match(await result.text(),/&lt;script&gt;한글/);assert.match(result.headers.get('content-security-policy'),/script-src 'nonce-/);
+ const post=(version,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body:JSON.stringify({version,questions})}),e);
+ assert.equal((await post(0,{...headers,Origin:'https://evil.test'})).status,403);
+ assert.equal((await post(0,{...headers,Cookie:''})).status,403);
+ member=false;assert.equal((await post(0)).status,404);member=true;
+ status='archived';assert.equal((await post(0)).status,409);status='draft';
+ assert.equal((await post(0)).status,200);assert.equal((await post(0)).status,409);assert.equal((await post(1)).status,200);assert.equal(mutations,2);
+});
+
+test('P2.6 validates answer indices, duplicate choices and question types',()=>{
+ const q={id:'44444444-4444-4444-8444-444444444444',kind:'single',prompt:'한글?',options:['A','B'],correct:1,explanation:''};
+ assert.deepEqual(validateQuizQuestions([q]),[q]);
+ for(const invalid of [{...q,correct:2},{...q,options:['A','A']},{...q,prompt:''},{...q,kind:'html'},{...q,kind:'boolean'}])assert.throws(()=>validateQuizQuestions([invalid]));
+ assert.throws(()=>validateQuizQuestions([q,q]));
 });
