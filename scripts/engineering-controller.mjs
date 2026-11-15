@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import {ciJobsPassed,releaseRecoveryDecision} from './release-recovery.mjs';
 import {selectPullRequestCI,branchToken} from './branch-auth.mjs';
 import {incidentPublication,hasVerifiedRun,alreadyPublished,editorPublicationPending,incidentRetrospectivePR} from './incident-publication.mjs';
+import {analyzeConflict,conflictEligible,mergeAdditivePosts,postsPath,repairMarker,verifiedRepair} from './conflict-resolver.mjs';
 import {labelDefinitions,labelEligible,inferPRLabels} from './pr-labels.mjs';
 import {ciName,releaseName,checkName,classify,trustedPR,sensitiveFile,nativePolicyReady,latestRun,canRetry,migrateSidebar,branchSyncDecision,dependabotSyncEligible,mergeReviewRequired} from './engineering-policy.mjs';
 const repo=process.env.GITHUB_REPOSITORY;
@@ -21,12 +22,12 @@ const main=mainSHA();
 const hasMarker=(i,m)=>String(i.body||'').includes(m);
 function incident(key,title,body){
  const marker='<!-- engine-id:'+key+' -->';
- if(issues.some(i=>hasMarker(i,marker)))return;
+ const existing=issues.find(i=>hasMarker(i,marker));if(existing)return existing;
  const i=api('issues','POST',{title,body:'<!-- engineering-incident:v1 -->\n'+marker+'\nStatus: investigating\n\n'+body});
  issues.push(i);
- console.log('Incident #'+i.number);
+ console.log('Incident #'+i.number);return i;
 }
-const trusted=p=>trustedPR(p,repo);
+const trusted=p=>trustedPR(p,repo)&&conflictEligible(p);
 const prs=all('pulls?state=open&base=main&per_page=100').sort((a,b)=>a.number-b.number);
 const changed=p=>all('pulls/'+p.number+'/files?per_page=100');
 // Labels are metadata only. Recover missed close events without scanning old history.
@@ -133,6 +134,64 @@ else if(mainCI.status==='completed'&&mainCI.conclusion==='success'){
  }catch{console.log('RELEASE_RECOVERY_DEFERRED '+main);}
 }
 
+// Exact Git snapshots are data only. Never checkout or execute the conflicting branch in this privileged job.
+const gitTree=sha=>api('git/trees/'+api('git/commits/'+sha).tree.sha+'?recursive=1');
+const blobText=sha=>{const b=api('git/blobs/'+sha);if(b.encoding!=='base64'||b.size>5000000)throw Error('unsafe blob');return Buffer.from(b.content,'base64').toString('utf8')};
+const stillCurrent=p=>mainSHA()===main&&api('git/ref/heads/'+encodeURIComponent(p.head.ref)).object.sha===p.head.sha;
+const exactMainGreen=()=>Boolean(mainCI&&mainCI.head_sha===main&&mainCI.status==='completed'&&mainCI.conclusion==='success'&&ciJobsPassed(api('actions/runs/'+mainCI.id+'/jobs?per_page=100').jobs,mainCI.event));
+function resolveConflict(p,comparison){
+ const prefix='conflict-'+p.number+'-'+p.head.sha;
+ const record=incident(prefix,'[Conflict] PR #'+p.number,'PR: '+p.html_url+'\n\nSHA: '+p.head.sha+'\n\nSemantic conflict requires research; no ours/theirs.');
+ if(record.state!=='open'||record.user?.login!=='github-actions[bot]')return;
+ const base=comparison.merge_base_commit?.sha;
+ if(!/^[a-f0-9]{40}$/.test(base||'')||!stillCurrent(p))return;
+ const mark='<!-- resolver-analysis:'+main+' -->';
+ // At most one analysis/automatic write attempt per exact main/head pair.
+ if(hasMarker(record,mark))return;
+ const files=changed(p);
+ const plan=files.length===p.changed_files?analyzeConflict({base:gitTree(base),head:gitTree(p.head.sha),main:gitTree(main),files}):{kind:'BLOCKED_INCOMPLETE'};
+ let decision=plan.kind,merged=null;
+ if(decision==='TRY_ADDITIVE_POSTS'){
+  merged=mergeAdditivePosts(...plan.blobs.map(blobText));decision=merged?.kind||'RESEARCH_REQUIRED';
+ }
+ const note='\n\n'+mark+'\nResolver 2.0: '+decision+'; base '+base+'; main '+main+'; HEAD '+p.head.sha+'; paths '+(plan.count??'unknown')+'; identical '+(plan.exact??'unknown')+'. Researcher: compare exact source and regression intent; for non-identical/protected code prepare a minimal reviewed repair or documented supersession, never blanket ours/theirs.';
+ const save=extra=>api('issues/'+record.number,'PATCH',{body:record.body+note+extra});
+ if(!['EXACT_DUPLICATE','MERGED'].includes(decision)){save('\nStatus: RESEARCH_REQUIRED');return;}
+ if(!appToken){console.log('APP_SETUP_REQUIRED PR #'+p.number+'; conflict write deferred');return;}
+ if(!stillCurrent(p))return;
+ if(decision==='EXACT_DUPLICATE'&&exactMainGreen()){
+  const fresh=api('pulls/'+p.number);
+  if(!trusted(fresh)||fresh.state!=='open'||fresh.head.sha!==p.head.sha||!stillCurrent(p))return;
+  // REST PR close is not a compare-and-swap; recheck immutable HEAD/current main immediately before write.
+  const closed=branchApi('pulls/'+p.number,'PATCH',{state:'closed'});
+  if(closed.state!=='closed'||closed.head?.sha!==p.head.sha||!stillCurrent(p)){
+   // Non-atomic close: restore the open PR if the observed proof became stale.
+   if(closed.state==='closed'&&!closed.merged)branchApi('pulls/'+p.number,'PATCH',{state:'open'});
+   console.log('CLOSE_REVIEW_REQUIRED PR #'+p.number);return;
+  }
+  api('issues/'+record.number,'PATCH',{state:'closed',state_reason:'not_planned',body:record.body+note+'\n\n<!-- superseded -->\nStatus: SUPERSEDED — identical regular blobs on exact green main; CI '+mainCI.html_url+'; no production claim.'});
+  return;
+ }
+ if(decision==='EXACT_DUPLICATE'){console.log('WAITING_MAIN_CI PR #'+p.number);return;}
+ if(decision==='MERGED'){
+  // This one known transform is solely for additive Tech Blog records; no protected file changes.
+  const mainTree=api('git/commits/'+main).tree.sha;
+  const tree=branchApi('git/trees','POST',{base_tree:mainTree,tree:[{path:postsPath,mode:'100644',type:'blob',content:merged.content}]});
+  const fixed=branchApi('git/commits','POST',{message:'fix(conflict): merge independent additive Tech Blog records',tree:tree.sha,parents:[p.head.sha,main]});
+  if(!stillCurrent(p))return;
+  save('\n'+repairMarker(fixed.sha,main)+'\nStatus: WAITING_NATIVE_PR_CI');
+  // Non-forced ref update; never bypass required checks or write main.
+  try{branchApi('git/refs/heads/'+encodeURIComponent(p.head.ref),'PATCH',{sha:fixed.sha,force:false});}
+  catch{
+   if(api('git/ref/heads/'+encodeURIComponent(p.head.ref)).object.sha!==fixed.sha){
+    save('\nStatus: RESEARCH_REQUIRED — ref update rejected; no confirmed repair');
+    return;
+   }
+  }
+  console.log('CONFLICT_FIX_COMMITTED PR #'+p.number+'; await native PR CI');return;
+ }
+ save('\nStatus: RESEARCH_REQUIRED');
+}
 // Synchronize independently of merge authorization. Only owner-created, same-repo PRs.
 const synchronized=[];
 for(const p of prs){
@@ -143,7 +202,7 @@ for(const p of prs){
  const compare=api('compare/'+main+'...'+current.head.sha);
  const decision=branchSyncDecision(current,compare);
  if(decision==='CONFLICT'){
-  incident('conflict-'+p.number+'-'+current.head.sha,'[Conflict] PR #'+p.number,'PR: '+p.html_url+'\n\nSHA: '+current.head.sha+'\n\nSemantic conflict requires research; no ours/theirs.');
+  try{resolveConflict(current,compare)}catch{console.log('CONFLICT_RESOLUTION_DEFERRED PR #'+p.number)}
   continue;
  }
  if(decision==='UPDATE'){
@@ -164,6 +223,13 @@ for(const p of prs){
  if(!exact){console.log('WAITING_NATIVE_PR_CI PR #'+p.number);continue}
  if(exact.conclusion==='action_required'){console.log('LEGACY_APPROVAL_REQUIRED PR #'+p.number);continue}
  if(exact.status!=='completed'||exact.conclusion!=='success')continue;
+ // Close only a tracked repair with the exact native CI and unchanged base/head.
+ try{
+  const records=issues.filter(i=>hasMarker(i,'<!-- engineering-incident:v1 -->')&&String(i.body||'').includes('<!-- engine-id:conflict-'+current.number+'-')&&verifiedRepair(i,current.head.sha,main));
+  if(records.length&&stillCurrent(current)&&ciJobsPassed(api('actions/runs/'+exact.id+'/jobs?per_page=100').jobs,exact.event)){
+   for(const i of records)if(stillCurrent(current))api('issues/'+i.number,'PATCH',{state:'closed',state_reason:'completed',body:i.body+'\n\nStatus: VERIFIED (native PR CI only)\n<!-- verified-sha: '+current.head.sha+' -->\n'+exact.html_url});
+  }
+ }catch{console.log('CONFLICT_VERIFICATION_DEFERRED PR #'+p.number)}
  synchronized.push({p:current,exact});
 }
 // Dependabot owns its own branches; do not push commits onto them.
