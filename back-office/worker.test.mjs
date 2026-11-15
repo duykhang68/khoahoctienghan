@@ -236,3 +236,20 @@ test('P2.2 Vietnamese course slug normalization is stable and bounded',()=>{
  assert.equal(courseSlug('한글'),'');
  assert.ok(courseSlug('a '.repeat(100)).length<=100);assert.ok(!courseSlug('a '.repeat(100)).endsWith('-'));
 });
+
+test('P2 course tracking links canonicalize only authorized read requests',async()=>{
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+p+'.'+s};
+ for(const path of ['/admin/courses/','/admin/courses/manage/']){
+  for(const method of ['GET','HEAD']){
+   const result=await worker.fetch(req(path+'?utm_source=chatgpt.com',{headers,method}),env);
+   assert.equal(result.status,303);assert.equal(result.headers.get('location'),path);assert.equal(result.headers.get('cache-control'),'no-store');
+  }
+  assert.equal((await worker.fetch(req(path+'?utm_source=chatgpt.com'),env)).headers.get('location'),'/auth/login');
+  assert.equal((await worker.fetch(req(path+'?utm_source=chatgpt.com&x=1',{headers}),env)).status,400);
+  assert.equal((await worker.fetch(req(path+'?utm_source='+ 'a'.repeat(257),{headers}),env)).status,400);
+ }
+ assert.equal((await worker.fetch(req('/admin/courses/manage/?utm_source=chatgpt.com',{method:'POST',headers}),env)).status,400);
+});
