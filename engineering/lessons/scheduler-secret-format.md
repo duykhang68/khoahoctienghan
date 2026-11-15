@@ -1,0 +1,3 @@
+# Candidate — scheduler secret format vs tracked-file scanner
+
+PR #152, CI 43660634489, job 132648933689. `security-check.mjs` rejected `back-office/server-scheduler.mjs` because the source contained the literal PEM opening delimiter used by a format parser. The test fixture also contained a delimiter, not actual key bytes. Change the new, undeployed secret contract to base64 PKCS#8 DER and generate a temporary RSA test key in memory. Validate length/alphabet and import with non-extractable WebCrypto key; reject malformed inputs before GitHub requests. Keep the entire existing scanner, including PEM marker detection, unchanged. Candidate until native CI verifies; real keys must remain Cloudflare secrets only.
