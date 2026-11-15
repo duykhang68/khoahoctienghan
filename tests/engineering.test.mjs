@@ -61,3 +61,4 @@ import './editor-v2-queue.test.mjs';
 import './sheet-writeback.test.mjs';
 
 import './conflict-resolver.test.mjs';
+import './release-catalog.test.mjs';

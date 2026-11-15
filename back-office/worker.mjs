@@ -47,20 +47,20 @@ const editorBundle={"html":"<div class=\"ev2\" data-editor-v2 data-base=\"/khoah
 // END GENERATED EDITOR ASSETS
 
 // Read published metadata from fixed repository and exact Pages release; no private credentials.
+// Published catalog and SHA are one atomic public artifact. No unauthenticated GitHub API fan-out.
 export async function librarySnapshot(fetcher=fetch){
- const read=async(url,json=false)=>{const res=await fetcher(url,{redirect:'manual',headers:{Accept:json?'application/json':'text/plain','User-Agent':'Korean-Backoffice-Library','Cache-Control':'no-cache'},signal:AbortSignal.timeout(12000)});if(res.status!==200)throw Error('upstream');return json?res.json():res.text();};
- const release=await read('https://duykhang68.github.io/khoahoctienghan/release-sha.json',true),sha=release?.sha;
- if(typeof sha!=='string'||! /^[a-f0-9]{40}$/.test(sha))throw Error('invalid release');
- const raw='https://raw.githubusercontent.com/duykhang68/khoahoctienghan/'+sha+'/';
- const [tree,posts]=await Promise.all([read('https://api.github.com/repos/duykhang68/khoahoctienghan/git/trees/'+sha+'?recursive=1',true),read(raw+'src/data/techblog/posts.json',true)]);
- if(tree?.truncated!==false||!Array.isArray(tree.tree)||!Array.isArray(posts))throw Error('incomplete library');
- const rows=posts.map(p=>{if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p.slug)||typeof p.title!=='string')throw Error('invalid post');return {kind:'tech',slug:p.slug,title:p.title,summary:p.summary||'',date:p.date||'',category:'techblog',path:'src/data/techblog/posts.json'};});
- const lessons=tree.tree.filter(e=>e.type==='blob'&&typeof e.path==='string'&&/^src\/content\/docs\/[a-z0-9-]+\/[a-z0-9-]+\.mdx?$/.test(e.path)&&!/\/index\.mdx?$/.test(e.path));
- // Category indexes contain authored titles. Do not guess titles from slugs.
- const categories=[...new Set(lessons.map(e=>e.path.split('/')[3]))];
- const indexes=await Promise.all(categories.map(async category=>[category,await read(raw+'src/content/docs/'+category+'/index.md')]));
- const titles=new Map();for(const [category,source] of indexes){for(const match of source.matchAll(/^\s*-\s+\[([^\n]+?)\]\(\/khoahoctienghan\/([a-z0-9-]+)\/([a-z0-9-]+)\/\)\s*$/gm)){if(match[2]===category)titles.set(category+'/'+match[3],match[1]);}}
- for(const e of lessons){const category=e.path.split('/')[3],slug=e.path.split('/')[4].replace(/\.mdx?$/,'');rows.push({kind:'knowledge',category,slug,path:e.path,title:titles.get(category+'/'+slug)||slug,titleFromIndex:titles.has(category+'/'+slug),summary:'',date:''});}
+ const res=await fetcher('https://duykhang68.github.io/khoahoctienghan/release-sha.json',{redirect:'manual',headers:{Accept:'application/json','User-Agent':'Korean-Backoffice-Library','Cache-Control':'no-cache'},signal:AbortSignal.timeout(12000)});
+ if(res.status!==200)throw Error('RELEASE_HTTP_'+res.status);
+ const release=await res.json(),sha=release?.sha,rows=release?.library;
+ if(typeof sha!=='string'||!/^[a-f0-9]{40}$/.test(sha)||release.libraryVersion!==1||!Array.isArray(rows))throw Error('RELEASE_CATALOG_INVALID');
+ const slug=/^[a-z0-9]+(?:-[a-z0-9]+)*$/,seen=new Set();
+ for(const row of rows){
+  if(!row||typeof row.slug!=='string'||!slug.test(row.slug)||typeof row.category!=='string'||!slug.test(row.category)||typeof row.title!=='string'||!row.title.trim()||typeof row.summary!=='string'||typeof row.date!=='string')throw Error('RELEASE_ROW_INVALID');
+  if(row.kind==='tech'){if(row.category!=='techblog'||row.path!=='src/data/techblog/posts.json')throw Error('RELEASE_ROW_INVALID');}
+  else if(row.kind==='knowledge'){if(row.category==='techblog'||row.slug==='index'||!['md','mdx'].some(ext=>row.path==='src/content/docs/'+row.category+'/'+row.slug+'.'+ext))throw Error('RELEASE_ROW_INVALID');}
+  else throw Error('RELEASE_ROW_INVALID');
+  const key=row.category+'/'+row.slug;if(seen.has(key))throw Error('RELEASE_ROW_DUPLICATE');seen.add(key);
+ }
  return {sha,rows};
 }
 
@@ -105,7 +105,7 @@ export default {async fetch(req,env){
  if(url.pathname==='/admin/api/library/'){
   if(req.method!=='GET')return reply('Method not allowed',405);
   if(url.search)return reply('Invalid request',400);
-  try{return reply(JSON.stringify(await librarySnapshot()),200,{'Content-Type':'application/json; charset=utf-8'});}catch{return reply(JSON.stringify({error:'LIBRARY_UNAVAILABLE'}),502,{'Content-Type':'application/json; charset=utf-8'});}
+  try{return reply(JSON.stringify(await librarySnapshot()),200,{'Content-Type':'application/json; charset=utf-8'});}catch(e){const code=/^(?:RELEASE_HTTP_[1-5][0-9]{2}|RELEASE_CATALOG_INVALID|RELEASE_ROW_INVALID|RELEASE_ROW_DUPLICATE)$/.test(e?.message||'')?e.message:'RELEASE_NETWORK_OR_PARSE';console.warn('Content Library snapshot: '+code);return reply(JSON.stringify({error:'LIBRARY_UNAVAILABLE'}),502,{'Content-Type':'application/json; charset=utf-8'});}
  }
  if(url.pathname==='/admin/library/'){const nonce=random();return reply(req.method==='HEAD'?null:page(libraryMarkup+'<script nonce="'+nonce+'">'+libraryScript+'</script>'),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});}
  if(url.pathname==='/admin/api/dashboard/'){
