@@ -16,7 +16,6 @@ async function courseWorkspace(env){
   return buildCourseWorkspace(rows);
  }catch{return {status:'unavailable',rows:[]};}
 }
-async function courseList(db){return (await db.prepare('SELECT id,slug,title,description,level,status,version FROM courses ORDER BY updated_at DESC,id LIMIT 100').all()).results;}
 async function curriculumState(db,id){
  const row=await db.prepare("SELECT c.id,c.title,c.status,k.version,k.structure FROM courses c LEFT JOIN course_curricula k ON k.course_id=c.id WHERE c.id=?").bind(id).first();
  if(!row)return null;
@@ -41,4 +40,4 @@ async function releaseState(db,id){
  return {row,release};
 }
 
-export {courseWorkspace,courseList,curriculumState,lessonState,quizState,releaseState};
+export {courseWorkspace,curriculumState,lessonState,quizState,releaseState};
