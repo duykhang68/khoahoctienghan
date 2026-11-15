@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -235,4 +235,28 @@ test('P2.2 Vietnamese course slug normalization is stable and bounded',()=>{
  assert.equal(courseSlug('  Tiếng Hàn   101  '),'tieng-han-101');
  assert.equal(courseSlug('한글'),'');
  assert.ok(courseSlug('a '.repeat(100)).length<=100);assert.ok(!courseSlug('a '.repeat(100)).endsWith('-'));
+});
+
+test('P2.3 validates complete unique curriculum IDs and normalized titles',()=>{
+ const chapter='11111111-1111-4111-8111-111111111111',lesson='22222222-2222-4222-8222-222222222222';
+ assert.deepEqual(validateCurriculum([{id:chapter,title:' 한글 ',lessons:[{id:lesson,title:' Bài 1 '}]}]),[{id:chapter,title:'한글',lessons:[{id:lesson,title:'Bài 1'}]}]);
+ assert.throws(()=>validateCurriculum([{id:chapter,title:'A',lessons:[{id:chapter,title:'B'}]}]),/INVALID_CURRICULUM/);
+ assert.throws(()=>validateCurriculum([{id:chapter,title:' ',lessons:[]}]),/INVALID_CURRICULUM/);
+});
+test('P2.3 private curriculum route, guarded writes and optimistic version',async()=>{
+ const id='11111111-1111-4111-8111-111111111111',ch='22222222-2222-4222-8222-222222222222',path='/admin/courses/'+id+'/curriculum/';
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/json'};
+ let stored=null,mutations=0;const db={prepare(sql){return {bind(...args){return {first:async()=>({id,title:'<script>private</script>',status:'draft',version:stored?.version??null,structure:stored?.structure??null}),run:async()=>{assert.match(sql,/INSERT INTO course_curricula|UPDATE course_curricula/);mutations++;stored={version:mutations,structure:sql.startsWith('INSERT')?args[1]:args[0]};return {meta:{changes:1}};}}}}}};
+ const e={...env,COURSE_DB:db};
+ assert.equal((await worker.fetch(req(path),e)).status,303);
+ const page=await worker.fetch(req(path,{headers}),e);assert.equal(page.status,200);const html=await page.text();assert.match(html,/&lt;script&gt;private/);assert.doesNotThrow(()=>new Script(html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/)[1]));
+ const post=(version,chapters,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body:JSON.stringify({version,chapters})}),e);
+ const chapters=[{id:ch,title:'Chương 1',lessons:[]}];assert.equal((await post(0,chapters,{...headers,Origin:'https://evil.test'})).status,403);
+ assert.equal((await post(0,chapters,{...headers,Cookie:''})).status,403);
+ assert.equal((await post(0,chapters)).status,200);assert.equal(mutations,1);
+ assert.equal((await post(0,chapters)).status,409);assert.equal((await post(1,[])).status,400);
+ assert.equal((await post(1,[{...chapters[0],title:'Chương 2'}])).status,200);assert.equal(mutations,2);
 });
