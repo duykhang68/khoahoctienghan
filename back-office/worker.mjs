@@ -108,7 +108,7 @@ async function courseList(db){return (await db.prepare('SELECT id,slug,title,des
 function courseManager(rows){
  const esc=courseEscape,options=selected=>courseLevels.map(k=>'<option value="'+k+'"'+(selected===k?' selected':'')+'>'+courseLabels[k]+'</option>').join('');
  const fields=(c={})=>'<label>Tên khóa học<input name="title" required maxlength="200" value="'+esc(c.title)+'"></label><label>Đường dẫn (slug)<input name="slug" required maxlength="100" pattern="[a-z0-9]+(-[a-z0-9]+)*" value="'+esc(c.slug)+'"'+(c.id?' readonly':'')+'></label><label>Trình độ<select name="level">'+options(c.level)+'</select></label><label>Mô tả<textarea name="description" maxlength="4000" rows="4">'+esc(c.description)+'</textarea></label>';
- return '<style>main{max-width:1100px}*{box-sizing:border-box}.cm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}.cm-card{padding:20px;border:1px solid #cbd5e1;border-radius:16px;background:#f4f0ff;overflow-wrap:anywhere}.cm-card form{display:grid;gap:12px}.cm-card label{display:grid;gap:5px;font-weight:600}.cm-card input,.cm-card textarea,.cm-card select{width:100%;min-width:0;padding:10px;font:inherit;border:1px solid #94a3b8;border-radius:8px;background:white}.cm-card button{min-height:44px}.cm-card details{margin:12px 0}</style><nav><a href="/admin/courses/">Tổng quan khóa học</a> · <a href="/admin/">Trung tâm quản trị</a></nav><h1>Quản lý khóa học</h1><p>Khóa học riêng tư · chưa mở bán.</p><div class="cm-grid"><section class="cm-card"><h2>Tạo khóa học</h2><form id="course-create" method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="create">'+fields()+'<button>Tạo bản nháp</button></form></section><section><h2>Danh sách khóa học</h2><p>Hiển thị tối đa 100 khóa học cập nhật gần nhất.</p>'+(rows.length?rows.map(c=>'<article class="cm-card"><h3>'+esc(c.title)+'</h3><p>'+esc(courseLabels[c.status])+' · '+esc(courseLabels[c.level])+'</p><p>'+esc(c.slug)+'</p><p><a href="/admin/courses/'+esc(c.id)+'/preview/">Xem trước khóa học</a></p>'+(c.status==='draft'?'<p><a href="/admin/courses/'+esc(c.id)+'/curriculum/">Xây dựng giáo trình</a></p>':'')+(c.status==='draft'?'<details><summary>Chỉnh sửa khóa học</summary><form method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="edit"><input type="hidden" name="id" value="'+esc(c.id)+'"><input type="hidden" name="version" value="'+esc(c.version)+'">'+fields(c)+'<button>Lưu thay đổi</button></form></details>':'')+(c.status==='draft'?'<details><summary>Lưu trữ khóa học</summary><form method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="archive"><input type="hidden" name="id" value="'+esc(c.id)+'"><input type="hidden" name="version" value="'+esc(c.version)+'"><label><input type="checkbox" name="confirm" value="yes" required>Xác nhận lưu trữ bản nháp</label><button>Lưu trữ</button></form></details>':'')+'</article>').join(''):'<p>Chưa có khóa học.</p>')+'</section></div>';
+ return '<style>main{max-width:1100px}*{box-sizing:border-box}.cm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}.cm-card{padding:20px;border:1px solid #cbd5e1;border-radius:16px;background:#f4f0ff;overflow-wrap:anywhere}.cm-card form{display:grid;gap:12px}.cm-card label{display:grid;gap:5px;font-weight:600}.cm-card input,.cm-card textarea,.cm-card select{width:100%;min-width:0;padding:10px;font:inherit;border:1px solid #94a3b8;border-radius:8px;background:white}.cm-card button{min-height:44px}.cm-card details{margin:12px 0}</style><nav><a href="/admin/courses/">Tổng quan khóa học</a> · <a href="/admin/">Trung tâm quản trị</a></nav><h1>Quản lý khóa học</h1><p>Khóa học riêng tư · chưa mở bán.</p><div class="cm-grid"><section class="cm-card"><h2>Tạo khóa học</h2><form id="course-create" method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="create">'+fields()+'<button>Tạo bản nháp</button></form></section><section><h2>Danh sách khóa học</h2><p>Hiển thị tối đa 100 khóa học cập nhật gần nhất.</p>'+(rows.length?rows.map(c=>'<article class="cm-card"><h3>'+esc(c.title)+'</h3><p>'+esc(courseLabels[c.status])+' · '+esc(courseLabels[c.level])+'</p><p>'+esc(c.slug)+'</p><p><a href="/admin/courses/'+esc(c.id)+'/preview/">Xem trước khóa học</a></p><p><a href="/admin/courses/'+esc(c.id)+'/publishing/">Bản nháp &amp; Phát hành</a></p>'+(c.status==='draft'?'<p><a href="/admin/courses/'+esc(c.id)+'/curriculum/">Xây dựng giáo trình</a></p>':'')+(c.status==='draft'?'<details><summary>Chỉnh sửa khóa học</summary><form method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="edit"><input type="hidden" name="id" value="'+esc(c.id)+'"><input type="hidden" name="version" value="'+esc(c.version)+'">'+fields(c)+'<button>Lưu thay đổi</button></form></details>':'')+(c.status==='draft'?'<details><summary>Lưu trữ khóa học</summary><form method="post" action="/admin/courses/manage/"><input type="hidden" name="action" value="archive"><input type="hidden" name="id" value="'+esc(c.id)+'"><input type="hidden" name="version" value="'+esc(c.version)+'"><label><input type="checkbox" name="confirm" value="yes" required>Xác nhận lưu trữ bản nháp</label><button>Lưu trữ</button></form></details>':'')+'</article>').join(''):'<p>Chưa có khóa học.</p>')+'</section></div>';
 }
 async function courseMutation(req,env){
  const url=new URL(req.url);
@@ -404,6 +404,41 @@ async function lessonMedia(req,env,courseId,lessonId,streamId){
  }catch{return reply('Không kết nối được Drive hoặc cơ sở dữ liệu. Kiểm tra cấu hình và quyền truy cập.',503);}
 }
 
+// P2.8: explicit private editorial approval; never create public content.
+export function releaseChecks(row){
+ return [
+  ['Mô tả khóa học',row.description_length>0],
+  ['Có chương và bài học',row.chapters>0&&row.lessons>0],
+  ['Mỗi chương có bài học',row.empty_chapters===0],
+  ['Mỗi bài có nội dung đã lưu',row.lessons>0&&row.missing_lessons===0],
+  ['Media có phiên bản bất biến',row.media_links===0]
+ ];
+}
+async function releaseState(db,id){
+ const row=await db.prepare('SELECT v.*,c.title FROM course_release_readiness v JOIN courses c ON c.id=v.id WHERE v.id=?').bind(id).first();
+ if(!row)return null;
+ const release=await db.prepare('SELECT version,revision,approved_at FROM course_releases WHERE course_id=?').bind(id).first();
+ return {row,release};
+}
+function releasePage(state){
+ const {row,release}=state,esc=courseEscape,checks=releaseChecks(row),ready=checks.every(x=>x[1]);
+ const history=release?'<p>Phiên bản bất biến '+esc(release.version)+' · Lần duyệt '+esc(release.revision)+' · '+esc(new Date(release.approved_at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}))+' (GMT+7)</p>':'<p>Chưa có phiên bản đã duyệt.</p>';
+ return '<style>main{max-width:900px}.release-card{background:#eee8fc;border-radius:16px;padding:20px;margin:16px 0}.release-card li{padding:8px;overflow-wrap:anywhere}.release-card button{min-height:44px;margin-top:16px}.release-card label{display:block}.release-card input{margin:8px}</style><nav><a href="/admin/courses/manage/">← Quản lý khóa học</a></nav><p>P2.8 · DRAFT &amp; PUBLISHING</p><h1>'+esc(row.title)+'</h1><p>Trạng thái: '+esc(courseLabels[row.status])+' · Chỉ phát hành nội bộ, chưa mở bán.</p><section class="release-card"><h2>Kiểm tra sẵn sàng</h2><ul>'+checks.map(([label,ok])=>'<li>'+(ok?'✓ Đạt: ':'✕ Chưa đạt: ')+esc(label)+'</li>').join('')+'</ul><p>Video/audio Drive chưa được đóng băng theo phiên bản; khóa học có liên kết media chưa thể duyệt.</p>'+(row.status==='draft'&&ready&&!release?'<form method="post"><input type="hidden" name="revision" value="'+esc(row.revision)+'"><input type="hidden" name="version" value="'+esc(row.version)+'"><label><input type="checkbox" name="confirm" value="yes" required> Tôi xác nhận nội dung đã lưu và phê duyệt phiên bản riêng tư bất biến.</label><button>Phê duyệt nội bộ</button></form>':'<p>Không thể phê duyệt thêm ở trạng thái hiện tại.</p>')+'</section><section class="release-card"><h2>Lịch sử phiên bản</h2>'+history+'</section>';
+}
+async function approveRelease(req,env,id){
+ if(req.headers.get('Origin')!==new URL(req.url).origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/x-www-form-urlencoded')return reply('Forbidden',403);
+ const session=await open(getCookie(req,sessionName),env,'session');if(!session)return reply('Forbidden',403);
+ let input;try{const reader=req.body?.getReader();if(!reader)return reply('Invalid request',400);let size=0,body='';const dec=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>4096){await reader.cancel();return reply('Payload too large',413);}body+=dec.decode(value,{stream:true});}input=new URLSearchParams(body+dec.decode());if([...input.keys()].length!==3||new Set(input.keys()).size!==3||input.get('confirm')!=='yes')return reply('Invalid request',400);}catch{return reply('Invalid request',400);}
+ const version=Number(input.get('version')),revision=Number(input.get('revision'));
+ if(!Number.isSafeInteger(version)||version<1||!Number.isSafeInteger(revision)||revision<1)return reply('Invalid request',400);
+ try{const db=env.COURSE_DB,state=await releaseState(db,id);if(!state)return reply('Không tìm thấy khóa học',404);
+ if(state.row.status!=='draft'||state.release||state.row.version!==version||state.row.revision!==revision||!releaseChecks(state.row).every(x=>x[1]))return reply('Chưa sẵn sàng hoặc bản nháp đã thay đổi. Tải lại trang.',409);
+ const result=await db.prepare("UPDATE courses SET status='ready',version=version+1,updated_at=?,updated_by=? WHERE id=? AND status='draft' AND version=? AND EXISTS(SELECT 1 FROM course_release_readiness v WHERE v.id=courses.id AND v.revision=? AND v.chapters>0 AND v.lessons>0 AND v.empty_chapters=0 AND v.missing_lessons=0 AND v.media_links=0 AND v.description_length>0)").bind(Date.now(),session.sub,id,version,revision).run();
+ if(result.meta?.changes!==1)return reply('Bản nháp đã thay đổi. Tải lại trang.',409);
+ return redirect('/admin/courses/'+id+'/publishing/');
+ }catch{return reply('Không thể phê duyệt khóa học',503);}
+}
+
 // P2.7: owner-only, read-only preview. Never serialize answer keys.
 export function coursePreviewPage(curr,selected,blocks){
  const esc=courseEscape,base='/admin/courses/'+esc(curr.id)+'/preview/';
@@ -451,6 +486,14 @@ export default {async fetch(req,env){
   if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
   if(!env.COURSE_DB)return reply('Chưa cấu hình COURSE_DB',503);
   try{const state=await quizState(env.COURSE_DB,courseId,lessonId);if(!state)return reply('Không tìm thấy bài học',404);const nonce=random();return reply(req.method==='HEAD'?null:page(quizPage(state,nonce)),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});}catch{return reply('Không tải được quiz',503);}
+ }
+ const publishingMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/publishing\/$/);
+ if(publishingMatch){
+  const id=publishingMatch[1];if(!curriculumId.test(id)||url.search)return reply('Invalid request',400);
+  if(!['GET','HEAD','POST'].includes(req.method))return reply('Method not allowed',405);
+  if(!env.COURSE_DB)return reply('Chưa cấu hình COURSE_DB',503);
+  if(req.method==='POST')return approveRelease(req,env,id);
+  try{const state=await releaseState(env.COURSE_DB,id);if(!state)return reply('Không tìm thấy khóa học',404);return reply(req.method==='HEAD'?null:page(releasePage(state)),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});}catch{return reply('Chưa thể tải thông tin phát hành',503);}
  }
  const previewMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/preview\/(?:([0-9a-f-]{36})\/)?$/);
  if(previewMatch){
