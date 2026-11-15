@@ -1,4 +1,5 @@
 import {schedulerApi,runScheduler} from './server-scheduler.mjs';
+import {validateMedia} from '../src/lib/editor-v2/media.mjs';
 // P0.1: isolated Worker, Google Identity Services (OIDC), no Cloudflare Access.
 // Never trust an email or identity header supplied by the browser.
 const enc=new TextEncoder(), dec=new TextDecoder();
@@ -181,7 +182,7 @@ function curriculumBrowser(){
  }
  function render(){root.replaceChildren();if(!chapters.length)root.append(el('p','Chưa có chương. Thêm chương đầu tiên để bắt đầu.'));
   chapters.forEach((ch,ci)=>{const section=el('section');section.className='cb-chapter';const head=el('div');head.className='cb-row';head.append(el('strong','Chương '+(ci+1)),input(ch,'Tên chương '+(ci+1)),button('Lên',()=>move(chapters,ci,ci-1),ci===0),button('Xuống',()=>move(chapters,ci,ci+1),ci===chapters.length-1));dnd(head,'chapter',chapters,ci);section.append(head);
-   const list=el('div');list.className='cb-lessons';ch.lessons.forEach((lesson,li)=>{const row=el('div');row.className='cb-row cb-lesson';row.append(el('span','Bài '+(li+1)),input(lesson,'Tên bài '+(ci+1)+'.'+(li+1)),button('Lên',()=>move(ch.lessons,li,li-1),li===0),button('Xuống',()=>move(ch.lessons,li,li+1),li===ch.lessons.length-1));const target=el('select');target.setAttribute('aria-label','Chuyển bài sang chương');chapters.forEach((c,i)=>{const opt=el('option','Chương '+(i+1));opt.value=c.id;opt.selected=c.id===ch.id;target.append(opt);});target.addEventListener('change',()=>{const dest=chapters.find(c=>c.id===target.value);if(dest&&dest!==ch){dest.lessons.push(ch.lessons.splice(li,1)[0]);changed();render();}});row.append(target);dnd(row,'lesson',ch.lessons,li,ch.id);list.append(row);});section.append(list,button('+ Thêm bài học',()=>{if(chapters.reduce((n,c)=>n+c.lessons.length,0)>=500){status.textContent='Đã đạt giới hạn 500 bài.';return;}ch.lessons.push({id:crypto.randomUUID(),title:'Bài học mới'});changed();render();}));root.append(section);});
+   const list=el('div');list.className='cb-lessons';ch.lessons.forEach((lesson,li)=>{const row=el('div');row.className='cb-row cb-lesson';row.append(el('span','Bài '+(li+1)),input(lesson,'Tên bài '+(ci+1)+'.'+(li+1)),button('Lên',()=>move(ch.lessons,li,li-1),li===0),button('Xuống',()=>move(ch.lessons,li,li+1),li===ch.lessons.length-1));const target=el('select');target.setAttribute('aria-label','Chuyển bài sang chương');chapters.forEach((c,i)=>{const opt=el('option','Chương '+(i+1));opt.value=c.id;opt.selected=c.id===ch.id;target.append(opt);});target.addEventListener('change',()=>{const dest=chapters.find(c=>c.id===target.value);if(dest&&dest!==ch){dest.lessons.push(ch.lessons.splice(li,1)[0]);changed();render();}});row.append(target);const editor=el('a','Soạn bài');editor.href='/admin/courses/'+state.id+'/lessons/'+lesson.id+'/';editor.addEventListener('click',e=>{if(dirty){e.preventDefault();status.textContent='Lưu giáo trình trước khi mở trình soạn bài.';}});row.append(editor);dnd(row,'lesson',ch.lessons,li,ch.id);list.append(row);});section.append(list,button('+ Thêm bài học',()=>{if(chapters.reduce((n,c)=>n+c.lessons.length,0)>=500){status.textContent='Đã đạt giới hạn 500 bài.';return;}ch.lessons.push({id:crypto.randomUUID(),title:'Bài học mới'});changed();render();}));root.append(section);});
  }
  add.addEventListener('click',()=>{if(chapters.length>=100){status.textContent='Đã đạt giới hạn 100 chương.';return;}chapters.push({id:crypto.randomUUID(),title:'Chương mới',lessons:[]});changed();render();});
  save.addEventListener('click',async()=>{if(busy||!dirty)return;if([...root.querySelectorAll('input')].some(x=>!x.value.trim())){status.textContent='Vui lòng nhập đầy đủ tên chương và bài.';return;}busy=true;save.disabled=true;add.disabled=true;root.inert=true;status.textContent='Đang lưu…';try{const res=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version,chapters})});if(!res.ok)throw Error(await res.text());version=(await res.json()).version;dirty=false;status.textContent='Đã lưu giáo trình.';}catch(e){status.textContent=e.message||'Không lưu được giáo trình.';}finally{busy=false;save.disabled=!dirty;add.disabled=false;root.inert=false;}});
@@ -192,6 +193,77 @@ function curriculumPage(state,nonce){
  const top='<nav><a href="/admin/courses/manage/">Quản lý khóa học</a></nav><p>P2.3 · CURRICULUM BUILDER</p><h1>'+esc(state.title)+'</h1>';
  if(state.status!=='draft')return top+'<p>Chỉ bản nháp mới được chỉnh sửa giáo trình.</p>';
  return top+'<style>main{max-width:1100px}.cb-chapter{background:#eee8fc;border-radius:16px;padding:16px;margin:16px 0}.cb-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0}.cb-row input{flex:1 1 180px;min-width:0;max-width:100%;font:inherit;padding:10px;border:1px solid #94a3b8;border-radius:8px}.cb-row button,.cb-row select,#curriculum-add,#curriculum-save,.cb-chapter>button{min-height:44px;font:inherit}.cb-lesson{background:#fff;border-radius:10px;padding:10px}.cb-lessons{padding-inline-start:12px}.cb-handle{cursor:grab;font-size:24px;user-select:none}.cb-actions{display:flex;gap:10px;flex-wrap:wrap}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #2563eb;outline-offset:2px}</style><p>Kéo tay nắm hoặc dùng nút Lên/Xuống. Chuyển bài giữa các chương bằng danh sách chọn.</p><div class="cb-actions"><button type="button" id="curriculum-add">+ Thêm chương</button><button type="button" id="curriculum-save" disabled>Lưu giáo trình</button></div><p id="curriculum-status" role="status">Chưa có thay đổi.</p><div id="curriculum-list"></div><textarea hidden id="curriculum-state">'+esc(JSON.stringify(state))+'</textarea><script nonce="'+nonce+'">('+curriculumBrowser.toString()+')();</script>';
+}
+
+
+const lessonBudget=1500000;
+const lessonTextKinds=['paragraph','heading','subheading','note','quote','bullet','ordered'];
+export function validateLessonBlocks(value){
+ if(!Array.isArray(value)||value.length>100)throw Error('INVALID_LESSON');
+ const seen=new Set();
+ const blocks=value.map(b=>{
+  if(!b||typeof b.id!=='string'||!curriculumId.test(b.id)||seen.has(b.id))throw Error('INVALID_LESSON');seen.add(b.id);
+  if(b.kind==='image'){
+   const image={id:b.id,kind:b.kind,src:b.src,width:b.width,height:b.height,alt:typeof b.alt==='string'?b.alt.trim():''};
+   validateMedia(image);return image;
+  }
+  if(b.kind==='divider')return {id:b.id,kind:b.kind};
+  if(!lessonTextKinds.includes(b.kind)||typeof b.text!=='string'||b.text.length>20000||!b.text.trim())throw Error('INVALID_LESSON');
+  return {id:b.id,kind:b.kind,text:b.text};
+ });
+ if(enc.encode(JSON.stringify(blocks)).length>lessonBudget)throw Error('LESSON_TOO_LARGE');
+ return blocks;
+}
+async function lessonState(db,courseId,lessonId){
+ const curr=await curriculumState(db,courseId);if(!curr)return null;
+ const lesson=curr.chapters.flatMap(c=>c.lessons).find(l=>l.id===lessonId);if(!lesson)return null;
+ const row=await db.prepare('SELECT version,document FROM course_lesson_documents WHERE course_id=? AND lesson_id=?').bind(courseId,lessonId).first();
+ return {courseId,lessonId,title:lesson.title,courseTitle:curr.title,status:curr.status,version:row?.version??0,blocks:row?validateLessonBlocks(JSON.parse(row.document)):[]};
+}
+async function saveLesson(req,env,courseId,lessonId){
+ const u=new URL(req.url);if(req.headers.get('Origin')!==u.origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/json')return reply('Forbidden',403);
+ if(!env.COURSE_DB)return reply('Chưa cấu hình COURSE_DB',503);
+ let input;try{const reader=req.body?.getReader();if(!reader)return reply('Invalid request',400);let size=0,body='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>lessonBudget+4096){await reader.cancel();return reply('Bài học vượt giới hạn dung lượng',413);}body+=decoder.decode(value,{stream:true});}input=JSON.parse(body+decoder.decode());if(!input||!Number.isSafeInteger(input.version)||input.version<0||input.version>=2147483647)throw Error('INVALID_LESSON');input.blocks=validateLessonBlocks(input.blocks);}catch(e){return reply(e?.message==='LESSON_TOO_LARGE'?'Bài học vượt giới hạn dung lượng':'Nội dung hoặc ảnh không hợp lệ',e?.message==='LESSON_TOO_LARGE'?413:400);}
+ try{
+  const db=env.COURSE_DB,current=await lessonState(db,courseId,lessonId);if(!current)return reply('Không tìm thấy bài học',404);
+  if(current.status!=='draft'||current.version!==input.version)return reply('Bản nháp đã thay đổi. Tải lại trang.',409);
+  const session=await open(getCookie(req,sessionName),env,'session');if(!session)return reply('Forbidden',403);
+  const doc=JSON.stringify(input.blocks),stamp=Date.now();
+  const guard="EXISTS(SELECT 1 FROM courses c JOIN course_curricula k ON k.course_id=c.id, json_each(k.structure) ch, json_each(ch.value,'$.lessons') l WHERE c.id=? AND c.status='draft' AND json_extract(l.value,'$.id')=?)";
+  const stmt=input.version===0?db.prepare("INSERT INTO course_lesson_documents(course_id,lesson_id,version,document,updated_at,updated_by) SELECT ?,?,1,?,?,? WHERE "+guard+" ON CONFLICT(course_id,lesson_id) DO NOTHING").bind(courseId,lessonId,doc,stamp,session.sub,courseId,lessonId):db.prepare("UPDATE course_lesson_documents SET version=version+1,document=?,updated_at=?,updated_by=? WHERE course_id=? AND lesson_id=? AND version=? AND "+guard).bind(doc,stamp,session.sub,courseId,lessonId,input.version,courseId,lessonId);
+  if((await stmt.run()).meta?.changes!==1)return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
+  return reply(JSON.stringify({version:input.version+1}),200,{'Content-Type':'application/json; charset=utf-8'});
+ }catch{return reply('Không lưu được bài học',503);}
+}
+function lessonBrowser(optimizeMedia){
+ const state=JSON.parse(document.getElementById('lesson-state').value),root=document.getElementById('lesson-blocks'),preview=document.getElementById('lesson-preview'),status=document.getElementById('lesson-status'),save=document.getElementById('lesson-save'),tools=document.getElementById('lesson-tools'),file=document.getElementById('lesson-file');
+ let blocks=state.blocks,version=state.version,dirty=false,busy=false;
+ const titles={paragraph:'Đoạn văn',heading:'Tiêu đề',subheading:'Tiêu đề phụ',note:'Ghi chú',quote:'Trích dẫn',bullet:'Danh sách',ordered:'Danh sách số',image:'Ảnh',divider:'Phân cách'};
+ const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;};
+ const button=(label,fn,disabled=false)=>{const b=el('button',label);b.type='button';b.disabled=disabled;b.addEventListener('click',fn);return b;};
+ function updatePreview(){preview.replaceChildren();if(!blocks.length)preview.append(el('p','Nội dung bài học sẽ hiển thị tại đây.'));for(const b of blocks){
+  if(b.kind==='image'){const fig=el('figure'),img=el('img');img.src=b.src;img.width=b.width;img.height=b.height;img.alt=b.alt||'';fig.append(img);if(b.alt)fig.append(el('figcaption',b.alt));preview.append(fig);}
+  else if(b.kind==='divider')preview.append(el('hr'));
+  else if(b.kind==='bullet'||b.kind==='ordered'){const list=el(b.kind==='bullet'?'ul':'ol');b.text.split('\n').filter(Boolean).forEach(line=>list.append(el('li',line)));preview.append(list);}
+  else{const p=el(b.kind==='heading'?'h2':b.kind==='subheading'?'h3':b.kind==='quote'?'blockquote':'p',b.text);p.className='le-'+b.kind;preview.append(p);}
+ }}
+ function change(){dirty=true;save.disabled=busy;status.textContent='Có thay đổi chưa lưu.';updatePreview();}
+ function move(i,j){if(j<0||j>=blocks.length)return;blocks.splice(j,0,blocks.splice(i,1)[0]);change();render();}
+ function render(){root.replaceChildren();blocks.forEach((b,i)=>{const card=el('section');card.className='le-block';const head=el('div');head.className='le-row';head.append(el('strong',titles[b.kind]),button('Lên',()=>move(i,i-1),i===0),button('Xuống',()=>move(i,i+1),i===blocks.length-1),button('Xóa khối',()=>{if(confirm('Xóa khối nội dung này?')){blocks.splice(i,1);change();render();}}));card.append(head);
+  if(b.kind==='image'){const img=el('img');img.src=b.src;img.width=b.width;img.height=b.height;img.alt=b.alt||'';const alt=el('input');alt.value=b.alt;alt.maxLength=500;alt.placeholder='Mô tả ảnh (bắt buộc)';alt.setAttribute('aria-label','Mô tả ảnh');alt.addEventListener('input',()=>{b.alt=alt.value;img.alt=alt.value;change();});card.append(img,alt);}
+  else if(b.kind==='divider')card.append(el('hr'));
+  else{const edit=el(b.kind==='heading'?'h2':b.kind==='subheading'?'h3':b.kind==='quote'?'blockquote':'div',b.text);edit.contentEditable='plaintext-only';edit.className='le-edit le-'+b.kind;edit.setAttribute('role','textbox');edit.setAttribute('aria-multiline','true');edit.setAttribute('aria-label',titles[b.kind]);edit.addEventListener('input',()=>{b.text=edit.innerText;change();});card.append(edit);}root.append(card);});}
+ function add(kind){if(blocks.length>=100){status.textContent='Tối đa 100 khối.';return;}blocks.push({id:crypto.randomUUID(),kind,...(kind==='divider'?{}:{text:kind==='heading'?'Tiêu đề mới':kind==='subheading'?'Tiêu đề phụ':'Nhập nội dung tại đây'})});change();render();}
+ Object.keys(titles).filter(k=>k!=='image').forEach(k=>tools.append(button('+ '+titles[k],()=>add(k))));
+ tools.append(button('+ Ảnh từ máy',()=>file.click()));
+ file.addEventListener('change',async()=>{const f=file.files?.[0];file.value='';if(!f||busy)return;if(blocks.length>=100){status.textContent='Tối đa 100 khối.';return;}busy=true;root.inert=true;tools.inert=true;save.disabled=true;status.textContent='Đang tối ưu ảnh…';try{const data=await optimizeMedia(f);const block={id:crypto.randomUUID(),kind:'image',...data,alt:''};if(new TextEncoder().encode(JSON.stringify([...blocks,block])).length>1500000)throw Error('Ảnh vượt dung lượng còn lại của bài học (1,5 MB JSON).');blocks.push(block);change();render();}catch(e){status.textContent=e.message||'Không thể tải ảnh.';}finally{busy=false;root.inert=false;tools.inert=false;save.disabled=!dirty;}});
+ save.addEventListener('click',async()=>{if(busy||!dirty)return;if(blocks.some(b=>b.kind==='image'?!b.alt.trim():b.kind!=='divider'&&(!b.text.trim()||b.text.length>20000))){status.textContent='Bổ sung nội dung hoặc mô tả ảnh hợp lệ.';return;}const payload=JSON.stringify({version,blocks});if(new TextEncoder().encode(JSON.stringify(blocks)).length>1500000){status.textContent='Bài học vượt 1,5 MB. Giảm kích thước hoặc số ảnh.';return;}busy=true;root.inert=true;tools.inert=true;save.disabled=true;status.textContent='Đang lưu…';try{const res=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:payload});if(!res.ok)throw Error(await res.text());version=(await res.json()).version;dirty=false;status.textContent='Đã lưu bản nháp.';}catch(e){status.textContent=e.message||'Không lưu được.';}finally{busy=false;root.inert=false;tools.inert=false;save.disabled=!dirty;}});
+ window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});render();updatePreview();
+}
+function lessonPage(state,nonce){
+ const esc=courseEscape,top='<nav><a href="/admin/courses/'+esc(state.courseId)+'/curriculum/">Giáo trình</a> · <a href="/admin/courses/manage/">Quản lý khóa học</a></nav><p>P2.4 · VISUAL LESSON EDITOR</p><h1>'+esc(state.title)+'</h1><p>'+esc(state.courseTitle)+'</p>';
+ if(state.status!=='draft')return top+'<p>Chỉ bản nháp mới được chỉnh sửa nội dung.</p>';
+ return top+'<style>main{max-width:1260px}.le-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:20px}.le-panel{min-width:0;background:#f1edfc;border-radius:16px;padding:16px;overflow-wrap:anywhere}.le-preview{background:#e5f4ee;min-width:0}.le-block{background:white;padding:12px;border:1px solid #d7d2e6;border-radius:12px;margin:12px 0}.le-row,#lesson-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.le-row button,#lesson-tools button,#lesson-save{min-height:44px;font:inherit}.le-edit{white-space:pre-wrap;min-height:40px;padding:12px;border:1px solid #cbd5e1;border-radius:8px;outline-offset:3px}.le-note{background:#fff2cf;padding:12px;border-radius:8px}.le-paragraph,.le-bullet,.le-ordered,.le-quote{white-space:pre-wrap}.le-panel img{display:block;max-width:100%;height:auto;margin:8px auto}.le-panel figure{margin:14px 0}.le-panel input{box-sizing:border-box;width:100%;padding:10px;font:inherit}.le-panel button:focus-visible,.le-edit:focus-visible{outline:3px solid #2563eb}</style><p>Soạn bằng khối trực quan, không cần Markdown. Ảnh WebP tối đa 1600 px; tổng nội dung lưu tối đa 1,5 MB.</p><div id="lesson-tools" aria-label="Thêm khối nội dung"></div><input hidden type="file" id="lesson-file" accept="image/png,image/jpeg,image/webp,image/gif"><p role="status" id="lesson-status">Chưa có thay đổi.</p><button type="button" id="lesson-save" disabled>Lưu bản nháp</button><div class="le-grid"><section class="le-panel"><h2>Soạn nội dung</h2><div id="lesson-blocks"></div></section><section class="le-panel le-preview"><h2>Xem trước trực tiếp</h2><div id="lesson-preview"></div></section></div><textarea hidden id="lesson-state">'+esc(JSON.stringify(state))+'</textarea><script type="module" nonce="'+nonce+'">import {optimizeMedia} from "/admin/assets/editor-v2/media.mjs";('+lessonBrowser.toString()+')(optimizeMedia);</script>';
 }
 
 export default {async fetch(req,env){
@@ -210,7 +282,16 @@ export default {async fetch(req,env){
   let stage='AUTH_BODY';try{const reader=req.body?.getReader();if(!reader)throw Error('empty body');let size=0,raw='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>16384){await reader.cancel();throw Error('too large');}raw+=decoder.decode(value,{stream:true});}raw+=decoder.decode();const {credential}=JSON.parse(raw);stage='AUTH_VERIFY_RUNTIME';const c=await verifyGoogle(credential,challenge.nonce,env);stage='AUTH_SESSION';const session=await seal({kind:'session',origin:url.origin,sub:c.sub,email:c.email,exp:now()+28800},env);stage='AUTH_COOKIE';const res=reply('OK',200);res.headers.append('Set-Cookie',cookie(sessionName,session,28800));res.headers.append('Set-Cookie',cookie(challengeName,'',0));return res;}catch(e){const codes={'invalid claims':'AUTH_CLAIMS','nonce':'AUTH_NONCE','identity':'AUTH_IDENTITY','allowlist':'AUTH_DENIED','non-authoritative email':'AUTH_IDENTITY','keys unavailable':'AUTH_KEYS','invalid keys':'AUTH_KEYS','unknown key':'AUTH_KEYS','invalid signature':'AUTH_SIGNATURE','invalid algorithm':'AUTH_SIGNATURE','invalid credential':'AUTH_CREDENTIAL','key import':'AUTH_KEY_IMPORT','signature runtime':'AUTH_SIGNATURE_RUNTIME'};const code=Object.hasOwn(codes,e?.message)?codes[e.message]:stage;return reply(code,403,{'Set-Cookie':cookie(challengeName,'',0)});}
  }
  if(url.pathname==='/auth/logout'&&req.method==='POST'){if(req.headers.get('Origin')!==url.origin)return reply('Forbidden',403);return redirect('/auth/login',[cookie(sessionName,'',0),cookie(challengeName,'',0)]);}
- if(!await authorized(req,env))return req.method==='GET'&&(url.pathname==='/'||url.pathname==='/admin/'||url.pathname==='/admin/engineering/'||url.pathname==='/admin/sheets/'||url.pathname==='/admin/editor/'||url.pathname==='/admin/library/'||url.pathname==='/admin/categories/'||url.pathname==='/admin/drafts/'||url.pathname==='/admin/pipeline/'||url.pathname==='/admin/schedules/'||url.pathname==='/admin/courses/'||url.pathname==='/admin/courses/manage/'||/^\/admin\/courses\/[0-9a-f-]{36}\/curriculum\/$/.test(url.pathname))?redirect('/auth/login'):reply('Forbidden',403);
+ if(!await authorized(req,env))return req.method==='GET'&&(url.pathname==='/'||url.pathname==='/admin/'||url.pathname==='/admin/engineering/'||url.pathname==='/admin/sheets/'||url.pathname==='/admin/editor/'||url.pathname==='/admin/library/'||url.pathname==='/admin/categories/'||url.pathname==='/admin/drafts/'||url.pathname==='/admin/pipeline/'||url.pathname==='/admin/schedules/'||url.pathname==='/admin/courses/'||url.pathname==='/admin/courses/manage/'||/^\/admin\/courses\/[0-9a-f-]{36}\/(?:curriculum|lessons\/[0-9a-f-]{36})\/$/.test(url.pathname))?redirect('/auth/login'):reply('Forbidden',403);
+ const lessonMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/lessons\/([0-9a-f-]{36})\/$/);
+ if(lessonMatch){
+  const [,courseId,lessonId]=lessonMatch;if(!curriculumId.test(courseId)||!curriculumId.test(lessonId))return reply('Not found',404);
+  if(url.search){if((req.method==='GET'||req.method==='HEAD')&&[...url.searchParams].every(([k,v])=>['utm_source','utm_medium','utm_campaign','utm_term','utm_content'].includes(k)&&v.length<=256))return redirect(url.pathname);return reply('Invalid request',400);}
+  if(req.method==='POST')return saveLesson(req,env,courseId,lessonId);
+  if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
+  if(!env.COURSE_DB)return reply('Chưa cấu hình COURSE_DB',503);
+  try{const state=await lessonState(env.COURSE_DB,courseId,lessonId);if(!state)return reply('Không tìm thấy bài học',404);const nonce=random();return reply(req.method==='HEAD'?null:page(lessonPage(state,nonce)),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'self' 'nonce-"+nonce+"'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});}catch{return reply('Không tải được bài học',503);}
+ }
  const curriculumMatch=url.pathname.match(/^\/admin\/courses\/([0-9a-f-]{36})\/curriculum\/$/);
  if(curriculumMatch){
   const id=curriculumMatch[1];if(!curriculumId.test(id))return reply('Not found',404);
