@@ -93,6 +93,9 @@ function courseDashboard(data){
  return '<style>main{max-width:1160px;padding:24px 16px}*{box-sizing:border-box}.course-kicker{font-size:12px;font-weight:700;color:#4338ca;letter-spacing:.08em}.course-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px;margin:20px 0}.course-grid article{padding:20px;border-radius:14px;background:#e9e2ff;min-width:0}.course-grid article:nth-child(2){background:#d9f3e6}.course-grid article:nth-child(3){background:#dcecff}.course-grid article:nth-child(4){background:#ffe8d7}.course-grid strong{display:block;font-size:32px;margin:4px 0}.course-grid p{margin:0;color:#42526b;font-size:14px}.course-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.course-actions a{padding:10px 14px;border:1px solid #b7b6e8;border-radius:10px;color:#3730a3;text-decoration:none;font-weight:650}a:focus-visible{outline:3px solid #2563eb;outline-offset:3px}.course-notice{padding:16px;border:1px solid #cbd5e1;border-radius:12px}</style><nav aria-label="Back Office"><a href="/admin/">Trung tâm quản trị</a></nav><header><p class="course-kicker">P2.1 · COURSE STUDIO</p><h1>Quản trị khóa học</h1><p>Không gian riêng để xây dựng giáo trình tiếng Hàn.</p><div class="course-actions"><a href="/admin/courses/">Cập nhật dữ liệu</a>'+(available?'<a href="/admin/courses/manage/">Quản lý khóa học</a>':'')+'</div></header><section aria-labelledby="course-overview"><h2 id="course-overview">Tổng quan khóa học</h2><div class="course-grid">'+cards.map(([key,label,description])=>'<article><small>'+label+'</small><strong id="course-'+key+'">'+(available?String(data[key]):'—')+'</strong><p>'+description+'</p></article>').join('')+'</div><p class="course-notice" role="status">'+(available?(data.total===0?'Chưa có khóa học. Mở quản lý để tạo bản nháp.':'Số liệu từ cơ sở dữ liệu khóa học.'):(data.status==='unconfigured'?'Chưa cấu hình cơ sở dữ liệu khóa học.':'Không tải được dữ liệu khóa học. Thử cập nhật lại.'))+'</p></section><section><h2>Không gian xây dựng khóa học</h2><p>Quản lý khóa học · Giáo trình kéo thả · Soạn bài trực quan · Video và audio · Bài tập · Xem trước. Các chức năng biên soạn tiếp theo từ P2.3.</p></section>';
 }
 
+// Each guarded course mutation targets at most one row. D1 meta.changes includes trigger side effects.
+// Zero remains a conflict; missing or invalid metadata must not confirm a write.
+const courseWriteChanged=result=>result?.success!==false&&Number.isSafeInteger(result?.meta?.changes)&&result.meta.changes>0;
 const courseEscape=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
 const courseLevels=['beginner','intermediate','advanced','all'];
 const courseLabels={beginner:'Sơ cấp',intermediate:'Trung cấp',advanced:'Cao cấp',all:'Mọi trình độ',draft:'Bản nháp',ready:'Sẵn sàng',archived:'Lưu trữ'};
@@ -121,14 +124,14 @@ async function courseMutation(req,env){
   if(action==='create'){
    const c=validateCourseInput({...input,slug:input.slug||courseSlug(input.title)}),id=crypto.randomUUID();
    const result=await db.prepare("INSERT INTO courses(id,slug,title,description,level,status,version,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,'draft',1,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(id,c.slug,c.title,c.description,c.level,timestamp,timestamp,session.sub).run();
-   if(result.meta?.changes!==1)return reply('Đường dẫn đã tồn tại',409);
+   if(!courseWriteChanged(result))return reply('Đường dẫn đã tồn tại',409);
   }else if(action==='edit'||action==='archive'){
    if(!/^[0-9a-f-]{36}$/.test(input.id||'')||!/^\d{1,10}$/.test(input.version||'')||Number(input.version)<1)return reply('Invalid request',400);
    const version=Number(input.version);
    let statement;
    if(action==='edit'){const c=validateCourseInput(input);statement=db.prepare("UPDATE courses SET title=?,description=?,level=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND slug=? AND version=? AND status='draft'").bind(c.title,c.description,c.level,timestamp,session.sub,input.id,c.slug,version);}
    else{if(input.confirm!=='yes')return reply('Cần xác nhận lưu trữ',400);statement=db.prepare("UPDATE courses SET status='archived',version=version+1,updated_at=?,updated_by=? WHERE id=? AND version=? AND status='draft'").bind(timestamp,session.sub,input.id,version);}
-   const result=await statement.run();if(result.meta?.changes!==1)return reply('Dữ liệu đã thay đổi. Quay lại và tải lại trang.',409);
+   const result=await statement.run();if(!courseWriteChanged(result))return reply('Dữ liệu đã thay đổi. Quay lại và tải lại trang.',409);
   }else return reply('Invalid request',400);
   return redirect('/admin/courses/manage/');
  }catch(e){return e?.message==='INVALID_COURSE'?reply('Thông tin khóa học không hợp lệ',400):reply('Không lưu được khóa học',503);}
@@ -160,7 +163,7 @@ async function saveCurriculum(req,env,id){
   const session=await open(getCookie(req,sessionName),env,'session');if(!session)return reply('Forbidden',403);
   const structure=JSON.stringify(input.chapters),stamp=Date.now();
   const statement=input.version===0?db.prepare("INSERT INTO course_curricula(course_id,version,structure,updated_at,updated_by) SELECT ?,1,?,?,? WHERE EXISTS(SELECT 1 FROM courses WHERE id=? AND status='draft') ON CONFLICT(course_id) DO NOTHING").bind(id,structure,stamp,session.sub,id):db.prepare("UPDATE course_curricula SET version=version+1,structure=?,updated_at=?,updated_by=? WHERE course_id=? AND version=? AND EXISTS(SELECT 1 FROM courses WHERE id=? AND status='draft')").bind(structure,stamp,session.sub,id,input.version,id);
-  const result=await statement.run();if(result.meta?.changes!==1)return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
+  const result=await statement.run();if(!courseWriteChanged(result))return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
   return reply(JSON.stringify({version:input.version+1}),200,{'Content-Type':'application/json; charset=utf-8'});
  }catch{return reply('Không lưu được giáo trình',503);}
 }
@@ -245,7 +248,7 @@ async function saveLesson(req,env,courseId,lessonId){
   const doc=JSON.stringify(input.blocks),stamp=Date.now();
   const guard="EXISTS(SELECT 1 FROM courses c JOIN course_curricula k ON k.course_id=c.id, json_each(k.structure) ch, json_each(ch.value,'$.lessons') l WHERE c.id=? AND c.status='draft' AND json_extract(l.value,'$.id')=?)";
   const stmt=input.version===0?db.prepare("INSERT INTO course_lesson_documents(course_id,lesson_id,version,document,updated_at,updated_by) SELECT ?,?,1,?,?,? WHERE "+guard+" ON CONFLICT(course_id,lesson_id) DO NOTHING").bind(courseId,lessonId,doc,stamp,session.sub,courseId,lessonId):db.prepare("UPDATE course_lesson_documents SET version=version+1,document=?,updated_at=?,updated_by=? WHERE course_id=? AND lesson_id=? AND version=? AND "+guard).bind(doc,stamp,session.sub,courseId,lessonId,input.version,courseId,lessonId);
-  if((await stmt.run()).meta?.changes!==1)return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
+  if(!courseWriteChanged(await stmt.run()))return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
   return reply(JSON.stringify({version:input.version+1}),200,{'Content-Type':'application/json; charset=utf-8'});
  }catch{return reply('Không lưu được bài học',503);}
 }
@@ -266,7 +269,7 @@ async function saveQuiz(req,env,courseId,lessonId){
   const doc=JSON.stringify(input.questions),stamp=Date.now();
   const guard="EXISTS(SELECT 1 FROM courses c JOIN course_curricula k ON k.course_id=c.id, json_each(k.structure) ch, json_each(ch.value,'$.lessons') l WHERE c.id=? AND c.status='draft' AND json_extract(l.value,'$.id')=?)";
   const stmt=input.version===0?db.prepare("INSERT INTO course_lesson_quizzes(course_id,lesson_id,version,document,updated_at,updated_by) SELECT ?,?,1,?,?,? WHERE "+guard+" ON CONFLICT(course_id,lesson_id) DO NOTHING").bind(courseId,lessonId,doc,stamp,session.sub,courseId,lessonId):db.prepare("UPDATE course_lesson_quizzes SET version=version+1,document=?,updated_at=?,updated_by=? WHERE course_id=? AND lesson_id=? AND version=? AND "+guard).bind(doc,stamp,session.sub,courseId,lessonId,input.version,courseId,lessonId);
-  if((await stmt.run()).meta?.changes!==1)return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
+  if(!courseWriteChanged(await stmt.run()))return reply('Dữ liệu đã thay đổi. Tải lại trang.',409);
   return reply(JSON.stringify({version:input.version+1}),200,{'Content-Type':'application/json; charset=utf-8'});
  }catch{return reply('Không lưu được bài học',503);}
 }
@@ -402,8 +405,8 @@ async function lessonMedia(req,env,courseId,lessonId,streamId){
   const guard="EXISTS(SELECT 1 FROM courses c JOIN course_curricula k ON k.course_id=c.id, json_each(k.structure) ch, json_each(ch.value,'$.lessons') l WHERE c.id=? AND c.status='draft' AND json_extract(l.value,'$.id')=?)";
   if(action==='attach'){
    const token=await courseDriveToken(env),file=await courseDriveFile(env,token,id);if(!file)return reply('File không hợp lệ hoặc ngoài thư mục cho phép',400);
-   const result=await db.prepare("INSERT INTO course_lesson_media(course_id,lesson_id,file_id,linked_at,linked_by) SELECT ?,?,?,?,? WHERE "+guard+" AND (SELECT COUNT(*) FROM course_lesson_media WHERE course_id=? AND lesson_id=?)<30 ON CONFLICT DO NOTHING").bind(courseId,lessonId,id,Date.now(),session.sub,courseId,lessonId,courseId,lessonId).run();if(result.meta?.changes!==1)return reply('Đã gắn, vượt giới hạn hoặc bản nháp đã thay đổi',409);
-  }else{const result=await db.prepare("DELETE FROM course_lesson_media WHERE course_id=? AND lesson_id=? AND file_id=? AND "+guard).bind(courseId,lessonId,id,courseId,lessonId).run();if(result.meta?.changes!==1)return reply('Liên kết đã thay đổi',409);}
+   const result=await db.prepare("INSERT INTO course_lesson_media(course_id,lesson_id,file_id,linked_at,linked_by) SELECT ?,?,?,?,? WHERE "+guard+" AND (SELECT COUNT(*) FROM course_lesson_media WHERE course_id=? AND lesson_id=?)<30 ON CONFLICT DO NOTHING").bind(courseId,lessonId,id,Date.now(),session.sub,courseId,lessonId,courseId,lessonId).run();if(!courseWriteChanged(result))return reply('Đã gắn, vượt giới hạn hoặc bản nháp đã thay đổi',409);
+  }else{const result=await db.prepare("DELETE FROM course_lesson_media WHERE course_id=? AND lesson_id=? AND file_id=? AND "+guard).bind(courseId,lessonId,id,courseId,lessonId).run();if(!courseWriteChanged(result))return reply('Liên kết đã thay đổi',409);}
   return redirect(base);
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
@@ -448,7 +451,7 @@ async function approveRelease(req,env,id){
  try{const db=env.COURSE_DB,state=await releaseState(db,id);if(!state)return reply('Không tìm thấy khóa học',404);
  if(state.row.status!=='draft'||state.release||state.row.version!==version||state.row.revision!==revision||!releaseChecks(state.row).every(x=>x[1]))return reply('Chưa sẵn sàng hoặc bản nháp đã thay đổi. Tải lại trang.',409);
  const result=await db.prepare("UPDATE courses SET status='ready',version=version+1,updated_at=?,updated_by=? WHERE id=? AND status='draft' AND version=? AND EXISTS(SELECT 1 FROM course_release_readiness v WHERE v.id=courses.id AND v.revision=? AND v.chapters>0 AND v.lessons>0 AND v.empty_chapters=0 AND v.missing_lessons=0 AND v.media_links=0 AND v.description_length>0)").bind(Date.now(),session.sub,id,version,revision).run();
- if(result.meta?.changes!==1)return reply('Bản nháp đã thay đổi. Tải lại trang.',409);
+ if(!courseWriteChanged(result))return reply('Bản nháp đã thay đổi. Tải lại trang.',409);
  return redirect('/admin/courses/'+id+'/publishing/');
  }catch{return reply('Không thể phê duyệt khóa học',503);}
 }
