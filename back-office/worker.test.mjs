@@ -2,6 +2,7 @@ import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
 import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken,validateQuizQuestions} from './worker.mjs';
+import {releaseChecks} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -359,4 +360,29 @@ test('P2.6 validates answer indices, duplicate choices and question types',()=>{
  assert.deepEqual(validateQuizQuestions([q]),[q]);
  for(const invalid of [{...q,correct:2},{...q,options:['A','A']},{...q,prompt:''},{...q,kind:'html'},{...q,kind:'boolean'}])assert.throws(()=>validateQuizQuestions([invalid]));
  assert.throws(()=>validateQuizQuestions([q,q]));
+});
+
+test('P2.8 readiness requires saved content and immutable media',()=>{
+ const row={description_length:10,chapters:1,lessons:2,empty_chapters:0,missing_lessons:0,media_links:0};
+ assert.ok(releaseChecks(row).every(x=>x[1]));
+ for(const field of ['description_length','chapters','lessons'])assert.ok(!releaseChecks({...row,[field]:0}).every(x=>x[1]));
+ for(const field of ['empty_chapters','missing_lessons','media_links'])assert.ok(!releaseChecks({...row,[field]:1}).every(x=>x[1]));
+});
+test('P2.8 approval rejects anonymous writes, cross-origin and stale revisions',async()=>{
+ const id='11111111-1111-4111-8111-111111111111',path='/admin/courses/'+id+'/publishing/';
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+p+'.'+sig,Origin:origin,'Content-Type':'application/x-www-form-urlencoded'};
+ let writes=0;
+ const row={id,title:'한글',status:'draft',version:2,revision:5,description_length:10,chapters:1,lessons:2,empty_chapters:0,missing_lessons:0,media_links:0};
+ const e={...env,COURSE_DB:{prepare(sql){return {bind(){return {first:async()=>sql.includes('course_release_readiness')?row:null,run:async()=>{writes++;return {meta:{changes:1}};}};}}}}};
+ const post=(body,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body}),e);
+ assert.equal((await worker.fetch(req(path),e)).status,403);
+ assert.equal((await post('version=2&revision=5&confirm=yes',{...headers,Origin:'https://evil.test'})).status,403);
+ assert.equal((await post('version=2&revision=4&confirm=yes')).status,409);
+ assert.equal((await post('version=2&revision=5&confirm=no')).status,400);
+ assert.equal(writes,0);
+ assert.equal((await post('version=2&revision=5&confirm=yes')).status,303);
+ assert.equal(writes,1);
 });
