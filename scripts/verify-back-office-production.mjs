@@ -1,8 +1,8 @@
 // Read-only production checks; no real credentials, publication or secret output.
 import assert from 'node:assert/strict';
 const office='https://korean-backoffice.tamsudev-com.workers.dev',site='https://duykhang68.github.io/khoahoctienghan';
-const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/'];
-const assets=['/admin/api/dashboard/','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/article-check/techblog/bai-thu/'];
+const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/','/admin/library/','/admin/categories/','/admin/drafts/','/admin/pipeline/'];
+const assets=['/admin/api/categories/','/admin/assets/editor-v2/media.mjs','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs','/admin/api/library/','/admin/api/dashboard/','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/article-check/techblog/bai-thu/'];
 const forbidden=/data-editor-v2|data-sheet-blog|id="trend"|Phiên quản trị đã xác thực/;
 export async function verifyProduction(fetcher=fetch,report=console.log){
  let n=0;const failures=[];

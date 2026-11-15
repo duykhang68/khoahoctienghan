@@ -1,6 +1,7 @@
 import test from 'node:test';
+import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -105,8 +106,8 @@ test('JWKS redirects, HTTP errors, invalid JSON and unknown keys never create a 
 test('private routes reject expired, wrong-origin, malformed and revoked-admin sessions',async()=>{
  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  async function signed(overrides={}){const payload=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+600,...overrides})).toString('base64url');const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(payload))).toString('base64url');return '__Host-bo_session='+payload+'.'+sig;}
- const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/'];
- const assets=['/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'];
+ const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/','/admin/library/','/admin/categories/','/admin/drafts/','/admin/pipeline/'];
+ const assets=['/admin/api/dashboard/','/admin/api/library/','/admin/api/categories/','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/editor-v2/media.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs','/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'];
  const good=await signed();
  for(const [cookie,config] of [[await signed({exp:1}),env],[await signed({origin:'https://other.test'}),env],[await signed({kind:'challenge'}),env],[await signed({sub:''}),env],['__Host-bo_session=invalid.signature',env],[good,{...env,ADMIN_EMAILS:'other@gmail.com'}]]){
   for(const path of [...pages,...assets]){const res=await worker.fetch(req(path,{headers:{Cookie:cookie}}),config);assert.equal(res.status,pages.includes(path)?303:403,path);assert.equal(res.headers.get('cache-control'),'no-store');assert.doesNotMatch(await res.text(),/data-editor-v2|data-sheet-blog|id="trend"/);const head=await worker.fetch(req(path,{method:'HEAD',headers:{Cookie:cookie}}),config);assert.equal(head.status,403,path);}
@@ -141,4 +142,32 @@ test('P1.1 authorized dashboard API is no-store, read-only and fails closed',asy
  assert.equal((await worker.fetch(req('/admin/api/dashboard/',{headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,403);
  globalThis.fetch=async()=>new Response('private upstream error',{status:429});const failed=await worker.fetch(req('/admin/api/dashboard/',{headers}),env);assert.equal(failed.status,502);assert.deepEqual(await failed.json(),{error:'SNAPSHOT_UNAVAILABLE'});
  }finally{globalThis.fetch=original;}
+});
+
+test('P1.3 library lists exact released articles without index pages or fabricated titles',async()=>{
+ const sha='c'.repeat(40),seen=[];
+ const response=async(url,init)=>{seen.push(url);assert.equal(init.redirect,'manual');if(url.endsWith('release-sha.json'))return Response.json({sha});if(url.includes('/git/trees/'))return Response.json({truncated:false,tree:[{type:'blob',path:'src/content/docs/ngon-ngu/index.md'},{type:'blob',path:'src/content/docs/ngon-ngu/hangul.mdx'}]});if(url.endsWith('posts.json'))return Response.json([{slug:'bai-tech',title:'Bài kỹ thuật',summary:'Tóm tắt'}]);return new Response('- [Hangul](/khoahoctienghan/ngon-ngu/hangul/)\n');};
+ const data=await librarySnapshot(response);assert.equal(data.sha,sha);assert.deepEqual(data.rows.map(x=>[x.kind,x.title]),[['tech','Bài kỹ thuật'],['knowledge','Hangul']]);assert.ok(seen.slice(1).every(url=>url.includes(sha)));
+ assert.equal((await worker.fetch(req('/admin/library/'),env)).status,303);
+ assert.equal((await worker.fetch(req('/admin/api/library/'),env)).status,403);
+ assert.equal((await worker.fetch(req('/admin/api/library/',{headers:{Cookie:'__Host-bo_session=invalid.signature'}}),env)).status,403);
+});
+
+// Compile the actual emitted browser script, not a duplicate fixture.
+test('P1.3 private library emits a syntactically valid browser script',async()=>{
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
+ const response=await worker.fetch(req('/admin/library/',{headers:{Cookie:'__Host-bo_session='+p+'.'+s}}),env);
+ assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');
+ const html=await response.text();const match=html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/);
+ assert.ok(match);assert.doesNotThrow(()=>new Script(match[1],{filename:'library-browser.js'}));assert.match(html,/id="lib-list"/);assert.doesNotMatch(match[1],/export default \{async fetch/);
+});
+
+
+test('P1.9 all new authenticated documents and module assets share the session boundary',async()=>{
+ const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');const headers={Cookie:'__Host-bo_session='+p+'.'+s};
+ for(const [path,marker] of [['/admin/library/','id="lib-list"'],['/admin/categories/','id="cat-list"'],['/admin/drafts/','id="draft-list"'],['/admin/pipeline/','data-queue-progress']]){const res=await worker.fetch(req(path,{headers}),env);assert.equal(res.status,200,path);assert.equal(res.headers.get('cache-control'),'no-store');assert.ok((await res.text()).includes(marker),path);assert.equal((await worker.fetch(req(path,{method:'POST',headers}),env)).status,405,path);}
+ for(const path of ['/admin/assets/editor-v2/media.mjs','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs']){const result=await worker.fetch(req(path,{headers}),env);assert.equal(result.status,200);assert.ok(result.headers.get('content-type').startsWith('text/javascript'));assert.equal(result.headers.get('cache-control'),'no-store');}
 });

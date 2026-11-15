@@ -17,7 +17,7 @@ export function progressFor(item,evidence={}){
  const {ci,cd,deploy}=evidence;
  let done=2,status='Đang chờ đến lượt',tone='waiting';
  if(item.phase==='WAITING_CI'){
-  status='Chờ CI / Build';
+  status=evidence.staleHead?'HEAD hoặc base đã đổi · Chờ FIFO cập nhật':'Chờ CI / Build';
   if(ci?.status==='in_progress'){status='CI / Build đang chạy';tone='running'}
   else if(ci?.status==='completed'&&ci.conclusion==='success'){done=3;status='CI thành công · Chờ merge';tone='running'}
   else if(ci?.status==='completed'&&['failure','timed_out','action_required'].includes(ci.conclusion)){status='CI chưa đạt';tone='blocked'}
@@ -34,7 +34,7 @@ export function progressFor(item,evidence={}){
  if(item.closed||item.detail?.startsWith('BLOCKED')){status=item.closed?'Issue đã đóng nhưng chưa xác minh':'Bị chặn · Kiểm tra Issue';tone='blocked'}
  return {done,status,tone};
 }
-export function queueClient(fetcher=fetch){
+export function queueClient(fetcher=fetch,{strictHead=false}={}){
  const get=async path=>{
   const response=await fetcher(api+path,{headers:{Accept:'application/vnd.github+json'},credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:AbortSignal.timeout(12000)});
   if(!response.ok)throw Error('GitHub HTTP '+response.status);
@@ -53,6 +53,10 @@ export function queueClient(fetcher=fetch){
  async function evidence(item){
   const latest=(runs,hash,events,branch)=>runs.filter(r=>r.head_sha===hash&&r.head_repository?.full_name===repo&&r.head_branch===branch&&events.includes(r.event)).sort((a,b)=>b.id-a.id)[0];
   if(item.phase==='WAITING_CI'&&item.head&&item.base&&item.pr){
+   if(strictHead){
+    const pr=await get('/pulls/'+item.pr);
+    if(pr?.state!=='open'||pr?.head?.sha!==item.head||pr?.base?.sha!==item.base||pr?.base?.ref!=='main'||pr?.head?.repo?.full_name!==repo||pr?.head?.ref!=='content/editor-fifo-'+item.number+'-'+item.base.slice(0,12))return {staleHead:true};
+   }
    const x=await get('/actions/workflows/ci.yml/runs?head_sha='+item.head+'&per_page=30');
    return {ci:latest(x.workflow_runs||[],item.head,['pull_request'],'content/editor-fifo-'+item.number+'-'+item.base.slice(0,12))};
   }
