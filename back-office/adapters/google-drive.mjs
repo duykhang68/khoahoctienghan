@@ -1,7 +1,7 @@
 import {b64,enc} from '../encoding.mjs';
 
-const driveId=/^[A-Za-z0-9_-]{10,150}$/;
-const driveTypes=new Set(['video/mp4','video/webm','audio/mpeg','audio/mp4','audio/wav','audio/ogg','audio/webm','audio/x-wav']);
+import {driveId,eligibleCourseMedia} from '../../core/course/media.mjs';
+export {eligibleCourseMedia} from '../../core/course/media.mjs';
 const driveBase='https://www.googleapis.com/drive/v3/files';
 const googleTokenUrl='https://oauth2.googleapis.com/token';
 const driveFields='id,name,mimeType,size,parents,trashed,capabilities(canDownload)';
@@ -25,9 +25,6 @@ export async function courseDriveToken(env,fetcher=fetch){
  const token=(await response.json()).access_token;if(typeof token!=='string'||!token)throw Error('DRIVE_AUTH');return token;
 }
 async function driveGet(token,url,headers={},fetcher=fetch){return fetcher(url,{redirect:'error',headers:{...headers,Authorization:'Bearer '+token}});}
-export function eligibleCourseMedia(file,folder){
- return !!file&&driveId.test(file.id||'')&&driveTypes.has(file.mimeType)&&file.trashed===false&&Array.isArray(file.parents)&&file.parents.includes(folder)&&file.capabilities?.canDownload===true&&typeof file.name==='string'&&file.name.length<=1000&&/^\d{1,15}$/.test(file.size||'')&&Number(file.size)>0;
-}
 async function courseDriveList(env,token){
  const folder=env.COURSE_MEDIA_FOLDER_ID;
  const check=await driveGet(token,driveBase+'/'+folder+'?fields=id,mimeType,trashed');

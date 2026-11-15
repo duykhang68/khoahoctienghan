@@ -456,3 +456,5 @@ test('Course Management functional core is immutable, filters, sorts and respect
  assert.deepEqual(m.sort(rows,'recent').map(r=>r.id),['b','a']);assert.deepEqual(rows.map(r=>r.id),['a','b']);assert.deepEqual(m.actions(rows[1]),['preview','publishing']);
  assert.equal(m.statistics({total:3,drafts:1,ready:1,archived:0}),null);assert.ok(m.errors({title:'',slug:'../a',level:'invalid'}).slug);
 });
+
+import './course-core.test.mjs';

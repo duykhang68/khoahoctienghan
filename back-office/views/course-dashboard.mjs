@@ -1,4 +1,5 @@
 import {courseEscape,courseLabels,courseLevels} from '../course/common.mjs';
+import {courseCompletionPercent} from '../../core/course/dashboard-selectors.mjs';
 
 function courseDashboardBrowser(){
  const search=document.getElementById('cw-search'),filter=document.getElementById('cw-filter'),count=document.getElementById('cw-count'),empty=document.getElementById('cw-no-results'),cards=[...document.querySelectorAll('[data-course-row]')];
@@ -13,7 +14,7 @@ function courseDashboard(data,workspace,nonce){
  const cards=[['total','Tổng khóa học','Tất cả trạng thái','01'],['drafts','Bản nháp','Đang biên soạn','02'],['ready','Sẵn sàng','Chưa mở bán','03'],['archived','Lưu trữ','Không còn sử dụng','04']];
  const number=(n)=>String(n);
  const courseCard=c=>{
-  const base='/admin/courses/'+c.id+'/',draft=c.status==='draft',percent=c.lessons?Math.round(c.authored/c.lessons*100):0;
+  const base='/admin/courses/'+c.id+'/',draft=c.status==='draft',percent=courseCompletionPercent(c);
   const lessonLinks=c.lessonItems.map(l=>{const path=base+'lessons/'+l.id+'/';return '<div class="cw-lesson"><strong>'+esc(l.title)+'</strong><div class="cw-actions">'+link(path,'Soạn bài')+link(path+'media/','Video & Audio')+link(path+'quiz/','Quiz')+'</div></div>';}).join('');
   const contentActions=draft?link(base+'curriculum/','Xây dựng giáo trình','cw-primary'):'';
   return '<article class="cw-course" data-course-row data-status="'+esc(c.status)+'" data-search="'+esc(c.title+' '+c.slug+' '+courseLabels[c.level])+'"><div class="cw-course-top"><span class="cw-monogram" aria-hidden="true">한</span><div class="cw-title"><small>'+esc(courseLabels[c.level])+'</small><h3>'+esc(c.title)+'</h3><p>'+esc(c.slug)+'</p></div><span class="cw-state cw-'+c.status+'">'+esc(courseLabels[c.status])+'</span></div><div class="cw-metrics"><div><strong>'+number(c.chapters)+'</strong><small>Chương</small></div><div><strong>'+number(c.lessons)+'</strong><small>Bài học</small></div><div><strong>'+number(c.quizzes)+'</strong><small>Bài có quiz</small></div><div><strong>'+number(c.media)+'</strong><small>Media đã gắn</small></div></div><div class="cw-progress-label"><span>Tiến độ soạn bài</span><strong>'+number(c.authored)+' / '+number(c.lessons)+' bài · '+percent+'%</strong></div><progress value="'+(c.lessons?c.authored:0)+'" max="'+(c.lessons||1)+'" aria-label="Tiến độ soạn bài"></progress><div class="cw-actions">'+contentActions+link(base+'preview/','Xem trước')+link(base+'publishing/','Bản nháp & Phát hành')+link(manage,'Quản lý')+'</div>'+(draft?(c.lessonItems.length?'<details class="cw-lesson-tools"><summary>Công cụ bài học · '+c.lessons+' bài</summary>'+lessonLinks+(c.lessons>8?'<p class="cw-muted">Hiển thị 8 bài đầu. '+link(base+'curriculum/','Mở toàn bộ giáo trình')+'</p>':'')+'</details>':'<div class="cw-next"><strong>Bước tiếp theo</strong><span>Thêm chương và bài học để mở công cụ soạn bài, media và quiz.</span></div>'):'')+'</article>';
