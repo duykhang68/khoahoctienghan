@@ -6,6 +6,7 @@ import {rememberPublicReceipt} from '../sheet-blog/progress-browser.mjs';
 import {seriesProgress} from './series-progress.mjs';
 import {mountDrawio,downloadDrawio,importDrawio} from './drawio-browser.mjs';
 import {blueprintParts,instantiateBlueprint} from './blueprints.mjs';
+import {validDraft,selectWorkspace,moveBlock,readingMinutes} from './core/editor-reducer.mjs';
 const legacyKey='khoahoctienghan.editor-v2.draft.v1',activeKey='khoahoctienghan.editor-v2.active.v2';
 const storageKey=kind=>'khoahoctienghan.editor-v2.draft.v2.'+kind;
 const workspace={
@@ -20,13 +21,13 @@ export function mountEditor(root,revision=null){
  if(!root)return;
  const $=s=>root.querySelector(s),all=s=>[...root.querySelectorAll(s)],field=k=>$('[data-field="'+k+'"]'),base=root.dataset.base;
  let active='tech',client=null,busy=false,uploads=0,mode='write',timer;
- const valid=saved=>saved&&Array.isArray(saved.blocks)&&saved.blocks.every(b=>kinds.includes(b.kind));
+ const valid=validDraft;
  const read=key=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}};
  // Preserve the legacy draft in its original destination without deleting the recovery copy.
  const legacy=read(legacyKey);
  if(valid(legacy)&&Object.hasOwn(workspace,legacy.kind)){try{if(!localStorage.getItem(storageKey(legacy.kind)))localStorage.setItem(storageKey(legacy.kind),JSON.stringify(legacy))}catch{}}
  const requested=new URLSearchParams(location.hash.slice(1)).get('workspace'),remembered=read(activeKey);
- if(Object.hasOwn(workspace,requested))active=requested;else if(Object.hasOwn(workspace,remembered))active=remembered;else if(valid(legacy)&&Object.hasOwn(workspace,legacy.kind))active=legacy.kind;
+ active=selectWorkspace(requested,remembered,legacy,workspace);
  function load(kind){const saved=read(storageKey(kind));if(valid(saved))return {...empty(kind),...saved,kind};if(valid(legacy)&&legacy.kind===kind)return {...empty(kind),...legacy,kind};return empty(kind)}
  if(revision)active=revision.draft.kind;
  let draft=revision?structuredClone(revision.draft):load(active);
@@ -58,7 +59,7 @@ export function mountEditor(root,revision=null){
    const wrapper=make('section',undefined,'ev2-block');wrapper.dataset.kind=b.kind;
    const top=make('div',undefined,'ev2-block-top'),tools=make('div',undefined,'ev2-block-tools');
    top.append(make('small',String(i+1).padStart(2,'0')+' · '+names[b.kind]),tools);
-   const move=offset=>{const j=i+offset;if(j<0||j>=draft.blocks.length)return;[draft.blocks[i],draft.blocks[j]]=[draft.blocks[j],draft.blocks[i]];render();store()};
+   const move=offset=>{const next=moveBlock(draft.blocks,i,offset);if(next===draft.blocks)return;draft.blocks=next;render();store()};
    const up=button('↑',()=>move(-1),'Di chuyển khối '+(i+1)+' lên');up.disabled=i===0;
    const down=button('↓',()=>move(1),'Di chuyển khối '+(i+1)+' xuống');down.disabled=i===draft.blocks.length-1;
    tools.append(up,down,button('×',()=>{draft.blocks.splice(i,1);if(!draft.blocks.length)draft.blocks.push(newBlock('paragraph'));render();store()},'Xóa khối '+(i+1)));
@@ -101,7 +102,7 @@ export function mountEditor(root,revision=null){
  }
  function showPreview(){
   $('[data-preview-title]').textContent=draft.title||'Bài viết chưa có tiêu đề';$('[data-preview-summary]').textContent=draft.summary;
-  const w=workspace[active],slug=revision?revision.slug:slugify(draft.title)||'ten-bai-viet',coverKey=active==='tech'?slug:draft.category+'/'+slug;const palette=palettes[Array.from(coverKey).reduce((n,c)=>n+c.charCodeAt(0),0)%palettes.length];$('[data-preview-cover]').style.background='linear-gradient(135deg,'+palette.join(',')+')';$('[data-preview-group]').textContent=w.group;$('[data-preview-topic]').textContent=active==='tech'?'Tự động phân loại sau khi xuất bản':field('category').selectedOptions[0]?.textContent||'';$('[data-preview-reading]').hidden=active!=='tech';$('[data-reading-minutes]').textContent=Math.max(1,Math.ceil(draft.blocks.map(b=>b.text||'').join(' ').trim().split(/\s+/).length/200))+' phút';$('[data-preview-summary]').hidden=active==='knowledge';
+  const w=workspace[active],slug=revision?revision.slug:slugify(draft.title)||'ten-bai-viet',coverKey=active==='tech'?slug:draft.category+'/'+slug;const palette=palettes[Array.from(coverKey).reduce((n,c)=>n+c.charCodeAt(0),0)%palettes.length];$('[data-preview-cover]').style.background='linear-gradient(135deg,'+palette.join(',')+')';$('[data-preview-group]').textContent=w.group;$('[data-preview-topic]').textContent=active==='tech'?'Tự động phân loại sau khi xuất bản':field('category').selectedOptions[0]?.textContent||'';$('[data-preview-reading]').hidden=active!=='tech';$('[data-reading-minutes]').textContent=readingMinutes(draft.blocks)+' phút';$('[data-preview-summary]').hidden=active==='knowledge';
   const meta=$('[data-preview-meta]');meta.textContent=[draft.labels,draft.series.enabled?draft.series.name+' · Tập '+draft.series.part+'/'+draft.series.total_parts:''].filter(Boolean).join(' · ');meta.hidden=!meta.textContent;
   const target=$('[data-preview-body]');target.replaceChildren();
   for(const b of draft.blocks){

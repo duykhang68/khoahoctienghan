@@ -1,0 +1,57 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {slugify,metadata} from '../src/lib/editor-v2/core/metadata.mjs';
+import {toggleInline,inlineRuns} from '../src/lib/editor-v2/core/rich-text.mjs';
+import {createBlock} from '../src/lib/editor-v2/core/blocks.mjs';
+import {inspectBlock,projectTextBlock,finishDocument} from '../src/lib/editor-v2/core/document.mjs';
+import {publicationInputs,planPublication} from '../src/lib/editor-v2/core/publication-plan.mjs';
+import {parseRevisionBlocks,equal,frontField,setFront} from '../src/lib/editor-v2/core/revision-parser.mjs';
+import {revisionInputs,planRevision} from '../src/lib/editor-v2/core/revision-plan.mjs';
+import {validateCopy,dueRows,vietnamTime,createDraftCopy} from '../src/lib/editor-v2/core/draft-policy.mjs';
+import {moveBlock,selectWorkspace,readingMinutes} from '../src/lib/editor-v2/core/editor-reducer.mjs';
+import {buildDocument,prepareV2} from '../src/lib/editor-v2/model.mjs';
+const freeze=x=>{if(x&&typeof x==='object'){Object.values(x).forEach(freeze);Object.freeze(x)}return x;};
+const block=freeze({...createBlock('paragraph','id1'),text:'Xin chào'});
+const draft=freeze({kind:'tech',title:'Tiếng Hàn',summary:'',labels:'a, a, b',blocks:[block]});
+test('R4 pure metadata, IDs and rich text',()=>{
+ assert.equal(slugify('Tiếng Hàn'),'tieng-han');
+ assert.deepEqual(metadata(draft),{labels:['a','b']});
+ const runs=freeze([{text:'abc',marks:[]}]);
+ assert.deepEqual(toggleInline(runs,1,2,'bold'),[{text:'a',marks:[]},{text:'b',marks:['bold']},{text:'c',marks:[]}]);
+ assert.deepEqual(inlineRuns(block),[{text:'Xin chào',marks:[]}]);
+ assert.equal(createBlock('paragraph','fixed').id,'fixed');
+});
+test('R4 document projection and publication match public facade',async()=>{
+ const inspected=inspectBlock(block),{node,extraSize}=projectTextBlock(block,inspected);
+ const body=finishDocument([node],inspected.text.length+extraSize);
+ assert.deepEqual((await buildDocument(draft.blocks)).body,body);
+ const snapshot=freeze({paths:[],posts:[]}),now=new Date('2026-11-15T00:00:00Z');
+ const input=publicationInputs(draft,now),plan=planPublication(draft,snapshot,[],input,{body,assets:new Map()});
+ assert.equal(plan.route,'techblog/tieng-han/');
+ assert.equal(JSON.parse(plan.changes.get('src/data/techblog/posts.json').text)[0].date,'2026-11-15T07:00:00+07:00');
+ assert.deepEqual(await prepareV2(draft,snapshot,[],now),plan);
+ assert.throws(()=>planPublication(draft,freeze({paths:[],posts:[{slug:'tieng-han'}]}),[],input,{body,assets:new Map()}),/URL đã tồn tại/);
+});
+test('R4 revision parser explicit IDs and pure revision planning',async()=>{
+ const doc=freeze((await buildDocument([block])).body),blocks=parseRevisionBlocks(doc,['fixed']);
+ assert.equal(blocks[0].id,'fixed');assert.ok(equal((await buildDocument(blocks)).body,doc));
+ const edited=freeze({...draft,title:'Tên mới',summary:'Mô tả'}),original=draft;
+ const row={kind:'tech',slug:'tieng-han',path:'src/data/techblog/posts.json'},state=freeze({posts:[{slug:row.slug,date:'old',title:'Tiếng Hàn'}]});
+ const inputs=revisionInputs(edited,original,false);
+ const plan=planRevision({edited,row,state,route:'techblog/tieng-han',fixed:false,...inputs,body:doc,assets:new Map()});
+ const post=JSON.parse(plan.files[0].content)[0];assert.equal(post.title,'Tên mới');assert.equal(post.date,'old');
+ const source='---\ntitle: "Cũ"\n---\nNội dung';
+ assert.equal(frontField(setFront(source,'title','Mới'),'title'),'Mới');
+ assert.throws(()=>revisionInputs({...edited,kind:'knowledge'},original,false),/Không được đổi đích/);
+});
+test('R4 draft schedule and block reducer use explicit data and preserve input',()=>{
+ const copy=validateCopy(draft),stamp=vietnamTime('2026-11-15T07:00:00');
+ assert.equal(stamp,Date.parse('2026-11-15T00:00:00Z'));
+ assert.equal(createDraftCopy(copy,'fixed',stamp).id,'fixed');
+ const rows=freeze([{id:'b',dueAt:stamp,state:'scheduled',createdAt:2},{id:'a',dueAt:stamp,state:'retry',createdAt:1},{id:'c',dueAt:stamp+1,state:'scheduled',createdAt:0}]);
+ assert.deepEqual(dueRows(rows,stamp).map(r=>r.id),['a','b']);
+ const blocks=freeze([block,{...block,id:'id2'}]);
+ assert.deepEqual(moveBlock(blocks,0,1).map(b=>b.id),['id2','id1']);
+ assert.equal(moveBlock(blocks,0,-1),blocks);assert.equal(readingMinutes(blocks),1);
+ assert.equal(selectWorkspace(null,'knowledge',null,{tech:{},knowledge:{}}),'knowledge');
+});

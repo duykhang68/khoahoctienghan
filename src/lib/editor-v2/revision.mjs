@@ -1,33 +1,18 @@
-import {newBlock,buildDocument,inlineRuns} from './model.mjs';
+import {newBlock,buildDocument} from './model.mjs';
 import {githubClient} from './github.mjs';
 const repo='/repos/duykhang68/khoahoctienghan',raw='https://raw.githubusercontent.com/duykhang68/khoahoctienghan/';
 const validSha=s=>/^[a-f0-9]{40}$/.test(s||'');
 const routePattern=/^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const requireValue=(ok,msg)=>{if(!ok)throw Error(msg)};
-const equal=(a,b)=>{const sort=v=>Array.isArray(v)?v.map(sort):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,sort(v[k])])):v;return JSON.stringify(sort(a))===JSON.stringify(sort(b))};
+import {equal,parseRevisionBlocks,frontField} from './core/revision-parser.mjs';
+import {revisionInputs,planRevision} from './core/revision-plan.mjs';
 const textBlock=(kind,text)=>({...newBlock(kind),text});
-const textRuns=nodes=>{const runs=[];for(const n of nodes||[]){if(n.type==='hardBreak')runs.push({text:'\n',marks:[]});else{requireValue(n.type==='text'&&typeof n.text==='string'&&(n.marks||[]).every(m=>['bold','italic','underline','strike'].includes(m.type)&&Object.keys(m).length===1),'Khối có định dạng chưa hỗ trợ.');runs.push({text:n.text,marks:(n.marks||[]).map(m=>m.type)});}}return runs};
-const plain=nodes=>{const runs=textRuns(nodes);requireValue(runs.every(r=>!r.marks.length),'Khối có định dạng chưa hỗ trợ.');return runs.map(r=>r.text).join('')};
-const rich=(kind,nodes)=>{const runs=textRuns(nodes);return {...textBlock(kind,runs.map(r=>r.text).join('')),runs}};
 async function readBlocks(doc){
  requireValue(doc?.type==='doc'&&Array.isArray(doc.content),'Thiếu tài liệu Studio.');
- const blocks=doc.content.map(n=>{
-  if(n.type==='paragraph')return rich('paragraph',n.content);
-  if(n.type==='heading'){const kind={2:'heading',3:'subheading',4:'detailheading'}[n.attrs?.level];requireValue(kind,'Cấp tiêu đề chưa hỗ trợ.');return textBlock(kind,plain(n.content))}
-  if(n.type==='codeBlock')return textBlock('code',plain(n.content));
-  if(n.type==='horizontalRule')return newBlock('divider');
-  if(n.type==='blockquote'||n.type==='hdNote'){requireValue(n.content?.length===1&&n.content[0].type==='paragraph','Khối trích dẫn phức tạp chưa hỗ trợ.');const b=rich(n.type==='blockquote'?'quote':'note',n.content[0].content);if(n.type==='hdNote')b.tone=n.attrs?.kind;return b}
-  if(n.type==='bulletList'||n.type==='orderedList'){const runs=[];for(const [i,item] of (n.content||[]).entries()){requireValue(item.type==='listItem'&&item.content?.length===1&&item.content[0].type==='paragraph','Danh sách lồng chưa hỗ trợ.');if(i)runs.push({text:'\n',marks:[]});runs.push(...textRuns(item.content[0].content));}return {...textBlock(n.type==='bulletList'?'bullet':'ordered',runs.map(x=>x.text).join('')),runs}}
-  if(n.type==='table'){const rows=n.content.map(row=>row.content.map(cell=>{requireValue(cell.content?.length===1&&cell.content[0].type==='paragraph','Ô bảng phức tạp chưa hỗ trợ.');return plain(cell.content[0].content)}));return {...newBlock('table'),rows}}
-  throw Error('Bài có khối hình ảnh hoặc minh họa chưa hỗ trợ nhập an toàn. Dùng Quản lý bài để giữ nguyên nội dung.');
- });
+ const blocks=parseRevisionBlocks(doc,doc.content.map(()=>crypto.randomUUID()));
  requireValue(equal((await buildDocument(blocks)).body,doc),'Không thể chuyển đổi nguyên vẹn bài này. Dùng Quản lý bài.');
  return blocks;
 }
-function frontField(s,key){const f=s.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);requireValue(f,'Metadata không hỗ trợ.');const m=f[1].match(new RegExp('^'+key+':[ \\t]*(.*)$','m'));if(!m)return '';const v=m[1].trim();requireValue(!/^[>|]/.test(v),'Metadata nhiều dòng chưa hỗ trợ.');if(v.startsWith('"'))return JSON.parse(v);if(v.startsWith("'")&&v.endsWith("'"))return v.slice(1,-1).replace(/''/g,"'");return v}
-function setFront(s,key,value){frontField(s,key);const f=s.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/),rule=new RegExp('^'+key+':[ \\t]*.*$','m');return s.replace(f[0],()=>f[0].replace(f[1],()=>rule.test(f[1])?f[1].replace(rule,()=>key+': '+JSON.stringify(value)):f[1]+'\n'+key+': '+JSON.stringify(value)))}
-const json=v=>JSON.stringify(v,null,2)+'\n';
-const walk=n=>n.type==='text'?n.text:(n.content||[]).map(walk).join(' ');
 export async function loadRevision(route,fetcher=fetch){
  requireValue(routePattern.test(route),'URL bài viết không hợp lệ.');
  const requestText=async url=>{const response=await fetcher(url,{redirect:'error',cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(20000)});requireValue(response.ok,'Không tải được snapshot bài viết.');return response.text()};
@@ -48,25 +33,9 @@ export async function loadRevision(route,fetcher=fetch){
  const series=extra.series||{},draft={kind:row.kind,category:row.kind==='tech'?'ngon-ngu':row.category,title,summary,labels:(extra.labels||[]).join(', '),series:{enabled:!!extra.series,name:series.name||'',part:series.part||1,total_parts:series.total_parts||1,target_date:series.target_date||''},blocks};
  const original=structuredClone(draft);
  async function plan(edited){
-  requireValue(edited.kind===original.kind&&edited.category===original.category,'Không được đổi đích bài cũ.');
-  const title=edited.title.trim(),summary=edited.summary.trim();requireValue(title&&title.length<=180&&summary.length<=500&&!/[\u0000-\u001f\u007f]/.test(title+summary),'Tiêu đề hoặc mô tả không hợp lệ.');
-  const files=[],write=(path,value)=>files.push({path,mode:'100644',type:'blob',content:value});
-  let body,assets=new Map();
-  if(fixed){requireValue(edited.blocks.length===original.blocks.length&&edited.blocks.every((b,i)=>b.kind===original.blocks[i].kind&&b.id===original.blocks[i].id&&b.text.trim()&&b.text.length<=50000&&inlineRuns(b).every(x=>!x.marks.length)),'Bài cũ chỉ được sửa chữ trong bố cục gốc.');}
-  else ({body,assets}=await buildDocument(edited.blocks));
-  if(row.kind==='tech'){
-   const posts=structuredClone(state.posts),post=posts.find(x=>x.slug===row.slug);post.title=title;post.summary=summary;
-   if(fixed){let i=0;for(const sec of post.sections){sec.heading=edited.blocks[i++].text;sec.paragraphs=sec.paragraphs.map(()=>edited.blocks[i++].text)}}
-   else{post.studioBody=body;post.sections=[{heading:'Nội dung',paragraphs:[walk(body)]}]}
-   write(row.path,json(posts));
-  }else{
-   const documents=structuredClone(state.documents);documents[state.id]=body;
-   const suffix='](/khoahoctienghan/'+route+'/)',label=title.replace(/[\\[\]<>*_\x60{}&]/g,c=>'&#'+c.charCodeAt(0)+';');let matches=0;
-   const index=state.index.split('\n').map(line=>{if(!line.trimEnd().endsWith(suffix))return line;requireValue(/^\s*-\s+\[/.test(line),'Liên kết chuyên mục không hỗ trợ.');matches++;return '- ['+label+suffix}).join('\n');
-   requireValue(matches===1,'Cần đúng một liên kết chuyên mục.');
-   write(row.path,setFront(setFront(state.source,'title',title),'description',summary));write(state.indexPath,index);write('src/data/studio-documents.json',json(documents));
-  }
-  return {files,assets};
+  const {title,summary}=revisionInputs(edited,original,fixed);
+  const {body,assets}=fixed?{body:undefined,assets:new Map()}:await buildDocument(edited.blocks);
+  return planRevision({edited,row,state,route,fixed,title,summary,body,assets});
  }
  return {draft,route,slug:row.slug,fixed,sha:snapshot.sha,connect(token){
   const auth=githubClient(token,fetcher);

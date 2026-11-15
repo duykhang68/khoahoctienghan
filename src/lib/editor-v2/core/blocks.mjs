@@ -1,0 +1,2 @@
+export const kinds=Object.freeze(['paragraph','heading','subheading','detailheading','quote','bullet','ordered','code','note','table','image','diagram','divider']);
+export const createBlock=(kind,id)=>({id,kind,text:'',...(kind==='table'?{rows:[['Tiêu đề 1','Tiêu đề 2'],['','']]}:{}),...(kind==='note'?{tone:'info'}:{}),...(['image','diagram'].includes(kind)?{alt:'',src:'',width:0,height:0}:{}),...(kind==='diagram'?{drawioXml:'',caption:''}:{}),marks:[]});

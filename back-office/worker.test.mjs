@@ -458,3 +458,5 @@ test('Course Management functional core is immutable, filters, sorts and respect
 });
 
 import './course-core.test.mjs';
+
+import './editorial-core.test.mjs';
