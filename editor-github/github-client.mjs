@@ -1,0 +1,1 @@
+export async function request(path,options){const res=await fetch(path,{credentials:'same-origin',cache:'no-store',...options});const result=await res.json();if(!res.ok)throw Error(result.error||'GitHub API HTTP '+res.status);return result}

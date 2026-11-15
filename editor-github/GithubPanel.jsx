@@ -1,8 +1,10 @@
 import React,{createContext,useContext,useEffect,useState} from 'react';
+import {request} from './github-client.mjs';
+import {githubDraft} from './core/local-draft.mjs';
+export {originalDraftKey,readOriginalDraft,writeOriginalDraft} from './draft-storage.mjs';
 const Context=createContext(null);
 const route='/api/github-editor/session';
 const topics=[['ngon-ngu','Ngôn ngữ Hàn Quốc'],['lich-su','Lịch sử Hàn Quốc'],['van-hoa','Văn hóa và xã hội'],['am-thuc','Ẩm thực'],['dia-ly-du-lich','Địa lý và du lịch'],['kinh-te-cong-nghe','Kinh tế và công nghệ'],['giao-duc-du-hoc','Giáo dục và du học'],['hallyu','Giải trí và Hallyu'],['doi-song','Đời sống tại Hàn Quốc'],['the-che','Chính trị và thể chế']];
-async function request(path,options){const res=await fetch(path,{credentials:'same-origin',cache:'no-store',...options});const result=await res.json();if(!res.ok)throw Error(result.error||'GitHub API HTTP '+res.status);return result}
 export function GithubProvider({children}){
  const [session,setSession]=useState(null),[working,setWorking]=useState(false),[error,setError]=useState('');
  useEffect(()=>{let active=true;request(route).then(v=>{if(active)setSession(v)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
@@ -20,7 +22,7 @@ export function GithubPublish({title,labels,series,editor,mode,busy}){
   setSending(true);setError('');setResult(null);
   try{
    if(mode!=='compose')throw Error('Quay về Soạn thảo để dùng nội dung TipTap hiện tại.');
-   const draft={kind,category,title,summary,labels,series:series.enabled?{...series,part:Number(series.part),total_parts:Number(series.total_parts)}:null,body:editor.getJSON()};
+   const draft=githubDraft({kind,category,title,summary,labels,series,body:editor.getJSON()});
    const value=await request('/api/github-editor/draft',{method:'POST',headers:{'Content-Type':'application/json','X-Editor-Nonce':session.nonce},body:JSON.stringify({confirm:true,draft})});setResult(value);setConfirmed(false);
   }catch(e){setError(e.message)}finally{setSending(false)}
  }

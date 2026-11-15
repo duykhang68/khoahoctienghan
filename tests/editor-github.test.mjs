@@ -8,7 +8,7 @@ test('pinned original editor preserves the compose tools with an independent Git
  const path=new URL('../editor-original/apps/web/src/App.jsx',import.meta.url);
  assert(existsSync(path),'Initialize the pinned editor-original submodule first');
  const source=readFileSync(path,'utf8'),patched=overlayApp(source,'/test/GithubPanel.jsx');
- assert.match(patched,/<GithubHeader\/>/);assert.match(patched,/<GithubPublish /);
+ assert.match(patched,/<GithubHeader\/>/);assert.match(patched,/<GithubPublish /);assert.ok(patched.includes('readOriginalDraft(localStorage,blogId)'));assert.ok(patched.includes('writeOriginalDraft(localStorage,blogId'));
  for(const text of ['DiagramStudio','Auto Visualize','DrivePanel','SeriesEditorPanel','SchedulePost','PostLibrary','EditorContent','BLOCKS.map'])assert(patched.includes(text));
  assert(!patched.includes('href="/auth/google/start"'));assert.throws(()=>overlayApp(source.replace('dn-reddit-editor-local-v1-','changed-'),'/x'));
 });
