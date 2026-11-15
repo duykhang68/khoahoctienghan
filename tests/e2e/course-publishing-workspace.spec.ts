@@ -25,8 +25,12 @@ test('P2.8 publishing workspace reports actual gates, prevents stale approval an
   const reviewed=revision();sql.prepare('UPDATE course_lesson_documents SET version=2 WHERE course_id=? AND lesson_id=?').run(id,lesson);expect(revision()).not.toBe(reviewed);
   await confirm.check();const stale=page.waitForResponse(res=>res.url()===url&&res.request().method()==='POST');await approve.click();expect((await stale).status()).toBe(409);expect(sql.prepare('SELECT count(*) AS n FROM course_releases').get()?.n).toBe(0);
   await page.goto(url);await confirm.check();
+  // The intercepted form POST can complete before Chromium commits its navigation.
+  // Observe that navigation (including the mock redirect error document) before reading persisted state.
+  const navigation=page.waitForEvent('framenavigated',frame=>frame===page.mainFrame());
   const approveResp=page.waitForResponse(res=>res.url()===url&&res.request().method()==='POST');await approve.click();
-  expect((await approveResp).status()).toBe(303);expect((await approveResp).headers()['location']).toBe(path);
+  const response=await approveResp;expect(response.status()).toBe(303);expect(response.headers()['location']).toBe(path);
+  await navigation;await page.waitForLoadState('domcontentloaded');
   await page.goto(url);
   await expect(page.getByRole('heading',{name:'Phiên bản v2'})).toBeVisible();await expect(approve).toBeDisabled();await expect(page.getByRole('checkbox')).toHaveCount(0);
   const release=sql.prepare('SELECT version,revision FROM course_releases').get();expect(release?.version).toBe(2);expect(release?.revision).toBe(revision());expect(sql.prepare('SELECT count(*) AS n FROM course_release_lessons').get()?.n).toBe(1);
