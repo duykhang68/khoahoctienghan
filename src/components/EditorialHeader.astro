@@ -11,6 +11,7 @@ const home=base+(knowledgeHome?'/':'/techblog/');
 <header class="engineering-header">
     <nav class="engineering-nav engineering-nav-minimal" aria-label="Điều hướng Engineering">
       <a class="engineering-brand" href={home} aria-current={indexPage?'page':undefined}>{brand}</a>
+      <a class="editorial-admin-shortcut" href="https://korean-backoffice.tamsudev-com.workers.dev/admin/" target="_blank" rel="noopener noreferrer">ADMIN</a>
     </nav>
     <script>
   const menu=document.querySelector<HTMLDetailsElement>('.edition-menu');
@@ -49,3 +50,9 @@ const home=base+(knowledgeHome?'/':'/techblog/');
     {article?<a href={home}>{brand}</a>:<span aria-current="page">{brand}</span>}
     {article&&<><span class="crumb-divider" aria-hidden="true">›</span><span class="current-crumb" aria-current="page">{title}</span></>}
   </nav></div>
+
+<style>
+ .editorial-admin-shortcut{margin-inline-start:auto;display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 12px;border:1px solid #b8cbe1;border-radius:6px;color:#fff;font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.04em;line-height:1.2;text-decoration:none;white-space:nowrap}
+ .editorial-admin-shortcut:hover{background:#fff;color:#192e46;text-decoration:none}
+ .editorial-admin-shortcut:focus-visible{outline:2px solid #fff;outline-offset:3px}
+</style>

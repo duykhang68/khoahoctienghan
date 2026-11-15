@@ -1,10 +1,19 @@
 import {test,expect} from '@playwright/test';
-test('single-link header, footer destinations and accessible mobile layout',async({page})=>{
+test('brand and ADMIN header, footer destinations and accessible mobile layout',async({page})=>{
  await page.goto('./techblog/');
  const header=page.locator('.engineering-header');
- await expect(header.getByRole('link')).toHaveCount(1);
- await expect(header.getByRole('link')).toHaveText('Engineering Blog');
- await expect(header.getByRole('link')).toHaveAttribute('href',/\/techblog\/$/);
+ const brand=header.getByRole('link',{name:'Engineering Blog',exact:true});
+ const admin=header.getByRole('link',{name:'ADMIN',exact:true});
+ const verifyHeader=async()=>{
+  await expect(header.getByRole('link')).toHaveCount(2);
+  await expect(brand).toBeVisible();
+  await expect(brand).toHaveAttribute('href',/\/techblog\/$/);
+  await expect(admin).toBeVisible();
+  await expect(admin).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/');
+  await expect(admin).toHaveAttribute('target','_blank');
+  await expect(admin).toHaveAttribute('rel','noopener noreferrer');
+ };
+ await verifyHeader();
  await expect(page.locator('.utility-band,.blog-channel,.blog-tabs,.blog-edition,.nav-cta,.nav-search')).toHaveCount(0);
  const nav=page.locator('.blog-navigation');
  const menu=nav.locator('.edition-menu');
@@ -40,8 +49,7 @@ test('single-link header, footer destinations and accessible mobile layout',asyn
  const first=page.locator('[data-tech-post]').first();
  const title=(await first.locator('h3').innerText()).trim();
  await first.locator('h3 a').click();
- await expect(header.getByRole('link')).toHaveCount(1);
- await expect(header.getByRole('link')).toHaveText('Engineering Blog');
+ await verifyHeader();
  await expect(page.locator('.blog-breadcrumb a')).toHaveCount(1);
  await expect(page.locator('.blog-breadcrumb a')).toHaveAttribute('href',/\/techblog\/$/);
  await expect(page.locator('a[href="'+kbHref+'"]')).toHaveCount(1);
