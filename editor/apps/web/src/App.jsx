@@ -8,42 +8,30 @@ import {ArticleBlocks,BLOCKS,blockHTML} from './ArticleBlocks.js';
 import {findDiagramCandidates} from './autoVisualize.js';
 import DOMPurify from 'dompurify';
 import topics from './topics.json';
-const KEY='korean-reddit-editor-drafts-v1',BASE='https://duykhang68.github.io/khoahoctienghan/';
-const blank=()=>({id:crypto.randomUUID(),kind:'knowledge',category:topics[0].id,title:'',summary:'',body:{type:'doc',content:[{type:'paragraph'}]},updatedAt:new Date().toISOString()});
-const read=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch{return []}};
-const slug=v=>String(v).normalize('NFD').replace(/\p{M}/gu,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'')||'bai-viet';
-const route=d=>(d.kind==='tech'?'techblog':d.category)+'/'+slug(d.title)+'/';
+import {useDraft} from './hooks/useDraft.js';
+import {webp} from './adapters/image-webp.mjs';
+import {slugify as slug,draftRoute as route,libraryMatches,duplicateRoute,wordCount,imageFigure,checkedLink} from '../../../../editor-github/core/local-draft.mjs';
+const BASE='https://duykhang68.github.io/khoahoctienghan/';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function Tool({label,title,command,active}){return <button type="button" className={'tool '+(active?'selected':'')} title={title} aria-label={title} onMouseDown={e=>e.preventDefault()} onClick={command}>{label}</button>}
-async function webp(file){
- if(!file||!/^image\/(?:png|jpeg|webp|gif|avif|bmp)$/.test(file.type)||file.size>30_000_000)throw Error('Chọn ảnh raster PNG/JPEG/WebP/GIF/AVIF/BMP tối đa 30 MB.');
- const img=await createImageBitmap(file);try{if(img.width*img.height>64_000_000)throw Error('Ảnh quá lớn.');
- const scale=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);
- const blob=await new Promise(resolve=>c.toBlob(resolve,'image/webp',.85));if(!blob||blob.type!=='image/webp'||blob.size>1_500_000)throw Error('Không thể tối ưu WebP dưới 1,5 MB.');
- return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({src:reader.result,width:c.width,height:c.height,size:blob.size});reader.onerror=reject;reader.readAsDataURL(blob)});
- }finally{img.close()}
-}
 export default function App(){
- const [drafts,setDrafts]=useState(read),[draft,setDraft]=useState(()=>read()[0]||blank()),[library,setLibrary]=useState([]),[filter,setFilter]=useState(''),[space,setSpace]=useState('all'),[status,setStatus]=useState('Bản nháp mới'),[mode,setMode]=useState('compose'),[reading,setReading]=useState(null),[asset,setAsset]=useState(null),[alt,setAlt]=useState(''),[caption,setCaption]=useState(''),[link,setLink]=useState(null),[tick,setTick]=useState(0),[approve,setApprove]=useState(false),[submitting,setSubmitting]=useState(false),[sent,setSent]=useState(null);
- const draftRef=useRef(draft),selection=useRef(null),fileRef=useRef(null);
- draftRef.current=draft;
- const editor=useEditor({extensions:[StarterKit.configure({heading:{levels:[2,3,4]},link:{openOnClick:false}}),TableKit,Image.configure({allowBase64:true}),Callout,...ArticleBlocks],content:draft.body,onUpdate:({editor})=>{setDraft(d=>({...d,body:editor.getJSON(),updatedAt:new Date().toISOString()}));setStatus('Đang lưu local…')},onTransaction:()=>setTick(n=>n+1),editorProps:{attributes:{'aria-label':'Nội dung bài viết'}}},[draft.id]);
+ const [library,setLibrary]=useState([]),[filter,setFilter]=useState(''),[space,setSpace]=useState('all'),[status,setStatus]=useState('Bản nháp mới'),[mode,setMode]=useState('compose'),[reading,setReading]=useState(null),[asset,setAsset]=useState(null),[alt,setAlt]=useState(''),[caption,setCaption]=useState(''),[link,setLink]=useState(null),[tick,setTick]=useState(0),[approve,setApprove]=useState(false),[submitting,setSubmitting]=useState(false),[sent,setSent]=useState(null);
+ const {drafts,draft,setDraft,draftRef,blank,save,edit}=useDraft(topics[0].id,setStatus);
+ const selection=useRef(null),fileRef=useRef(null);
+ const editor=useEditor({extensions:[StarterKit.configure({heading:{levels:[2,3,4]},link:{openOnClick:false}}),TableKit,Image.configure({allowBase64:true}),Callout,...ArticleBlocks],content:draft.body,onUpdate:({editor})=>{edit('body',editor.getJSON());setStatus('Đang lưu local…')},onTransaction:()=>setTick(n=>n+1),editorProps:{attributes:{'aria-label':'Nội dung bài viết'}}},[draft.id]);
  void tick;
- const save=(d=draftRef.current)=>{try{const stored=read(),next=[d,...stored.filter(x=>x.id!==d.id)].slice(0,30);localStorage.setItem(KEY,JSON.stringify(next));setDrafts(next);setStatus('Đã lưu local');return true}catch{setStatus('Bộ nhớ đầy. Hãy giữ tab mở và tải bản sao lưu.');return false}};
- useEffect(()=>{const timer=setTimeout(()=>save(draft),600);return()=>clearTimeout(timer)},[draft]);
  useEffect(()=>{fetch('/api/library').then(r=>{if(!r.ok)throw Error();return r.json()}).then(setLibrary).catch(()=>setStatus('Chưa tải được thư viện checkout'));},[]);
  function open(d){if(!save())return;setReading(null);setMode('compose');setAsset(null);setLink(null);setDraft(d);setApprove(false);setSent(null)}
  function newPost(){open({...blank(),kind:draft.kind,category:draft.category})}
- const edit=(key,value)=>setDraft(d=>({...d,[key]:value,updatedAt:new Date().toISOString()}));
  function pickImage(){selection.current=editor?.state.selection.from;fileRef.current?.click()}
  async function loadImage(file){try{const data=await webp(file);setAsset(data);setAlt('');setCaption('');setStatus('Ảnh WebP đã tối ưu. Thêm mô tả và chèn.')}catch(e){setStatus(e.message)}}
- function insertImage(){if(!asset||!alt.trim())return;editor?.chain().focus().setTextSelection(Math.min(selection.current??editor.state.selection.from,editor.state.doc.content.size)).insertContent({type:'articleFigure',content:[{type:'image',attrs:{src:asset.src,alt:alt.trim(),width:asset.width,height:asset.height}},...(caption.trim()?[{type:'articleCaption',content:[{type:'text',text:caption.trim()}]}]:[])]}).run();setAsset(null)}
+ function insertImage(){if(!asset||!alt.trim())return;editor?.chain().focus().setTextSelection(Math.min(selection.current??editor.state.selection.from,editor.state.doc.content.size)).insertContent(imageFigure(asset,alt,caption)).run();setAsset(null)}
  function insert(kind){if(!editor||mode!=='compose'||reading)return;if(kind==='image')return pickImage();if(kind==='cta'){selection.current=editor.state.selection.from;setLink({url:'',label:'Tìm hiểu thêm'});return}editor.chain().focus().insertContent(blockHTML(kind)).run()}
- function addLink(){try{const u=new URL(link.url);if(!['http:','https:'].includes(u.protocol)||u.username||u.password)throw Error();editor.chain().focus().setTextSelection(Math.min(selection.current??editor.state.selection.from,editor.state.doc.content.size)).insertContent(blockHTML('cta',{url:u.href,label:link.label})).run();setLink(null)}catch{setStatus('Chỉ dùng liên kết HTTP/HTTPS hợp lệ.')}}
+ function addLink(){try{const href=checkedLink(link.url);editor.chain().focus().setTextSelection(Math.min(selection.current??editor.state.selection.from,editor.state.doc.content.size)).insertContent(blockHTML('cta',{url:href,label:link.label})).run();setLink(null)}catch{setStatus('Chỉ dùng liên kết HTTP/HTTPS hợp lệ.')}}
  function backup(){const data=new Blob([JSON.stringify(draft,null,2)],{type:'application/json'}),url=URL.createObjectURL(data),a=document.createElement('a');a.href=url;a.download=slug(draft.title)+'.editorial-draft.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
  async function submitDraft(){if(!approve||submitting||reading||!save())return;setSubmitting(true);setStatus('Đang gửi Draft PR…');try{const session=await fetch('/api/studio').then(r=>r.json());const res=await fetch('/api/studio',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Nonce':session.nonce},body:JSON.stringify({confirm:true,draft:draftRef.current})});const result=await res.json();if(!res.ok)throw Error(result.error||'Không gửi được PR');setSent(result);setApprove(false);setStatus('Đã tạo Draft PR #'+result.number+' · chưa xuất bản')}catch(e){setStatus(e.message)}finally{setSubmitting(false)}}
- const duplicate=library.some(p=>p.route===route(draft)),words=editor?.getText().trim().split(/\s+/).filter(Boolean).length||0;
- const filtered=library.filter(p=>(space==='all'||p.kind===space)&&p.title.toLocaleLowerCase('vi').includes(filter.toLocaleLowerCase('vi')));
+ const duplicate=duplicateRoute(library,draft),words=wordCount(editor?.getText()||'');
+ const filtered=libraryMatches(library,space,filter);
  const [diagram,setDiagram]=useState([]);
  const preview=DOMPurify.sanitize(editor?.getHTML()||'',{FORBID_TAGS:['iframe','script','style','form'],FORBID_ATTR:['style']});
  return <div className="app kit-layout"><main className="kit-main">
