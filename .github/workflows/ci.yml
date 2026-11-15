@@ -28,6 +28,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - run: node scripts/security-check.mjs
+      - name: Verify Functional Core boundaries and context budgets
+        run: |
+          npm run check:architecture
+          npm run benchmark:context -- --check
       - run: npm run check
       - run: npm run test:engineering
       - name: Install locked Reddit Editor dependencies
