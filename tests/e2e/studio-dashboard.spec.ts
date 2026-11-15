@@ -7,6 +7,10 @@ test('unified dashboard uses real-shaped snapshot and trusted FIFO markers, pres
  await page.route('https://api.github.com/repos/duykhang68/khoahoctienghan/issues?**',route=>route.fulfill(fail?{status:429,json:{}}:{json:[item(1,'QUEUED'),item(2,'VERIFIED',true),{...item(3,'QUEUED'),user:{login:'other'}}]}));
  await page.goto(office+'/admin/');
  await expect(page.getByRole('heading',{name:'Trung tâm quản trị'})).toBeVisible();
+ const shortcuts=page.getByRole('navigation',{name:'Truy cập nhanh website'});
+ for(const [name,url] of [['Tech Blog ↗','https://duykhang68.github.io/khoahoctienghan/techblog/'],['Knowledge Base ↗','https://duykhang68.github.io/khoahoctienghan/']]){
+  const link=shortcuts.getByRole('link',{name,exact:true});await expect(link).toBeVisible();await expect(link).toHaveAttribute('href',url);await expect(link).toHaveAttribute('target','_blank');await expect(link).toHaveAttribute('rel','noopener noreferrer');await link.focus();await expect(link).toBeFocused();expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+ }
  await expect(page.locator('#studio-tech')).toHaveText('12');await expect(page.locator('#studio-knowledge')).toHaveText('9');await expect(page.locator('#studio-queue')).toHaveText('1');await expect(page.locator('#studio-verified')).toHaveText('1');await expect(page.locator('#studio-snapshot')).toContainText(sha);
  await expect(page.getByRole('link',{name:'Mở Knowledge Base Editor'})).toHaveAttribute('href','/admin/editor/#workspace=knowledge');
  await expect(page.getByRole('link',{name:'Mở Google Sheets Publisher'})).toHaveAttribute('href','/admin/sheets/');
