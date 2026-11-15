@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken,validateQuizQuestions} from './worker.mjs';
 import {releaseChecks} from './worker.mjs';
 import {coursePreviewPage} from './worker.mjs';
+import {editorBundle} from './generated/editor-assets.mjs';
+import {sheetsBundle} from './generated/sheets-assets.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -69,6 +71,25 @@ test('end-to-end session exchange with Google-shaped JWKS and signed credential'
   assert.equal((await worker.fetch(req('/admin/article-check/attacker/bai-thu/',{headers:{Cookie:session}}),env)).status,400);
   globalThis.fetch=async(url,init)=>{assert.equal(url,'https://duykhang68.github.io/khoahoctienghan/techblog/bai-thu/');assert.equal(init.method,'HEAD');assert.equal(init.redirect,'manual');return new Response(null,{status:404});};
   assert.equal((await worker.fetch(req('/admin/article-check/techblog/bai-thu/',{headers:{Cookie:session}}),env)).status,404);
+  // R1: every generated own-key asset retains its body and private HTTP contract.
+  for(const [name,content] of Object.entries({...sheetsBundle.assets,...editorBundle.assets})){
+   const path='/admin/assets/'+name,headers={Cookie:session};
+   const get=await worker.fetch(req(path,{headers}),env);
+   assert.equal(get.status,200,name);assert.equal(await get.text(),content,name);
+   assert.equal(get.headers.get('content-type'),name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8',name);
+   assert.equal(get.headers.get('cache-control'),'no-store',name);
+   const head=await worker.fetch(req(path,{method:'HEAD',headers}),env);
+   assert.equal(head.status,200,name);assert.equal(await head.text(),'',name);
+   assert.equal(head.headers.get('content-type'),get.headers.get('content-type'),name);
+   assert.equal(head.headers.get('cache-control'),'no-store',name);
+   for(const method of ['GET','HEAD']){
+    assert.equal((await worker.fetch(req(path,{method}),env)).status,403,name);
+    assert.equal((await worker.fetch(req(path,{method,headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,403,name);
+   }
+  }
+  for(const name of ['missing.mjs','constructor','toString','__proto__','generated/editor-assets.mjs','generated/sheets-assets.mjs']){
+   for(const method of ['GET','HEAD'])assert.equal((await worker.fetch(req('/admin/assets/'+name,{method,headers:{Cookie:session}}),env)).status,404,name);
+  }
   const denied=await worker.fetch(req('/admin/',{headers:{Cookie:session}}),{...env,ADMIN_EMAILS:'other@gmail.com'});assert.equal(denied.status,303);
   const logout=await worker.fetch(req('/auth/logout',{method:'POST',headers:{Origin:origin,Cookie:session}}),env);assert.equal(logout.status,303);assert.match(logout.headers.get('set-cookie'),/Max-Age=0/);
  }finally{globalThis.fetch=originalFetch;}
