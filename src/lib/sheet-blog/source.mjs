@@ -12,3 +12,10 @@ export function validateSheetSource(source){
 export async function sheetSource(rowNumber,row){
  return validateSheetSource({spreadsheet:sourceSpreadsheet,tab:'VN',sheetId:0,row:rowNumber,fingerprint:await rowFingerprint(row)});
 }
+
+// The reviewed source is immutable; do not silently submit a newly changed row.
+export async function verifyReviewedSource(reviewed,rowNumber,fresh){
+ const expected=validateSheetSource(reviewed),actual=await sheetSource(rowNumber,fresh);
+ if(expected.row!==actual.row||expected.fingerprint!==actual.fingerprint||String(fresh?.[0]??'').trim())throw Error('Nội dung nguồn hoặc Content ID đã đổi. Đóng và mở lại bài để kiểm tra trước khi gửi.');
+ return actual;
+}
