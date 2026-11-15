@@ -14,7 +14,11 @@ permissions:
   contents: read
 jobs:
   enqueue:
-    if: github.repository == 'duykhang68/khoahoctienghan' && github.actor == 'duykhang68' && ((github.event_name == 'push' && github.event.created && !github.event.deleted) || github.event_name == 'repository_dispatch')
+    if: >-
+      github.repository == 'duykhang68/khoahoctienghan' &&
+      ((github.actor == 'duykhang68' && ((github.event_name == 'push' && github.event.created && !github.event.deleted) || github.event_name == 'repository_dispatch')) ||
+      (github.event_name == 'repository_dispatch' && vars.SCHEDULER_APP_BOT_LOGIN != '' && vars.SCHEDULER_APP_BOT_ID != '' && github.actor == vars.SCHEDULER_APP_BOT_LOGIN && github.actor_id == vars.SCHEDULER_APP_BOT_ID &&
+      github.event.sender.type == 'Bot' && github.event.sender.login == vars.SCHEDULER_APP_BOT_LOGIN && format('{0}', github.event.sender.id) == vars.SCHEDULER_APP_BOT_ID))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
@@ -35,6 +39,8 @@ jobs:
       - run: node scripts/editor-v2-queue.mjs enqueue
         env:
           GH_TOKEN: ${{ github.token }}
+          SCHEDULER_APP_BOT_LOGIN: ${{ vars.SCHEDULER_APP_BOT_LOGIN }}
+          SCHEDULER_APP_BOT_ID: ${{ vars.SCHEDULER_APP_BOT_ID }}
   reconcile:
     needs: enqueue
     if: >-

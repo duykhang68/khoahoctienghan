@@ -49,3 +49,9 @@ export async function prepareQueued(draft,snapshot,acceptedAt){
  }
  return prepared;
 }
+
+export function authorizedSubmissionEvent(actor,actorId,eventName,event,botLogin='',botId=''){
+ if(actor==='duykhang68')return eventName==='repository_dispatch'||(eventName==='push'&&event?.created===true&&!event.deleted);
+ // Only the owner-configured dedicated GitHub App may dispatch; never trust a payload-supplied actor or a bot push.
+ return eventName==='repository_dispatch'&&/^[a-z0-9-]+\[bot\]$/.test(botLogin)&&/^[1-9][0-9]*$/.test(botId)&&actor===botLogin&&String(actorId)===botId&&event?.sender?.type==='Bot'&&event.sender.login===botLogin&&String(event.sender.id)===botId;
+}

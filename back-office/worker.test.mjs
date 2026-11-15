@@ -171,3 +171,11 @@ test('P1.9 all new authenticated documents and module assets share the session b
  for(const [path,marker] of [['/admin/library/','id="lib-list"'],['/admin/categories/','id="cat-list"'],['/admin/drafts/','id="draft-list"'],['/admin/pipeline/','data-queue-progress']]){const res=await worker.fetch(req(path,{headers}),env);assert.equal(res.status,200,path);assert.equal(res.headers.get('cache-control'),'no-store');assert.ok((await res.text()).includes(marker),path);assert.equal((await worker.fetch(req(path,{method:'POST',headers}),env)).status,405,path);}
  for(const path of ['/admin/assets/editor-v2/media.mjs','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs']){const result=await worker.fetch(req(path,{headers}),env);assert.equal(result.status,200);assert.ok(result.headers.get('content-type').startsWith('text/javascript'));assert.equal(result.headers.get('cache-control'),'no-store');}
 });
+
+import './server-scheduler.test.mjs';
+test('scheduler route, module and API never expose unauthenticated data',async()=>{
+ assert.equal((await worker.fetch(req('/admin/schedules/'),env)).status,303);
+ assert.equal((await worker.fetch(req('/admin/api/schedules/'),env)).status,403);
+ assert.equal((await worker.fetch(req('/admin/api/schedules/',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}'}),env)).status,403);
+ assert.equal((await worker.fetch(req('/admin/assets/editor-v2/server-schedule-browser.mjs'),env)).status,403);
+});
