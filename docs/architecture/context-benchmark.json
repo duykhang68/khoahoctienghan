@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "baseline": {
+    "sha": "3e5e7a966a5c528cccbb920d48e435ebf93a04bd",
+    "tree": "05820f57b159407de3ba289376846b3b3e35ac5c"
+  },
+  "candidate": {
+    "sha": "683aab877aed23e22c80f8972b45f75f17d94212",
+    "tree": "d973c7e6623e178b31ee102d20f977bfc5920136"
+  },
+  "shared": [
+    "AGENTS.md",
+    "docs/architecture/module-map.md"
+  ],
+  "tasks": [
+    {
+      "id": "curriculum-409",
+      "prompt": "Check curriculum version/409 rules",
+      "baseline": [
+        {
+          "path": "back-office/worker.mjs",
+          "blob": "75f9a5857c27e23af6487201ae4105a244bd649c",
+          "bytes": 348561
+        },
+        {
+          "path": "back-office/worker.test.mjs",
+          "blob": "49b8c9e5a6ea14877a807936716bc755ba39f7fe",
+          "bytes": 42841
+        },
+        {
+          "path": "tests/e2e/curriculum-save.spec.ts",
+          "blob": "b35c7d0cffbd8ab1d7b9aa0b6d7b3c48acda02b8",
+          "bytes": 4557
+        }
+      ],
+      "candidate": [
+        "core/course/curriculum.mjs",
+        "core/course/ids.mjs",
+        "core/course/write-result.mjs",
+        "back-office/course-core.test.mjs"
+      ],
+      "maxBytes": 25000
+    },
+    {
+      "id": "editorial-rich-text",
+      "prompt": "Change rich text projection",
+      "baseline": [
+        {
+          "path": "src/lib/editor-v2/model.mjs",
+          "blob": "552c390932071fccecab862725e3df7f8f8c689d",
+          "bytes": 10275
+        },
+        {
+          "path": "src/lib/editor-v2/browser.mjs",
+          "blob": "6bb842af24fd1cce87511ca7a78380e642512c82",
+          "bytes": 27864
+        },
+        {
+          "path": "tests/e2e/editor-v2.spec.ts",
+          "blob": "d952032412e8f913d42add6f8b94396b5668752b",
+          "bytes": 8294
+        }
+      ],
+      "candidate": [
+        "src/lib/editor-v2/core/rich-text.mjs",
+        "src/lib/editor-v2/core/contracts.mjs",
+        "src/lib/editor-v2/core/document.mjs",
+        "src/lib/editor-v2/core/blocks.mjs",
+        "back-office/editorial-core.test.mjs"
+      ],
+      "maxBytes": 15000
+    },
+    {
+      "id": "ci-failure-policy",
+      "prompt": "Classify CI failure and retry",
+      "baseline": [
+        {
+          "path": "scripts/engineering-controller.mjs",
+          "blob": "d32b34096bdd66641860334a2c80059f2ae01023",
+          "bytes": 19443
+        },
+        {
+          "path": "scripts/engineering-policy.mjs",
+          "blob": "371c95c2a04af88dbe0237f2a74c4144f2754fec",
+          "bytes": 3673
+        },
+        {
+          "path": "tests/engineering.test.mjs",
+          "blob": "80404a2e5c70d5b8f3381095b36b062508690dff",
+          "bytes": 5928
+        }
+      ],
+      "candidate": [
+        "core/engineering/failure-policy.mjs",
+        "core/engineering/constants.mjs",
+        "tests/engineering-core.test.mjs"
+      ],
+      "maxBytes": 12000
+    },
+    {
+      "id": "fifo-transition",
+      "prompt": "Decide FIFO transitions",
+      "baseline": [
+        {
+          "path": "scripts/editor-v2-queue.mjs",
+          "blob": "fb0dcb8049d049f7435db7fac397be2e5ade1834",
+          "bytes": 12820
+        },
+        {
+          "path": "scripts/editor-v2-queue-policy.mjs",
+          "blob": "1f1c8a36dd0816c9faadb5ce26c751da71c00227",
+          "bytes": 4496
+        },
+        {
+          "path": "tests/editor-v2-queue.test.mjs",
+          "blob": "25052e18aeaeb65263379fe67051f3871f6d3414",
+          "bytes": 4973
+        }
+      ],
+      "candidate": [
+        "core/publication/queue.mjs",
+        "core/publication/issue-state.mjs",
+        "core/publication/transition.mjs",
+        "core/publication/pr-policy.mjs",
+        "tests/publication-scheduler-core.test.mjs"
+      ],
+      "maxBytes": 12000
+    },
+    {
+      "id": "scheduler-retry",
+      "prompt": "Decide scheduled retry",
+      "baseline": [
+        {
+          "path": "back-office/server-scheduler.mjs",
+          "blob": "e5e49b18fcc9d1b928f696853802ff47c3379b4e",
+          "bytes": 15736
+        },
+        {
+          "path": "back-office/server-scheduler.test.mjs",
+          "blob": "41edaf7f1c2653787f7fc9239915160c7d094272",
+          "bytes": 8820
+        }
+      ],
+      "candidate": [
+        "core/scheduler/retry-policy.mjs",
+        "tests/publication-scheduler-core.test.mjs"
+      ],
+      "maxBytes": 12000
+    },
+    {
+      "id": "sheet-row-selection",
+      "prompt": "Validate and select a reviewed Sheet row",
+      "baseline": [
+        {
+          "path": "src/lib/sheet-blog/model.mjs",
+          "blob": "810a4bbd17588267e3e4a470673ef9b713caa3e6",
+          "bytes": 4657
+        },
+        {
+          "path": "src/lib/sheet-blog/browser.mjs",
+          "blob": "9cb09989e900c1048cd0fa855b82280fe29d890a",
+          "bytes": 12536
+        },
+        {
+          "path": "tests/e2e/sheet-blog.spec.ts",
+          "blob": "169360dcf718a4d015746fb49c9e37cbe9f39790",
+          "bytes": 10461
+        }
+      ],
+      "candidate": [
+        "src/lib/sheet-blog/core/sheet-rows.mjs",
+        "src/lib/sheet-blog/core/contracts.mjs",
+        "src/lib/editor-v2/core/metadata.mjs",
+        "src/lib/editor-v2/core/contracts.mjs",
+        "tests/sheet-publisher-core.test.mjs"
+      ],
+      "maxBytes": 14000
+    },
+    {
+      "id": "local-draft-source-only",
+      "prompt": "Update local draft state and storage (source only)",
+      "baseline": [
+        {
+          "path": "editor/apps/web/src/App.jsx",
+          "blob": "73e256107f5a2c1d59f88b85bd988005324f3b2b",
+          "bytes": 16574
+        }
+      ],
+      "candidate": [
+        "editor-github/core/local-draft.mjs",
+        "editor/apps/web/src/hooks/useDraft.js",
+        "editor/apps/web/src/adapters/draft-storage.mjs"
+      ],
+      "maxBytes": 8000
+    },
+    {
+      "id": "structured-document",
+      "prompt": "Validate structured document and regressions",
+      "baseline": [
+        {
+          "path": "src/lib/studio-document.mjs",
+          "blob": "4282e5497a0fccc51cfdbd67f50ab825128e7ab3",
+          "bytes": 6014
+        },
+        {
+          "path": "tests/studio-document.test.mjs",
+          "blob": "ad297221c661535d9820a95bf095bbd8f3c56688",
+          "bytes": 4658
+        }
+      ],
+      "candidate": [
+        "core/editorial/document-schema.mjs",
+        "core/editorial/webp.mjs",
+        "src/lib/studio-document.mjs",
+        "tests/studio-document.test.mjs",
+        "tests/public-content-core.test.mjs"
+      ],
+      "maxBytes": 20000
+    }
+  ]
+}

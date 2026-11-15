@@ -8,6 +8,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "node scripts/check-content.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "benchmark:context": "node scripts/check-context-budget.mjs",
     "sync:back-office": "node scripts/sync-back-office-assets.mjs",
     "test:back-office": "node scripts/sync-back-office-assets.mjs --check && node --test back-office/worker.test.mjs back-office/course-integration.test.mjs",
     "test:engineering": "node --test tests/engineering.test.mjs && npm run test:back-office",
@@ -24,6 +26,7 @@
     "@astrojs/starlight": "0.42.10"
   },
   "devDependencies": {
+    "@babel/parser": "7.29.14",
     "@playwright/test": "1.65.1"
   }
 }
