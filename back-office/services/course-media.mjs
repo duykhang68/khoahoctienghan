@@ -1,6 +1,7 @@
 import {reply,redirect,page,htmlHeaders} from '../http.mjs';
-import {open,getCookie,sessionName} from '../auth/session.mjs';
-import {courseWriteChanged,courseEscape} from '../course/common.mjs';
+import {open,getCookie,sessionName,random} from '../auth/session.mjs';
+import {courseWriteChanged} from '../course/common.mjs';
+import {mediaStudioPage} from '../views/media-studio.mjs';
 import {curriculumState} from '../repositories/course.mjs';
 import {driveId,driveBase,driveGet,courseDriveToken,courseDriveList,courseDriveFile} from '../adapters/google-drive.mjs';
 
@@ -33,14 +34,12 @@ async function lessonMedia(req,env,courseId,lessonId,streamId){
   return redirect(base);
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return reply('Method not allowed',405);
- const token=await courseDriveToken(env),listing=await courseDriveList(env,token);
  const links=await db.prepare('SELECT file_id FROM course_lesson_media WHERE course_id=? AND lesson_id=? ORDER BY linked_at,file_id').bind(courseId,lessonId).all();
- const linked=new Set(links.results.map(x=>x.file_id)),esc=courseEscape;
- const action=(id,kind,label)=>state.status==='draft'?'<form method="post" action="'+base+'"><input type="hidden" name="file" value="'+esc(id)+'"><input type="hidden" name="action" value="'+kind+'"><button>'+label+'</button></form>':'';
- const cards=listing.rows.map(f=>'<article class="dm-card"><strong>'+esc(f.name)+'</strong><p>'+esc(f.mimeType)+' · '+(Number(f.size)/1000000).toFixed(1)+' MB</p>'+(linked.has(f.id)?'<'+(f.mimeType.startsWith('video/')?'video':'audio')+' controls preload="none" src="'+base+'stream/'+esc(f.id)+'/"></'+(f.mimeType.startsWith('video/')?'video':'audio')+'>'+action(f.id,'detach','Bỏ liên kết'):action(f.id,'attach','Gắn vào bài học'))+'</article>').join('');
- const missing=[...linked].filter(id=>!listing.rows.some(f=>f.id===id)).map(id=>'<p>Media ngoài danh sách hiện tại hoặc không còn truy cập được.'+action(id,'detach','Bỏ liên kết')+'</p>').join('');
- const html='<style>main{max-width:1050px}.dm-card{padding:16px;background:#f0eafa;border-radius:12px;margin:12px 0;overflow-wrap:anywhere}.dm-card video,.dm-card audio{display:block;width:100%;max-height:480px;margin:12px 0}.dm-card button{min-height:44px}</style><nav><a href="/admin/courses/'+courseId+'/lessons/'+lessonId+'/">Soạn bài</a></nav><p>P2.5 · VIDEO & AUDIO MANAGEMENT</p><h1>Thư viện Google Drive</h1><p>Drive API: Đã kết nối · Chỉ đọc · '+listing.rows.length+' file hỗ trợ.</p><p>Tải file trực tiếp lên thư mục Google Drive, sau đó tải lại trang và gắn vào bài học. Không xóa file gốc khi bỏ liên kết.</p><p><a href="https://drive.google.com/drive/folders/'+esc(env.COURSE_MEDIA_FOLDER_ID)+'" target="_blank" rel="noopener noreferrer">Mở thư mục Drive</a></p>'+(listing.truncated?'<p>Danh sách giới hạn 500 mục; chỉ hiển thị thư mục gốc.</p>':'')+(cards||'<p>Chưa có video/audio hợp lệ trong thư mục gốc.</p>')+missing;
- return reply(req.method==='HEAD'?null:page(html),200,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; media-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});
+ const linked=new Set(links.results.map(x=>x.file_id));let listing=null;
+ try{const token=await courseDriveToken(env);listing=await courseDriveList(env,token);}catch{/* Keep saved associations available even if Drive fails. */}
+ const lessonTitle=state.chapters.flatMap(c=>c.lessons).find(l=>l.id===lessonId).title,nonce=random();
+ const html=mediaStudioPage({courseId,lessonId,courseTitle:state.title,lessonTitle,status:state.status,folder:env.COURSE_MEDIA_FOLDER_ID,listing,linked,nonce});
+ return reply(req.method==='HEAD'?null:page(html),listing?200:503,{...htmlHeaders,'Content-Security-Policy':"default-src 'none'; script-src 'nonce-"+nonce+"'; style-src 'unsafe-inline'; media-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"});
  }catch{return reply('Không kết nối được Drive hoặc cơ sở dữ liệu. Kiểm tra cấu hình và quyền truy cập.',503);}
 }
 
