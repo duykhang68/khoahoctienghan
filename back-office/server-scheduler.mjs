@@ -11,7 +11,8 @@ const fields='id,title,route,due_at,created_at,state,attempts,receipt_sha,issue_
 const encoder=new TextEncoder(), decoder=new TextDecoder('utf-8',{fatal:true});
 const hex=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
 const numeric=x=>/^[1-9][0-9]*$/.test(String(x||''));
-export const schedulerConfigured=env=>Boolean(env?.SCHEDULE_DB&&env.SCHEDULER_ENABLED==='true'&&numeric(env.SCHEDULER_APP_ID)&&numeric(env.SCHEDULER_INSTALLATION_ID)&&numeric(env.SCHEDULER_APP_BOT_ID)&&/^[a-z0-9-]+\[bot\]$/.test(env.SCHEDULER_APP_BOT_LOGIN||'')&&typeof env.SCHEDULER_APP_PRIVATE_KEY==='string'&&env.SCHEDULER_APP_PRIVATE_KEY.includes('-----BEGIN PRIVATE KEY-----'));
+const validKeyEncoding=value=>typeof value==='string'&&value.length>=512&&value.length<=16000&&value.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(value);
+export const schedulerConfigured=env=>Boolean(env?.SCHEDULE_DB&&env.SCHEDULER_ENABLED==='true'&&numeric(env.SCHEDULER_APP_ID)&&numeric(env.SCHEDULER_INSTALLATION_ID)&&numeric(env.SCHEDULER_APP_BOT_ID)&&/^[a-z0-9-]+\[bot\]$/.test(env.SCHEDULER_APP_BOT_LOGIN||'')&&validKeyEncoding(env.SCHEDULER_APP_PKCS8_B64));
 const stmt=(db,sql,...args)=>db.prepare(sql).bind(...args);
 const get=(db,sql,...args)=>stmt(db,sql,...args).first();
 const all=async(db,sql,...args)=>(await stmt(db,sql,...args).all()).results;
@@ -26,8 +27,8 @@ async function safeFetch(url,options={},fetcher=fetch){
 }
 export async function mintSchedulerToken(env,fetcher=fetch,now=Date.now()){
  if(!schedulerConfigured(env))throw err('CONFIG_REQUIRED',503);
- const pem=env.SCHEDULER_APP_PRIVATE_KEY.trim();
- const bytes=Uint8Array.from(atob(pem.replace('-----BEGIN PRIVATE KEY-----','').replace('-----END PRIVATE KEY-----','').replace(/\s/g,'')),c=>c.charCodeAt(0));
+ // The binding contains only base64 DER, not a PEM document. WebCrypto validates PKCS#8 structure.
+ const bytes=Uint8Array.from(atob(env.SCHEDULER_APP_PKCS8_B64),c=>c.charCodeAt(0));
  const key=await crypto.subtle.importKey('pkcs8',bytes,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
  const t=Math.floor(now/1000),unsigned=jwtPiece({alg:'RS256',typ:'JWT'})+'.'+jwtPiece({iat:t-60,exp:t+480,iss:String(env.SCHEDULER_APP_ID)});
  const jwt=unsigned+'.'+b64url(new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,encoder.encode(unsigned))));

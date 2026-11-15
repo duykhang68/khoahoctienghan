@@ -8,7 +8,7 @@ const origin='https://example.test',topics=['ngon-ngu'],start=Date.parse('2030-0
 function fixture(){
  const db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('./scheduler-schema.sql',import.meta.url),'utf8'));
  const wrapper={prepare(sql){return {bind(...args){const values=args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v);return {first:async()=>db.prepare(sql).get(...values)??null,all:async()=>({results:db.prepare(sql).all(...values)}),run:async()=>({meta:{changes:Number(db.prepare(sql).run(...values).changes)}})}}}},async batch(stmts){db.exec('BEGIN IMMEDIATE');try{const out=[];for(const s of stmts)out.push(await s.run());db.exec('COMMIT');return out}catch(e){db.exec('ROLLBACK');throw e}}};
- const env={SCHEDULE_DB:wrapper,SCHEDULER_ENABLED:'true',SCHEDULER_APP_ID:'1',SCHEDULER_INSTALLATION_ID:'2',SCHEDULER_APP_BOT_ID:'3',SCHEDULER_APP_BOT_LOGIN:'test-scheduler[bot]',SCHEDULER_APP_PRIVATE_KEY:'-----BEGIN PRIVATE KEY----- fixture',BACKOFFICE_ORIGIN:origin};
+ const env={SCHEDULE_DB:wrapper,SCHEDULER_ENABLED:'true',SCHEDULER_APP_ID:'1',SCHEDULER_INSTALLATION_ID:'2',SCHEDULER_APP_BOT_ID:'3',SCHEDULER_APP_BOT_LOGIN:'test-scheduler[bot]',SCHEDULER_APP_PKCS8_B64:Buffer.alloc(384).toString('base64'),BACKOFFICE_ORIGIN:origin};
  const request=(body,at=start,from=origin)=>schedulerApi(new Request(origin+'/admin/api/schedules/',{method:body?'POST':'GET',headers:{Origin:from,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})}),env,topics,at);
  return {db,env,request};
 }
@@ -64,8 +64,10 @@ test('scheduled dispatch authorization rejects unconfigured and spoofed senders,
 });
 test('GitHub App token is short scoped and never uses owner PAT',async()=>{
  const {env}=fixture();const kp=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',hash:'SHA-256',modulusLength:2048,publicExponent:new Uint8Array([1,0,1])},true,['sign','verify']);
- env.SCHEDULER_APP_PRIVATE_KEY='-----BEGIN PRIVATE KEY-----\n'+Buffer.from(await crypto.subtle.exportKey('pkcs8',kp.privateKey)).toString('base64')+'\n-----END PRIVATE KEY-----';
+ env.SCHEDULER_APP_PKCS8_B64=Buffer.from(await crypto.subtle.exportKey('pkcs8',kp.privateKey)).toString('base64');
  const seen=[],fetcher=async(url,opts)=>{const path=new URL(url).pathname;seen.push(path);assert.equal(opts.redirect,'manual');if(path==='/app')return Response.json({id:1,slug:'test-scheduler'});if(path==='/app/installations/2')return Response.json({app_id:1,account:{login:'duykhang68'},suspended_at:null});if(path.endsWith('/access_tokens')){assert.deepEqual(JSON.parse(opts.body),{repositories:['khoahoctienghan'],permissions:{contents:'write',issues:'read'}});return Response.json({token:'fixture-installation-token',permissions:{contents:'write',issues:'read'}})}if(path==='/users/test-scheduler%5Bbot%5D')return Response.json({id:3,login:'test-scheduler[bot]',type:'Bot'});throw Error('unexpected endpoint')};
+ for(const bad of ['', 'not-base64!', 'A'.repeat(513), 'A'.repeat(16004)])await assert.rejects(mintSchedulerToken({...env,SCHEDULER_APP_PKCS8_B64:bad},()=>{throw Error('Unexpected upstream request')},start),/CONFIG_REQUIRED/);
+ await assert.rejects(mintSchedulerToken({...env,SCHEDULER_APP_PKCS8_B64:Buffer.alloc(384).toString('base64')},()=>{throw Error('Unexpected upstream request')},start),e=>e.name==='DataError');
  assert.equal(await mintSchedulerToken(env,fetcher,start),'fixture-installation-token');assert.equal(seen.length,4);
  await assert.rejects(mintSchedulerToken({...env,SCHEDULER_APP_BOT_ID:'4'},fetcher,start),/APP_BOT_MISMATCH/);
 });
