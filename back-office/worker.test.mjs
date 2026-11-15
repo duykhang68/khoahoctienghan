@@ -1,7 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview} from './worker.mjs';
 const origin='https://example.test';
 const env={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@gmail.com',SESSION_SECRET:'x'.repeat(48)};
 const req=(path,opts)=>new Request(origin+path,opts);
@@ -187,4 +187,25 @@ test('scheduler route, module and API never expose unauthenticated data',async()
  assert.equal((await worker.fetch(req('/admin/api/schedules/'),env)).status,403);
  assert.equal((await worker.fetch(req('/admin/api/schedules/',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}'}),env)).status,403);
  assert.equal((await worker.fetch(req('/admin/assets/editor-v2/server-schedule-browser.mjs'),env)).status,403);
+});
+
+test('P2.1 course overview never invents data and rejects incomplete counts',async()=>{
+ assert.deepEqual(await courseOverview({}),{status:'unconfigured'});
+ const db=row=>({prepare(sql){assert.match(sql,/FROM courses/);return {first:async()=>row}}});
+ assert.deepEqual(await courseOverview({COURSE_DB:db({total:0,drafts:0,ready:0,archived:0})}),{status:'ready',total:0,drafts:0,ready:0,archived:0});
+ assert.deepEqual(await courseOverview({COURSE_DB:db({total:5,drafts:2,ready:2,archived:1})}),{status:'ready',total:5,drafts:2,ready:2,archived:1});
+ assert.deepEqual(await courseOverview({COURSE_DB:db({total:5,drafts:2,ready:1,archived:1})}),{status:'unavailable'});
+ assert.deepEqual(await courseOverview({COURSE_DB:{prepare(){throw Error('private error')}}}),{status:'unavailable'});
+});
+test('P2.1 course page preserves private session boundary',async()=>{
+ assert.equal((await worker.fetch(req('/admin/courses/'),env)).status,303);
+ const secret=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const s=Buffer.from(await crypto.subtle.sign('HMAC',secret,new TextEncoder().encode(p))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+p+'.'+s};
+ const result=await worker.fetch(req('/admin/courses/',{headers}),env);
+ assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'no-store');assert.match(await result.text(),/Chưa cấu hình cơ sở dữ liệu khóa học/);
+ assert.equal((await worker.fetch(req('/admin/courses/',{headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,303);
+ assert.equal((await worker.fetch(req('/admin/courses/',{headers,method:'POST'}),env)).status,405);
+ assert.equal((await worker.fetch(req('/admin/courses/?x=1',{headers}),env)).status,400);
 });
