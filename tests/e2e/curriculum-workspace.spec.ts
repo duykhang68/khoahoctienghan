@@ -14,7 +14,16 @@ test('P2.3 visual builder reorders chapters, moves lessons into empty chapters a
   await expect(page.locator('#cb-chapter-count')).toHaveText('2');await expect(page.locator('#cb-lesson-count')).toHaveText('2');await expect(page.locator('#cb-version')).toHaveText('v1');
   await page.getByRole('button',{name:'Thu gọn tất cả'}).click();await expect(lesson).toBeHidden();await page.getByRole('button',{name:'Mở tất cả'}).click();await expect(lesson).toBeVisible();
   if(!/mobile/i.test(test.info().project.name)){
-   await lesson.locator('.cb-handle').dragTo(second.locator('.cb-dropzone'));
+   // Native HTML dragover needs two pointer moves over the target in Chromium.
+   // https://playwright.dev/docs/input#dragging-manually
+   const handle=lesson.locator('.cb-handle'),target=second.locator('.cb-dropzone');
+   await handle.hover();
+   await page.mouse.down();
+   try{
+    await target.hover();
+    await target.hover();
+    await expect(target).toHaveClass(/cb-drop-active/);
+   }finally{await page.mouse.up();}
   }else{await lesson.getByRole('combobox').selectOption(b);}
   await expect(second.locator('[data-lesson-id="'+l+'"]')).toBeVisible();
   await first.locator('.cb-chapter-head').getByRole('button',{name:'Xuống',exact:true}).focus();await page.keyboard.press('Enter');
