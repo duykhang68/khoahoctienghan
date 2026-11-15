@@ -3,7 +3,7 @@ import {test} from './private-office-fixture';
 import {checkHeaders,listRows,rowDraft,recommendDestination,sheetId,sheetsClient} from '../../src/lib/sheet-blog/model.mjs';
 import {buildDocument} from '../../src/lib/editor-v2/model.mjs';
 import {sharedGoogleClientId} from '../../src/lib/sheet-blog/oauth-config.mjs';
-import {sheetSource} from '../../src/lib/sheet-blog/source.mjs';
+import {sheetSource,verifyReviewedSource} from '../../src/lib/sheet-blog/source.mjs';
 test('VN mapping preserves title and body, stable retry payload, and fails closed on changed row',async()=>{
  checkHeaders(['content id_vn','blog title','blog main content','group','topic']);
  expect(()=>checkHeaders(['blog title','blog main content'])).toThrow();
@@ -21,7 +21,7 @@ test('VN mapping preserves title and body, stable retry payload, and fails close
 test('Google OAuth fixture lists only VN titles, previews exact chosen content and gates GitHub writes',async({page,office})=>{
  await page.route('https://api.github.com/repos/duykhang68/khoahoctienghan/issues?**',route=>route.fulfill({json:[]}));
  await page.route('https://accounts.google.com/gsi/client',route=>route.fulfill({contentType:'application/javascript',body:'window.google={accounts:{oauth2:{hasGrantedAllScopes:()=>true,initTokenClient:c=>({requestAccessToken:()=>c.callback({access_token:"fixture-google"})})}}};'}));
- let bodyRead=0;
+ let bodyRead=0,changed=false;
  await page.route('https://sheets.googleapis.com/**',route=>{
   const url=new URL(route.request().url());expect(url.pathname).toContain(sheetId);
   expect(route.request().headers()['authorization']).toBe('Bearer fixture-google');
@@ -31,7 +31,7 @@ test('Google OAuth fixture lists only VN titles, previews exact chosen content a
   if(range==="'VN'!A1:E1")response={values:[['content id_vn','blog title','blog main content','group','topic']]};
   else if(range==="'VN'!A2:B")response={values:[['','Bài thử tiếng Việt'],['a'.repeat(40),'Bài đã đăng']]};
   else if(range==="'VN'!D2:E")response={values:[['Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc'],['Tech Blog','']]};
-  else if(range==="'VN'!A2:E2"){bodyRead++;response={values:[['','Bài thử tiếng Việt','Nội dung thật <b>không thực thi</b>','Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc']]}}
+  else if(range==="'VN'!A2:E2"){bodyRead++;response={values:[['','Bài thử tiếng Việt',changed?'Nội dung đã đổi':'Nội dung thật <b>không thực thi</b>','Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc']]}}
   else throw Error('Unexpected Sheets range: '+range);
   return route.fulfill({json:response});
  });
@@ -41,12 +41,14 @@ test('Google OAuth fixture lists only VN titles, previews exact chosen content a
  await page.getByRole('button',{name:'Đăng nhập Google'}).click();
  await expect(page.getByRole('heading',{name:'Bài thử tiếng Việt'})).toBeVisible();
  expect(bodyRead).toBe(0);
+ await expect(page.locator('[data-sheet-pending]')).toHaveText('1');await expect(page.locator('[data-sheet-marked]')).toHaveText('1');await page.locator('[data-sheet-filter]').selectOption('marked');await expect(page.getByRole('heading',{name:'Bài thử tiếng Việt'})).toHaveCount(0);await page.locator('[data-sheet-filter]').selectOption('');
  await expect(page.getByRole('button',{name:'Đã có Content ID',exact:true})).toBeDisabled();
  await page.getByRole('searchbox',{name:'Tìm tiêu đề'}).fill('Bài thử');
  await expect(page.getByRole('heading',{name:'Bài đã đăng'})).toHaveCount(0);
  await page.getByRole('button',{name:'Đăng bài',exact:true}).click();
  await expect(page.locator('[data-preview]')).toHaveText('Nội dung thật <b>không thực thi</b>');
  expect(bodyRead).toBe(1);
+ await page.getByText('Kiểm tra nguồn nhập · SHA-256',{exact:true}).click();await expect(page.locator('[data-source-fingerprint]')).toHaveText((await sheetSource(2,['','Bài thử tiếng Việt','Nội dung thật <b>không thực thi</b>','Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc'])).fingerprint);
  await expect(page.locator('[data-preview] b')).toHaveCount(0);
  await expect(page.locator('[data-kind]')).toHaveValue('knowledge');
  await expect(page.locator('[data-category]')).toHaveValue('ngon-ngu');
@@ -75,7 +77,7 @@ test('Google OAuth fixture lists only VN titles, previews exact chosen content a
  await expect(page.locator('[data-github-state]')).toHaveText('Đã kết nối · chủ blog');
  await page.getByRole('button',{name:'Đăng bài',exact:true}).click();
  await expect(page.locator('[data-confirm-dialog]')).toBeVisible();
- await page.locator('[data-consent]').check();await page.locator('[data-submit]').click();
+ await page.locator('[data-consent]').check();changed=true;await page.locator('[data-submit]').click();await expect(page.locator('[data-dialog-status]')).toContainText('Nội dung nguồn đã đổi');expect(payload).toBeUndefined();changed=false;await page.locator('[data-close]').click();await page.getByRole('button',{name:'Đăng bài',exact:true}).click();await page.locator('[data-consent]').check();await page.locator('[data-submit]').click();
  await expect(page.locator('[data-status]')).toContainText('Đã gửi commit');
  expect(payload.draft.sheetSource).toEqual(await sheetSource(2,['','Bài thử tiếng Việt','Nội dung thật <b>không thực thi</b>','Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc']));
  expect(JSON.stringify(payload)).not.toContain('fixture-google');expect(JSON.stringify(payload)).not.toContain('pat_fixture');
@@ -100,3 +102,12 @@ test('Sheets HTTP 400 diagnostics identify the failing read without exposing API
 });
 
 test('legacy Sheets route links to Back Office without publisher controls',async({page})=>{await page.goto('./viet-blog-by-google-sheet/');await expect(page.getByRole('link',{name:'Mở Back Office'})).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/sheets/');await expect(page.locator('[data-sheet-blog]')).toHaveCount(0);});
+
+
+test('P1.7 reviewed source fingerprint rejects changed content, row and marked source',async()=>{
+ const row=['','Bài VN','Nội dung','Tri thức Hàn Quốc','Ngôn ngữ Hàn Quốc'],source=await sheetSource(2,row);
+ expect(await verifyReviewedSource(source,2,row)).toEqual(source);
+ await expect(verifyReviewedSource(source,2,['','Bài VN','Đổi nội dung',...row.slice(3)])).rejects.toThrow();
+ await expect(verifyReviewedSource(source,3,row)).rejects.toThrow();
+ await expect(verifyReviewedSource(source,2,['a'.repeat(40),...row.slice(1)])).rejects.toThrow();
+});

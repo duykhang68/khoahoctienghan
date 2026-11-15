@@ -1,5 +1,6 @@
 // Browser-native projection of the public Astro content contract; no V1 runtime.
 import {drawioPath} from './drawio-source.mjs';
+import {validateMedia} from './media.mjs';
 const requireValue=(ok,message)=>{if(!ok)throw Error(message)};
 export const slugify=value=>String(value).normalize('NFD').replace(/\p{M}/gu,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80).replace(/-+$/,'');
 const textNode=(text,marks=[])=>{const node={type:'text',text};if(marks.length)node.marks=marks.map(type=>({type}));return node};
@@ -52,9 +53,7 @@ export async function buildDocument(blocks){
   const richParagraph=()=>({type:'paragraph',content:richNodes(runs)});
   requireValue(text.length<=50000,'Khối quá dài.');
   if(b.kind==='image'||b.kind==='diagram'){
-   requireValue(/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(b.src||'')&&b.src.length<=2_000_030&&validText(b.alt,500)&&Number.isInteger(b.width)&&Number.isInteger(b.height)&&b.width>0&&b.height>0&&b.width<=1600&&b.height<=1600,'Ảnh cần WebP hợp lệ và mô tả.');
-   const encoded=b.src.split(',')[1],bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
-   requireValue(bytes.length<=1500000&&String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WEBP','Ảnh không phải WebP.');
+   const bytes=validateMedia(b),encoded=b.src.split(',')[1];
    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
    const src='/media/studio/'+digest+'.webp';assets.set('public'+src,encoded);
    const image={type:'image',attrs:{src,alt:b.alt.trim(),width:b.width,height:b.height}};

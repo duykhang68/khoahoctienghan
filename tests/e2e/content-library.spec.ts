@@ -1,0 +1,11 @@
+import {expect} from '@playwright/test';
+import {test} from './private-office-fixture';
+test('P1.3 library filters released articles, edits without publishing, refuses stale main',async({page,office})=>{
+ const sha='a'.repeat(40),posts=[{slug:'bai-tech',title:'Bài kỹ thuật',summary:'Tóm tắt',date:'2026-11-15T06:00:00+07:00',sections:[{heading:'Mục',paragraphs:['Nội dung gốc'],visuals:['keep']}]},{slug:'another',title:'Bài khác',sections:[]}];
+ await page.route(office+'/admin/api/library/',route=>route.fulfill({json:{sha,rows:[{kind:'tech',category:'techblog',slug:'bai-tech',title:'Bài kỹ thuật',path:'src/data/techblog/posts.json'},{kind:'knowledge',category:'ngon-ngu',slug:'hangul',title:'Hangul',path:'src/content/docs/ngon-ngu/hangul.mdx'}]}}));
+ await page.route('https://raw.githubusercontent.com/**',route=>route.fulfill({body:JSON.stringify(posts),contentType:'text/plain'}));
+ let writes=0;await page.route('https://api.github.com/**',route=>{if(route.request().method()!=='GET')writes++;const u=route.request().url();return route.fulfill({json:u.endsWith('/user')?{login:'duykhang68'}:u.endsWith('/git/ref/heads/main')?{object:{sha:'b'.repeat(40)}}:{full_name:'duykhang68/khoahoctienghan',permissions:{push:true}}})});
+ await page.goto(office+'/admin/library/');await expect(page.locator('#lib-count')).toHaveText('2 / 2 bài');await page.getByLabel('Tìm bài viết').fill('kỹ thuật');await expect(page.locator('#lib-count')).toHaveText('1 / 2 bài');await page.getByRole('button',{name:'Quản lý bài'}).click();await expect(page.locator('#lib-title')).toHaveValue('Bài kỹ thuật');await page.locator('#lib-title').fill('Bài mới');await page.locator('#lib-body textarea').first().fill('Nội dung sửa');await page.locator('#lib-confirm').check();await page.locator('#lib-token').fill('github'+'_pat_'+'fixture');await page.locator('#lib-save').click();await expect(page.locator('#lib-result')).toContainText('Phiên bản main đã đổi');expect(writes).toBe(0);await expect(page.locator('#lib-token')).toHaveValue('');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+ await page.locator('#lib-delete').scrollIntoViewIfNeeded();await page.locator('#lib-delete').click();await expect(page.locator('#lib-result')).toContainText('Nhập đúng slug');expect(writes).toBe(0);
+});

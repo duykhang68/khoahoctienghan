@@ -1,0 +1,108 @@
+{
+  "base": "f80a5c8917e0c4f46c3d769baaf3b68c3a5c163f",
+  "stages": [
+    [
+      131,
+      "b9ef9f2405080cc082ba0710df39c62a33e0fbcc"
+    ],
+    [
+      136,
+      "edd081e332ffb0cbf600e7ed33536fb45c6ce931"
+    ],
+    [
+      137,
+      "18738721f594861407e1d27cd94f606e8e8bdc10"
+    ],
+    [
+      138,
+      "fddaeb52e52ceccf8c77d5346854ba1ad0e088f4"
+    ],
+    [
+      139,
+      "f701c9f8a130b5ab8bc94ee787971586e0fd5126"
+    ],
+    [
+      140,
+      "e680cf8ceef166df33ca751f25d07120390f859f"
+    ]
+  ],
+  "collisions": [
+    {
+      "path": "back-office/worker.mjs",
+      "prs": [
+        131,
+        136,
+        137,
+        138,
+        139,
+        140
+      ]
+    },
+    {
+      "path": "docs/editor-v2.md",
+      "prs": [
+        131,
+        137
+      ]
+    },
+    {
+      "path": "scripts/sync-back-office-assets.mjs",
+      "prs": [
+        137,
+        138,
+        140
+      ]
+    },
+    {
+      "path": "src/lib/editor-v2/browser.mjs",
+      "prs": [
+        137,
+        140
+      ]
+    },
+    {
+      "path": "src/styles/sheet-blog.css",
+      "prs": [
+        139,
+        140
+      ]
+    }
+  ],
+  "unique": [
+    "back-office/worker.test.mjs",
+    "engineering/lessons/content-library-mobile-hit-target.md",
+    "engineering/lessons/embedded-script-replacement.md",
+    "scripts/verify-back-office-production.mjs",
+    "tests/e2e/content-library.spec.ts",
+    "astro.config.mjs",
+    "docs/p1-4-category-management.md",
+    "src/components/EditorialHeader.astro",
+    "src/components/KnowledgeArticleFeed.astro",
+    "src/components/TopicGrid.astro",
+    "src/data/knowledge-navigation.json",
+    "src/lib/knowledge-navigation.mjs",
+    "tests/e2e/category-management.spec.ts",
+    "back-office/editor.html",
+    "src/lib/editor-v2/drawio-browser.mjs",
+    "src/lib/editor-v2/media.mjs",
+    "src/lib/editor-v2/model.mjs",
+    "src/lib/editor-v2/restore.mjs",
+    "src/styles/editor-v2.css",
+    "tests/e2e/editor-v2-media.spec.ts",
+    "back-office/drafts.html",
+    "docs/p1-6-draft-scheduling.md",
+    "src/lib/editor-v2/draft-schedule.mjs",
+    "src/lib/editor-v2/drafts-browser.mjs",
+    "tests/e2e/draft-scheduling.spec.ts",
+    "back-office/sheets.html",
+    "docs/google-sheet-blog.md",
+    "src/lib/sheet-blog/browser.mjs",
+    "src/lib/sheet-blog/source.mjs",
+    "tests/e2e/sheet-blog.spec.ts",
+    "docs/p1-8-publication-pipeline.md",
+    "src/lib/sheet-blog/pipeline-entry.mjs",
+    "src/lib/sheet-blog/progress-browser.mjs",
+    "src/lib/sheet-blog/progress.mjs",
+    "tests/e2e/publication-pipeline.spec.ts"
+  ]
+}

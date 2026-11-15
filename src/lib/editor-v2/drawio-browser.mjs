@@ -1,4 +1,5 @@
 import {blankDrawio,validateDrawioSource} from './drawio-source.mjs';
+import {optimizeMedia} from './media.mjs';
 const origin='https://embed.diagrams.net';
 const editorURL=origin+'/?embed=1&proto=json&spin=1&ui=kennedy&dark=0&lang=vi&noSaveBtn=1&noExitBtn=0&suppressNewWindows=1';
 function browserXML(value){
@@ -13,15 +14,7 @@ async function toWebP(data){
  if(bytes.length<24||![137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v))throw Error('Ảnh PNG không hợp lệ.');
  const view=new DataView(bytes.buffer),w=view.getUint32(16),h=view.getUint32(20);
  if(!w||!h||w>10000||h>10000||w*h>25_000_000)throw Error('Sơ đồ quá lớn. Hãy chia thành nhiều sơ đồ.');
- const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
- try{
-  const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');
-  canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-  const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-  let src=canvas.toDataURL('image/webp',.9);if(src.length>2_000_023)src=canvas.toDataURL('image/webp',.75);
-  if(!src.startsWith('data:image/webp;base64,')||src.length>2_000_023)throw Error('Không thể chuyển sơ đồ thành WebP dưới 1,5 MB.');
-  return {src,width:canvas.width,height:canvas.height};
- }finally{bitmap.close()}
+ return optimizeMedia(new Blob([bytes],{type:'image/png'}),{white:true});
 }
 export function mountDrawio(root,{onSave}){
  const dialog=root.querySelector('[data-drawio-dialog]'),host=root.querySelector('[data-drawio-host]'),status=root.querySelector('[data-drawio-status]');
