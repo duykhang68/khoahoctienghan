@@ -67,3 +67,14 @@ test('knowledge homepage uses the Tech Blog listing layout',async({page})=>{
  await expect(page.locator('.footer-cta')).toHaveAttribute('href',/\/techblog\/$/);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
 });
+
+test('public editorial headers link to the private ADMIN entrance',async({page})=>{
+ for(const route of ['./','./techblog/']){
+  await page.goto(route);
+  const link=page.locator('.engineering-header').getByRole('link',{name:'ADMIN',exact:true});
+  await expect(link).toBeVisible();await expect(link).toHaveAttribute('href','https://korean-backoffice.tamsudev-com.workers.dev/admin/');
+  await expect(link).toHaveAttribute('target','_blank');await expect(link).toHaveAttribute('rel','noopener noreferrer');
+  await link.focus();await expect(link).toBeFocused();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+ }
+});
