@@ -9,7 +9,7 @@
     "preview": "astro preview",
     "check": "node scripts/check-content.mjs",
     "sync:back-office": "node scripts/sync-back-office-assets.mjs",
-    "test:back-office": "node scripts/sync-back-office-assets.mjs --check && node --test back-office/worker.test.mjs",
+    "test:back-office": "node scripts/sync-back-office-assets.mjs --check && node --test back-office/worker.test.mjs back-office/course-integration.test.mjs",
     "test:engineering": "node --test tests/engineering.test.mjs && npm run test:back-office",
     "test:e2e": "playwright test",
     "editor": "node editor-original/node_modules/vite/bin/vite.js --config editor-github/vite.config.mjs --configLoader runner",
