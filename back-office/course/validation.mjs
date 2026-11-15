@@ -2,14 +2,7 @@ import {validateMedia} from '../../src/lib/editor-v2/media.mjs';
 import {enc} from '../encoding.mjs';
 import {courseLevels} from './common.mjs';
 
-export function courseSlug(title){
- return String(title??'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().replace(/đ/g,'d').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,100).replace(/-+$/g,'');
-}
-export function validateCourseInput(input){
- const title=typeof input.title==='string'?input.title.trim():'',description=typeof input.description==='string'?input.description.trim():'',slug=typeof input.slug==='string'?input.slug.trim():'',level=input.level;
- if(!title||title.length>200||description.length>4000||slug.length>100||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||!courseLevels.includes(level))throw Error('INVALID_COURSE');
- return {title,description,slug,level};
-}
+export {courseSlug,validateCourseInput} from '../course-management/core.mjs';
 const curriculumId=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export function validateCurriculum(value){
  if(!Array.isArray(value)||value.length>100)throw Error('INVALID_CURRICULUM');

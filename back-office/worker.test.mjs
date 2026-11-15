@@ -447,3 +447,12 @@ test('P2.7 preview is owner only, read only, and fails closed',async()=>{
  const result=await worker.fetch(req(path,{headers}),e);assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'no-store');assert.match(await result.text(),/한글/);
  assert.equal(await (await worker.fetch(req(path,{headers,method:'HEAD'}),e)).text(),'');
 });
+
+import {createCourseModel} from './course-management/core.mjs';
+test('Course Management functional core is immutable, filters, sorts and respects action policy',()=>{
+ const m=createCourseModel(),rows=Object.freeze([Object.freeze({id:'a',title:'Tiếng Hàn',slug:'tieng-han',description:'한글',level:'beginner',status:'draft',updated_at:100}),Object.freeze({id:'b',title:'Cao cấp',slug:'cao-cap',description:'',level:'all',status:'ready',updated_at:200})]);
+ const initial=m.initial(),next=m.transition({...initial,page:3},{query:'tieng han'});
+ assert.equal(next.page,1);assert.equal(initial.query,'');assert.deepEqual(m.filter(rows,next).map(r=>r.id),['a']);assert.deepEqual(m.filter(rows,{...initial,level:'all-level'}).map(r=>r.id),['b']);
+ assert.deepEqual(m.sort(rows,'recent').map(r=>r.id),['b','a']);assert.deepEqual(rows.map(r=>r.id),['a','b']);assert.deepEqual(m.actions(rows[1]),['preview','publishing']);
+ assert.equal(m.statistics({total:3,drafts:1,ready:1,archived:0}),null);assert.ok(m.errors({title:'',slug:'../a',level:'invalid'}).slug);
+});

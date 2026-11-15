@@ -1,32 +1,9 @@
 import {reply,redirect} from '../http.mjs';
 import {open,getCookie,sessionName} from '../auth/session.mjs';
 import {courseWriteChanged} from '../course/common.mjs';
-import {courseSlug,validateCourseInput,validateCurriculum,validateLessonBlocks,validateQuizQuestions,lessonBudget,quizBudget,releaseChecks} from '../course/validation.mjs';
+import {validateCurriculum,validateLessonBlocks,validateQuizQuestions,lessonBudget,quizBudget,releaseChecks} from '../course/validation.mjs';
 import {curriculumState,lessonState,quizState,releaseState} from '../repositories/course.mjs';
 
-async function courseMutation(req,env){
- const url=new URL(req.url);
- if(req.headers.get('Origin')!==url.origin||req.headers.get('Content-Type')?.split(';')[0]!=='application/x-www-form-urlencoded')return reply('Forbidden',403);
- if(!env.COURSE_DB)return reply('Chưa cấu hình cơ sở dữ liệu khóa học',503);
- let input;try{const reader=req.body?.getReader();if(!reader)return reply('Invalid request',400);let size=0,body='';const decoder=new TextDecoder();for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>65536){await reader.cancel();return reply('Payload too large',413);}body+=decoder.decode(value,{stream:true});}body+=decoder.decode();const params=new URLSearchParams(body);if(new Set(params.keys()).size!==[...params.keys()].length)return reply('Invalid request',400);input=Object.fromEntries(params);}catch{return reply('Invalid request',400);}
- const db=env.COURSE_DB, action=input.action, timestamp=Date.now(), session=await open(getCookie(req,sessionName),env,'session');
- if(!session)return reply('Forbidden',403);
- try{
-  if(action==='create'){
-   const c=validateCourseInput({...input,slug:input.slug||courseSlug(input.title)}),id=crypto.randomUUID();
-   const result=await db.prepare("INSERT INTO courses(id,slug,title,description,level,status,version,created_at,updated_at,updated_by) VALUES(?,?,?,?,?,'draft',1,?,?,?) ON CONFLICT(slug) DO NOTHING").bind(id,c.slug,c.title,c.description,c.level,timestamp,timestamp,session.sub).run();
-   if(!courseWriteChanged(result))return reply('Đường dẫn đã tồn tại',409);
-  }else if(action==='edit'||action==='archive'){
-   if(!/^[0-9a-f-]{36}$/.test(input.id||'')||!/^\d{1,10}$/.test(input.version||'')||Number(input.version)<1)return reply('Invalid request',400);
-   const version=Number(input.version);
-   let statement;
-   if(action==='edit'){const c=validateCourseInput(input);statement=db.prepare("UPDATE courses SET title=?,description=?,level=?,version=version+1,updated_at=?,updated_by=? WHERE id=? AND slug=? AND version=? AND status='draft'").bind(c.title,c.description,c.level,timestamp,session.sub,input.id,c.slug,version);}
-   else{if(input.confirm!=='yes')return reply('Cần xác nhận lưu trữ',400);statement=db.prepare("UPDATE courses SET status='archived',version=version+1,updated_at=?,updated_by=? WHERE id=? AND version=? AND status='draft'").bind(timestamp,session.sub,input.id,version);}
-   const result=await statement.run();if(!courseWriteChanged(result))return reply('Dữ liệu đã thay đổi. Quay lại và tải lại trang.',409);
-  }else return reply('Invalid request',400);
-  return redirect('/admin/courses/manage/');
- }catch(e){return e?.message==='INVALID_COURSE'?reply('Thông tin khóa học không hợp lệ',400):reply('Không lưu được khóa học',503);}
-}
 
 async function saveCurriculum(req,env,id){
  const url=new URL(req.url);
@@ -91,4 +68,4 @@ async function approveRelease(req,env,id){
 }
 
 
-export {courseMutation,saveCurriculum,saveLesson,saveQuiz,approveRelease};
+export {saveCurriculum,saveLesson,saveQuiz,approveRelease};
