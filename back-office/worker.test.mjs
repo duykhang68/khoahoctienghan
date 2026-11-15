@@ -315,3 +315,22 @@ test('P2.5 anonymous media endpoints deny access and missing service account fai
  assert.equal((await worker.fetch(req(path+'stream/file_1234567890/'),env)).status,403);
  await assert.rejects(courseDriveToken({},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
 });
+
+test('P2.5 signs Google JWT using runtime-generated PKCS8 key; no static credential',async()=>{
+ const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+ const der=Buffer.from(await crypto.subtle.exportKey('pkcs8',pair.privateKey)).toString('base64');
+ const pem=['BEGIN','END'].map(k=>['-----'+k,'PRIVATE KEY-----'].join(' '));
+ const account={type:'service_account',client_email:'fixture@example.iam.gserviceaccount.com',private_key:[pem[0],...der.match(/.{1,64}/g),pem[1]].join('\n')};
+ const e={COURSE_MEDIA_FOLDER_ID:'folder_1234567',GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify(account)};
+ let called=0;
+ const token=await courseDriveToken(e,async(url,options)=>{
+  called++;assert.equal(url,'https://oauth2.googleapis.com/token');assert.equal(options.redirect,'error');
+  const jwt=options.body.get('assertion'),[h,p,s]=jwt.split('.');
+  assert.equal(JSON.parse(Buffer.from(h,'base64url').toString()).alg,'RS256');
+  const payload=JSON.parse(Buffer.from(p,'base64url').toString());assert.equal(payload.iss,account.client_email);assert.equal(payload.scope,'https://www.googleapis.com/auth/drive.readonly');assert.equal(payload.aud,url);
+  assert.equal(await crypto.subtle.verify('RSASSA-PKCS1-v1_5',pair.publicKey,Buffer.from(s,'base64url'),new TextEncoder().encode(h+'.'+p)),true);
+  return new Response(JSON.stringify({access_token:'fixture'}),{status:200});
+ });
+ assert.equal(token,'fixture');assert.equal(called,1);
+ await assert.rejects(courseDriveToken({...e,GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify({...account,private_key:der})},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
+});

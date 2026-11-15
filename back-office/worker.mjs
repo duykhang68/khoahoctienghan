@@ -276,7 +276,13 @@ export async function courseDriveToken(env,fetcher=fetch){
  if(!driveId.test(env.COURSE_MEDIA_FOLDER_ID||''))throw Error('DRIVE_CONFIG');
  const account=JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON||'{}');
  if(account.type!=='service_account'||typeof account.client_email!=='string'||!account.client_email.endsWith('.gserviceaccount.com')||typeof account.private_key!=='string')throw Error('DRIVE_CONFIG');
- const raw=account.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g,'');
+ // Parse a PKCS#8 PEM envelope structurally; the key itself comes only from the Worker secret.
+ const lines=account.private_key.trim().split(/\r?\n/);
+ const boundary=/^-----(BEGIN|END) ([A-Z ]+)-----$/;
+ const first=boundary.exec(lines.shift()||''),last=boundary.exec(lines.pop()||'');
+ if(first?.[1]!=='BEGIN'||last?.[1]!=='END'||first[2]!=='PRIVATE KEY'||last[2]!==first[2])throw Error('DRIVE_CONFIG');
+ const raw=lines.join('').replace(/\s/g,'');
+ if(!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))throw Error('DRIVE_CONFIG');
  const key=await crypto.subtle.importKey('pkcs8',Uint8Array.from(atob(raw),x=>x.charCodeAt(0)),{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']);
  const stamp=Math.floor(Date.now()/1000),part=x=>b64(enc.encode(JSON.stringify(x)));
  const unsigned=part({alg:'RS256',typ:'JWT'})+'.'+part({iss:account.client_email,scope:'https://www.googleapis.com/auth/drive.readonly',aud:googleTokenUrl,iat:stamp,exp:stamp+300});
