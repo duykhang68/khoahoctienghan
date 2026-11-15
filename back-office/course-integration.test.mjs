@@ -1,24 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {DatabaseSync} from 'node:sqlite';
-import {readFileSync} from 'node:fs';
 import worker from './worker.mjs';
 
-const origin='https://example.test';
-const config={BACKOFFICE_ORIGIN:origin,GOOGLE_CLIENT_ID:'example.apps.googleusercontent.com',ADMIN_EMAILS:'admin@example.com',SESSION_SECRET:'fixture-only-'.repeat(5)};
+import {fixtureDb,ownerCookie,origin,config} from './course-integration-fixture.mjs';
 const chapter='11111111-1111-4111-8111-111111111111',lesson='22222222-2222-4222-8222-222222222222',other='33333333-3333-4333-8333-333333333333',block='44444444-4444-4444-8444-444444444444',question='55555555-5555-4555-8555-555555555555';
-export function fixtureDb(){
- const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');
- for(const name of ['course-schema','course-management-migration','course-curriculum-migration','course-lesson-migration','course-media-migration','course-quiz-migration','course-release-migration'])sql.exec(readFileSync(new URL(name+'.sql',import.meta.url),'utf8'));
- const db={prepare(query){const statement=sql.prepare(query);return {bind(...args){return {first:async()=>statement.get(...args)??null,all:async()=>({results:statement.all(...args)}),run:async()=>({meta:{changes:Number(statement.run(...args).changes)}})};}};}};
- return {sql,db};
-}
-export async function ownerCookie(email=config.ADMIN_EMAILS){
- const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(config.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'fixture-owner',email,exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- return '__Host-bo_session='+p+'.'+sig;
-}
 test('P2.9 actual SQLite migrations + private Course Studio request round-trip',async t=>{
  const {sql,db}=fixtureDb();t.after(()=>sql.close());
  const env={...config,COURSE_DB:db},cookie=await ownerCookie(),outsider=await ownerCookie('other@example.com');
