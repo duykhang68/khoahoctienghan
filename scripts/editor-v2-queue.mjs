@@ -5,6 +5,10 @@ import {parseIssue,queueHead,submissionId,validateSubmission,prepareQueued,marke
 import {nativePolicyReady,latestRun,ciName} from './engineering-policy.mjs';
 import {ciJobsPassed} from './release-recovery.mjs';
 import {syncSheetReceipt} from './sheet-writeback.mjs';
+import {receiptCandidates,maySyncReceipt} from '../core/publication/queue.mjs';
+import {branchOf,isQueuePR,planQueueRebuild,nativeRunDecision,isConfirmedMerge} from '../core/publication/pr-policy.mjs';
+import {preparedPatch,mergedPatch,verifiedPatch,rebuildPatch} from '../core/publication/transition.mjs';
+import {createProductionVerifier} from './publication/production-verifier.mjs';
 const repo='duykhang68/khoahoctienghan',site='https://duykhang68.github.io/khoahoctienghan/';
 assert(process.env.GITHUB_REPOSITORY===repo,'Wrong repository');
 const {BRANCH_APP_TOKEN,GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON,...env}=process.env;
@@ -40,30 +44,11 @@ async function enqueue(){
  const issue=api('issues','POST',{title:'[Editor V2] '+title,body:body(state,'QUEUED — Chờ đến lượt')});
  console.log('Accepted #'+issue.number);
 }
-async function firstParentContains(ancestor,tip){
- for(let i=0;i<150&&shaPattern.test(tip);i++){if(tip===ancestor)return true;tip=api('git/commits/'+tip).parents?.[0]?.sha}
- return false;
-}
-async function productionVerified(s){
- const resp=await fetch(site+'release-sha.json?v='+Date.now(),{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
- if(!resp.ok)return null;const tip=(await resp.json()).sha;
- if(!shaPattern.test(tip)||!await firstParentContains(s.merge,tip))return null;
- const runs=api('actions/workflows/release.yml/runs?branch=main&head_sha='+tip+'&per_page=30').workflow_runs;
- const releases=runs.filter(x=>x.head_sha===tip&&x.conclusion==='success'&&x.head_repository?.full_name===repo);
- let released=false;
- for(const release of releases){const jobs=api('actions/runs/'+release.id+'/jobs?per_page=100').jobs;if(['prepare','deploy','verify'].every(name=>jobs.some(j=>j.name===name&&j.conclusion==='success'))){released=true;break}}
- if(!released)return null;
- const url=await fetch(site+s.route+'?v='+tip,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
- if(!url.ok)return null;
- // The marker must still identify the same deployed artifact after the route request.
- const again=await fetch(site+'release-sha.json?v='+Date.now(),{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
- return again.ok&&(await again.json()).sha===tip?tip:null;
-}
-const branchOf=s=>'content/editor-fifo-'+s.number+'-'+s.base.slice(0,12);
+const productionVerified=createProductionVerifier({api,repo,site});
 function findPR(s){if(s.pr)return api('pulls/'+s.pr);if(!s.head)return null;return api('pulls?state=all&head=duykhang68:'+encodeURIComponent(branchOf(s))+'&base=main&per_page=100')[0]||null}
-function validatePR(p,s){assert(p.head?.repo?.full_name===repo&&p.head.ref===branchOf(s)&&p.head.sha===s.head&&p.base.ref==='main'&&p.body==='<!-- editor-fifo-issue:'+s.number+' -->','Queue PR was altered; manual review required')}
+function validatePR(p,s){assert(isQueuePR(p,s,repo),'Queue PR was altered; manual review required')}
 async function syncVerified(s){
- if(s.phase!=='VERIFIED'||!s.closed||!s.sheetSync||!['PENDING','WAITING_CONFIG'].includes(s.sheetSync.status))return;
+ if(!maySyncReceipt(s))return;
  // Recheck live deployment evidence, and reload the immutable source from its verified digest.
  if(!await productionVerified(s))return;
  const draft=await readDraft(s.source,s.id);
@@ -72,7 +57,7 @@ async function syncVerified(s){
 }
 async function reconcile(){
  const receipts=all('issues?state=all&per_page=100').map(parseIssue).filter(Boolean);
- for(const s of receipts.filter(s=>s.phase==='VERIFIED'&&s.closed&&['PENDING','WAITING_CONFIG'].includes(s.sheetSync?.status)).slice(0,8)){
+ for(const s of receiptCandidates(receipts)){
   try{await syncVerified(s)}catch{console.error('Sheet synchronization deferred #'+s.number)}
  }
  for(let count=0;count<8;count++){
@@ -86,18 +71,19 @@ async function reconcile(){
 async function advance(s){
  if(s.phase==='MERGED'){
   const verified=await productionVerified(s);
-  if(verified){s.phase='VERIFIED';s.verified=verified;return save(s,'VERIFIED — Bài đã lên production',true)}
+  if(verified){Object.assign(s,verifiedPatch(verified));return save(s,'VERIFIED — Bài đã lên production',true)}
   return save(s,'MERGED — Chờ production xác minh');
  }
  const draft=await readDraft(s.source,s.id),main=mainSHA();
  let pr=findPR(s);
- if(pr){validatePR(pr,s);s.pr=pr.number;if(pr.merged){assert(shaPattern.test(pr.merge_commit_sha),'Missing merge sha');s.phase='MERGED';s.merge=pr.merge_commit_sha;return save(s,'MERGED — Chờ production xác minh')}}
+ if(pr){validatePR(pr,s);s.pr=pr.number;if(pr.merged){assert(shaPattern.test(pr.merge_commit_sha),'Missing merge sha');Object.assign(s,mergedPatch(pr.merge_commit_sha));return save(s,'MERGED — Chờ production xác minh')}}
  // Regenerate an unmodified, queue-owned PR if an unrelated main change races it.
- if(s.head&&s.base!==main){
-  if(pr?.state==='closed'&&!s.rebuild)return save(s,'BLOCKED — PR bị đóng thủ công');
+ const rebuild=planQueueRebuild(s,pr,main);
+ if(rebuild!=='KEEP'){
+  if(rebuild==='MANUALLY_CLOSED')return save(s,'BLOCKED — PR bị đóng thủ công');
   s.rebuild=true;save(s,'QUEUED — Chuẩn bị lại theo main mới');
   if(pr?.state==='open'){assert(BRANCH_APP_TOKEN,'APP_SETUP_REQUIRED');app('pulls/'+pr.number,'PATCH',{state:'closed'})}
-  for(const k of ['head','base','pr','rebuild','route'])delete s[k];s.phase='QUEUED';save(s,'QUEUED — Tạo lại từ nội dung gốc');pr=null;
+  const patch=rebuildPatch();for(const k of patch.remove)delete s[k];Object.assign(s,patch.set);save(s,'QUEUED — Tạo lại từ nội dung gốc');pr=null;
  }
  if(!s.head){
   assert(BRANCH_APP_TOKEN,'APP_SETUP_REQUIRED');
@@ -109,7 +95,7 @@ async function advance(s){
   const issue=api('issues/'+s.number),prepared=await prepareQueued(draft,snapshot,issue.created_at),entries=[];
   for(const [path,value] of prepared.changes){if(value.binary){const b=app('git/blobs','POST',{content:value.binary,encoding:'base64'});entries.push({path,mode:'100644',type:'blob',sha:b.sha})}else entries.push({path,mode:'100644',type:'blob',content:value.text})}
   const nextTree=app('git/trees','POST',{base_tree:commit.tree.sha,tree:entries}),next=app('git/commits','POST',{message:'content: publish Editor V2 issue #'+s.number,tree:nextTree.sha,parents:[main]});
-  s.base=main;s.head=next.sha;s.route=prepared.route;s.phase='WAITING_CI';save(s,'WAITING_CI — Chuẩn bị PR');
+  Object.assign(s,preparedPatch(main,next.sha,prepared.route));save(s,'WAITING_CI — Chuẩn bị PR');
  }
  if(!pr){
   assert(BRANCH_APP_TOKEN,'APP_SETUP_REQUIRED');
@@ -124,15 +110,16 @@ async function advance(s){
  if(pr.mergeable!==true||mainSHA()!==s.base)return save(s,'WAITING_CI — Chờ GitHub xác định khả năng merge');
  const runs=api('actions/workflows/ci.yml/runs?head_sha='+s.head+'&per_page=30').workflow_runs;
  const run=latestRun(runs,s.head,repo,['pull_request'],pr.head.ref);
- if(!run||run.status!=='completed')return save(s,'WAITING_CI — Chờ native PR CI');
- if(run.conclusion!=='success')return save(s,'BLOCKED — Native CI '+run.conclusion);
+ const ci=nativeRunDecision(run);
+ if(ci==='WAIT')return save(s,'WAITING_CI — Chờ native PR CI');
+ if(ci==='BLOCK')return save(s,'BLOCKED — Native CI '+run.conclusion);
  if(!ciJobsPassed(api('actions/runs/'+run.id+'/jobs?per_page=100').jobs,run.event))return save(s,'BLOCKED — Chưa đủ CI gates');
  if(!nativePolicyReady(api(),api('rules/branches/main')))return save(s,'BLOCKED — Repository rules chưa sẵn sàng');
  const fresh=api('pulls/'+s.pr);validatePR(fresh,s);
  if(fresh.state!=='open'||fresh.draft||fresh.mergeable!==true||mainSHA()!==s.base)return save(s,'WAITING_CI — HEAD/base thay đổi');
  const merged=api('pulls/'+s.pr+'/merge','PUT',{sha:s.head,merge_method:'squash',commit_title:'content: publish Editor V2 issue #'+s.number});
- assert(merged.merged&&shaPattern.test(merged.sha),'Merge not confirmed');
- s.phase='MERGED';s.merge=merged.sha;save(s,'MERGED — Chờ production xác minh');
+ assert(isConfirmedMerge(merged),'Merge not confirmed');
+ Object.assign(s,mergedPatch(merged.sha));save(s,'MERGED — Chờ production xác minh');
  // Repository GITHUB_TOKEN pushes do not trigger CI. Existing release automation also recovers missing runs.
  const current=mainSHA();api('actions/workflows/ci.yml/dispatches','POST',{ref:'main'});console.log('Requested main CI '+current);
 }

@@ -59,6 +59,7 @@ import './knowledge-visual-validation.test.mjs';
 import './studio-document.test.mjs';
 
 import './editor-v2-queue.test.mjs';
+import './publication-scheduler-core.test.mjs';
 import './sheet-writeback.test.mjs';
 
 import './conflict-resolver.test.mjs';

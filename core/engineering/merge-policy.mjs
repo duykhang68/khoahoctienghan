@@ -1,4 +1,4 @@
-export function sensitiveFile(path=''){return /^(\.github\/|AGENTS\.md$|engineering\/|core\/engineering\/|core\/publication\/issue-state\.mjs$|scripts\/|tests\/|playwright\.config\.|package(?:-lock)?\.json$|astro\.config\.|src\/content\.config\.)/.test(path);}
+export function sensitiveFile(path=''){return /^(\.github\/|AGENTS\.md$|engineering\/|core\/engineering\/|core\/publication\/|core\/scheduler\/|back-office\/repositories\/scheduler\.mjs$|scripts\/|tests\/|playwright\.config\.|package(?:-lock)?\.json$|astro\.config\.|src\/content\.config\.)/.test(path);}
 // Ordinary browser regression specs accompanying a UI change are not automation policy.
 // Test-only changes, test deletions/renames, helpers and all infrastructure still require review.
 export function mergeReviewRequired(pr,files){

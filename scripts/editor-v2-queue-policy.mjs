@@ -7,8 +7,7 @@ import {validateSheetSource} from '../src/lib/sheet-blog/source.mjs';
 import {shaPattern,idPattern,marker,parseIssue} from '../core/publication/issue-state.mjs';
 export {shaPattern,idPattern,marker,parseIssue} from '../core/publication/issue-state.mjs';
 export const topicIds=['ngon-ngu','lich-su','van-hoa','am-thuc','dia-ly-du-lich','kinh-te-cong-nghe','giao-duc-du-hoc','hallyu','doi-song','the-che'];
-export function queueHead(issues){return issues.map(parseIssue).filter(Boolean).filter(s=>s.phase!=='VERIFIED').sort((a,b)=>a.number-b.number)[0]}
-export function submissionId(ref){return /^refs\/heads\/content\/editor-v2-([a-f0-9]{64})$/.exec(ref)?.[1]||null}
+export {queueHead,submissionId,authorizedSubmissionEvent} from '../core/publication/queue.mjs';
 export async function validateSubmission(id,raw){
  assert(idPattern.test(id)&&Buffer.byteLength(raw)<=8_000_000&&createHash('sha256').update(raw).digest('hex')===id,'Submission digest mismatch');
  const payload=JSON.parse(raw);assert(payload?.version===1&&payload.draft&&['tech','knowledge'].includes(payload.draft.kind),'Invalid submission schema');
@@ -31,8 +30,3 @@ export async function prepareQueued(draft,snapshot,acceptedAt){
  return prepared;
 }
 
-export function authorizedSubmissionEvent(actor,actorId,eventName,event,botLogin='',botId=''){
- if(actor==='duykhang68')return eventName==='repository_dispatch'||(eventName==='push'&&event?.created===true&&!event.deleted);
- // Only the owner-configured dedicated GitHub App may dispatch; never trust a payload-supplied actor or a bot push.
- return eventName==='repository_dispatch'&&/^[a-z0-9-]+\[bot\]$/.test(botLogin)&&/^[1-9][0-9]*$/.test(botId)&&actor===botLogin&&String(actorId)===botId&&event?.sender?.type==='Bot'&&event.sender.login===botLogin&&String(event.sender.id)===botId;
-}

@@ -1,12 +1,12 @@
 import {createSign} from 'node:crypto';
 import {rowFingerprint,validateSheetSource,sourceSpreadsheet} from '../src/lib/sheet-blog/source.mjs';
 import {checkHeaders} from '../src/lib/sheet-blog/model.mjs';
+import {verifiedReceipt,sheetReceiptDecision,sheetFailureReceipt} from '../core/publication/receipt.mjs';
 
 export class SheetSyncError extends Error{
  constructor(code,retryable=false){super(code);this.code=code;this.retryable=retryable}
 }
 const fail=(code,retryable=false)=>{throw new SheetSyncError(code,retryable)};
-const verifiedReceipt=s=>s.phase==='VERIFIED'&&s.closed===true&&Number.isSafeInteger(s.pr)&&s.pr>0&&/^(?:techblog|ngon-ngu|lich-su|van-hoa|am-thuc|dia-ly-du-lich|kinh-te-cong-nghe|giao-duc-du-hoc|hallyu|doi-song|the-che)\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/.test(s.route||'')&&/^[a-f0-9]{40}$/.test(s.merge||'')&&/^[a-f0-9]{40}$/.test(s.verified||'');
 async function jsonRequest(fetcher,url,options){
  let response;try{response=await fetcher(url,{...options,redirect:'error',signal:AbortSignal.timeout(15000)})}catch{fail('GOOGLE_NETWORK',true)}
  if(!response.ok)fail('GOOGLE_HTTP_'+response.status,response.status===429||response.status>=500);
@@ -57,12 +57,9 @@ export function sheetWriter(token,fetcher=fetch){
  }};
 }
 export async function syncSheetReceipt(state,draft,credentials,fetcher=fetch){
- if(!draft.sheetSource)return null;
- if(!verifiedReceipt(state))return {status:'BLOCKED',attempts:0,code:'PRODUCTION_NOT_VERIFIED'};
- if(state.sheetSync?.status==='SYNCED'||state.sheetSync?.status==='BLOCKED')return state.sheetSync;
- if(state.sheetSync?.attempts>=3)return {status:'BLOCKED',attempts:3,code:'SHEET_RETRY_LIMIT'};
- if(!credentials)return {status:'WAITING_CONFIG',attempts:0,code:'GOOGLE_SETUP_REQUIRED'};
- const attempts=(state.sheetSync?.attempts||0)+1;
+ const decision=sheetReceiptDecision(state,Boolean(draft.sheetSource),Boolean(credentials));
+ if(decision.kind==='return')return decision.value;
+ const attempts=decision.attempts;
  try{const token=await serviceAccountToken(credentials,fetcher);const result=await sheetWriter(token,fetcher).write({state,draft});return {status:'SYNCED',attempts,...result}}
- catch(e){const known=e instanceof SheetSyncError;return {status:known&&e.retryable&&attempts<3?'PENDING':'BLOCKED',attempts,code:known?e.code:'SHEET_VALIDATION'}}
+ catch(e){const known=e instanceof SheetSyncError;return sheetFailureReceipt(known,known&&e.retryable,known?e.code:undefined,attempts)}
 }

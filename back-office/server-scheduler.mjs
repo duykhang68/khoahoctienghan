@@ -1,22 +1,14 @@
-import {buildDocument,metadata,slugify} from '../src/lib/editor-v2/model.mjs';
-import {validateCopy,vietnamTime} from '../src/lib/editor-v2/draft-schedule.mjs';
+import {buildDocument} from '../src/lib/editor-v2/model.mjs';
+import {digestId,err,schedulerConfigured,scheduleDue,scheduleDraft,schedulePayload,scheduleRoute} from '../core/scheduler/validation.mjs';
+import {schedulerReady,headDisposition,receiptMatches,isConfirmedIssue,awaitingDeadline,leaseDeadline} from '../core/scheduler/transition.mjs';
+import {planScheduleFailure} from '../core/scheduler/retry-policy.mjs';
+import {active,fields,stmt,get,all,run,schedulerHead,acceptScheduledIssue,claimScheduledHead,markAwaitingIssue,markScheduleFailure} from './repositories/scheduler.mjs';
+export {schedulerConfigured} from '../core/scheduler/validation.mjs';
 import {githubClient} from '../src/lib/editor-v2/github.mjs';
 import {parseQueueIssue} from '../src/lib/sheet-blog/progress.mjs';
 const repo='duykhang68/khoahoctienghan', api='https://api.github.com', site='https://duykhang68.github.io/khoahoctienghan/';
-const sha=x=>typeof x==='string'&&/^[a-f0-9]{40}$/.test(x);
-const digestId=x=>typeof x==='string'&&/^[a-f0-9]{64}$/.test(x);
-const err=(code,status=400)=>Object.assign(Error(code),{code,httpStatus:status});
-const active="'scheduled','sending','retry','awaiting_issue','blocked'";
-const fields='id,title,route,due_at,created_at,state,attempts,receipt_sha,issue_number,error_code';
 const encoder=new TextEncoder(), decoder=new TextDecoder('utf-8',{fatal:true});
 const hex=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
-const numeric=x=>/^[1-9][0-9]*$/.test(String(x||''));
-const validKeyEncoding=value=>typeof value==='string'&&value.length>=512&&value.length<=16000&&value.length%4===0&&/^[A-Za-z0-9+/]+={0,2}$/.test(value);
-export const schedulerConfigured=env=>Boolean(env?.SCHEDULE_DB&&env.SCHEDULER_ENABLED==='true'&&numeric(env.SCHEDULER_APP_ID)&&numeric(env.SCHEDULER_INSTALLATION_ID)&&numeric(env.SCHEDULER_APP_BOT_ID)&&/^[a-z0-9-]+\[bot\]$/.test(env.SCHEDULER_APP_BOT_LOGIN||'')&&validKeyEncoding(env.SCHEDULER_APP_PKCS8_B64));
-const stmt=(db,sql,...args)=>db.prepare(sql).bind(...args);
-const get=(db,sql,...args)=>stmt(db,sql,...args).first();
-const all=async(db,sql,...args)=>(await stmt(db,sql,...args).all()).results;
-const run=(db,sql,...args)=>stmt(db,sql,...args).run();
 const b64url=bytes=>btoa(String.fromCharCode(...bytes)).replaceAll('+','-').replaceAll('/','_').replace(/=+$/,'');
 const jwtPiece=o=>b64url(encoder.encode(JSON.stringify(o)));
 async function safeFetch(url,options={},fetcher=fetch){
@@ -48,12 +40,10 @@ export async function mintSchedulerToken(env,fetcher=fetch,now=Date.now()){
  return access.token;
 }
 export async function prepareSchedule(input,topics,now=Date.now()){
- if(input?.consent!==true)throw err('CONSENT_REQUIRED');
- let due;try{due=vietnamTime(input.dueLocal)}catch{throw err('INVALID_DATE')}
- if(due<=now||due>now+366*86400000)throw err('INVALID_DATE');
- let draft;try{draft=validateCopy(input.draft);const slug=slugify(draft.title);if(!slug||['index','editorv2'].includes(slug)||draft.title.trim().length>180||draft.summary.length>500||(draft.kind==='knowledge'&&!topics.includes(draft.category)))throw Error('Invalid metadata');metadata(draft);await buildDocument(draft.blocks);}catch{throw err('INVALID_DRAFT')}
- const bytes=encoder.encode(JSON.stringify({version:1,draft}));if(bytes.length>8000000)throw err('INVALID_DRAFT');
- return {id:await hex(bytes),title:draft.title,route:(draft.kind==='tech'?'techblog':draft.category)+'/'+slugify(draft.title)+'/',due,bytes};
+ const due=scheduleDue(input,now);
+ let draft;try{draft=scheduleDraft(input,topics);await buildDocument(draft.blocks);}catch{throw err('INVALID_DRAFT')}
+ const bytes=schedulePayload(draft);
+ return {id:await hex(bytes),title:draft.title,route:scheduleRoute(draft),due,bytes};
 }
 export async function schedulerStatus(env,now=Date.now()){
  if(!env.SCHEDULE_DB)return {configured:false,ready:false,lastTick:null,jobs:[]};
@@ -61,7 +51,7 @@ export async function schedulerStatus(env,now=Date.now()){
  const open=await all(db,'SELECT '+fields+' FROM scheduler_jobs WHERE state IN ('+active+') ORDER BY due_at,created_at,id');
  const history=await all(db,'SELECT '+fields+' FROM scheduler_jobs WHERE state IN (\'submitted\',\'cancelled\') ORDER BY created_at DESC LIMIT 50');
  // Ready means cron has checked in; GitHub credentials are verified before sending.
- return {configured,ready:configured&&Number.isSafeInteger(lastTick)&&now-lastTick>=0&&now-lastTick<=300000,lastTick,jobs:[...open,...history]};
+ return {configured,ready:schedulerReady(configured,lastTick,now),lastTick,jobs:[...open,...history]};
 }
 async function createSchedule(env,input,topics,now){
  if(!(await schedulerStatus(env,now)).ready)throw err('SCHEDULER_NOT_READY',503);
@@ -112,8 +102,6 @@ async function loadPayload(db,id){
  if(await hex(bytes)!==id)throw err('PAYLOAD_DIGEST_MISMATCH');
  const data=JSON.parse(decoder.decode(bytes));if(data.version!==1||!data.draft)throw err('PAYLOAD_INVALID');return data.draft;
 }
-const retryable=e=>e&&(e.status===429||(e.status>=500&&e.status<=599)||['TimeoutError','AbortError','TypeError'].includes(e.name)||retryable(e.cause));
-const code=e=>['APP_IDENTITY_MISMATCH','APP_INSTALLATION_MISMATCH','APP_PERMISSIONS_MISMATCH','APP_BOT_MISMATCH','PAYLOAD_MISSING','PAYLOAD_INVALID','PAYLOAD_DIGEST_MISMATCH','ROUTE_EXISTS','RECEIPT_MISMATCH'].includes(e?.code)?e.code:retryable(e)?'UPSTREAM_TEMPORARY':'PUBLISH_BLOCKED';
 function publisher(env,topics,fetcher){
  const auth=()=>mintSchedulerToken(env,fetcher);
  const wrapped=(url,opts={})=>safeFetch(url,{...opts,headers:{...opts.headers,'User-Agent':'korean-editorial-scheduler'}},fetcher);
@@ -138,15 +126,13 @@ function publisher(env,topics,fetcher){
 export async function runScheduler(env,topics,{now=Date.now(),fetcher=fetch,transport=publisher(env,topics,fetcher)}={}){
  if(!schedulerConfigured(env))return 'disabled';
  const db=env.SCHEDULE_DB;
- await run(db,'INSERT INTO scheduler_health(id,last_tick) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET last_tick=MAX(last_tick,excluded.last_tick)',now);
- await run(db,"UPDATE scheduler_jobs SET state='blocked',error_code='ATTEMPTS_EXHAUSTED',lease=NULL,lease_until=NULL WHERE state='sending' AND lease_until<=? AND attempts>=3",now);
- const head=await get(db,'SELECT * FROM scheduler_jobs WHERE due_at<=? AND state IN ('+active+') ORDER BY due_at,created_at,id LIMIT 1',now);
- if(!head||head.state==='blocked')return head?'blocked':'idle';
- if(head.state==='awaiting_issue'){
+ const head=await schedulerHead(db,now),disposition=headDisposition(head);
+ if(disposition==='idle'||disposition==='blocked')return disposition;
+ if(disposition==='awaiting_issue'){
   try{
    const number=await transport.findIssue(head.id,head.receipt_sha);
-   if(Number.isSafeInteger(number)&&number>0){
-    await db.batch([stmt(db,"UPDATE scheduler_jobs SET state='submitted',issue_number=?,error_code=NULL WHERE id=? AND state='awaiting_issue' AND receipt_sha=?",number,head.id,head.receipt_sha),stmt(db,"DELETE FROM scheduler_chunks WHERE job_id=? AND EXISTS(SELECT 1 FROM scheduler_jobs WHERE id=? AND state='submitted')",head.id,head.id)]);
+   if(isConfirmedIssue(number)){
+    await acceptScheduledIssue(db,head,number);
     return 'accepted';
    }
    if(now<head.next_at)return 'awaiting_issue';
@@ -154,16 +140,16 @@ export async function runScheduler(env,topics,{now=Date.now(),fetcher=fetch,tran
   await run(db,"UPDATE scheduler_jobs SET state='blocked',error_code='ISSUE_NOT_CONFIRMED' WHERE id=? AND state='awaiting_issue'",head.id);return 'blocked';
  }
  const lease=crypto.randomUUID();
- const claimed=await get(db,"UPDATE scheduler_jobs SET state='sending',attempts=attempts+1,lease=?,lease_until=?,error_code=NULL WHERE id=(SELECT id FROM scheduler_jobs WHERE due_at<=? AND state IN ("+active+") ORDER BY due_at,created_at,id LIMIT 1) AND attempts<3 AND ((state IN ('scheduled','retry') AND next_at<=?) OR (state='sending' AND lease_until<=?)) RETURNING *",lease,now+600000,now,now,now);
+ const claimed=await claimScheduledHead(db,lease,leaseDeadline(now),now);
  if(!claimed)return 'waiting';
  try{
   const draft=await loadPayload(db,claimed.id),result=await transport.publish(draft);
-  if(result.id!==claimed.id||!sha(result.sha)||result.route!==claimed.route||(claimed.receipt_sha&&claimed.receipt_sha!==result.sha))throw err('RECEIPT_MISMATCH');
-  await run(db,"UPDATE scheduler_jobs SET state='awaiting_issue',receipt_sha=?,next_at=?,lease=NULL,lease_until=NULL WHERE id=? AND state='sending' AND lease=?",result.sha,now+900000,claimed.id,lease);
+  if(!receiptMatches(claimed,result))throw err('RECEIPT_MISMATCH');
+  await markAwaitingIssue(db,result,awaitingDeadline(now),claimed,lease);
   return 'dispatched';
  }catch(e){
-  const again=retryable(e)&&claimed.attempts<3;
-  await run(db,"UPDATE scheduler_jobs SET state=?,next_at=?,error_code=?,lease=NULL,lease_until=NULL WHERE id=? AND state='sending' AND lease=?",again?'retry':'blocked',now+120000*claimed.attempts,code(e),claimed.id,lease);
-  return again?'retry':'blocked';
+  const plan=planScheduleFailure(e,claimed.attempts,now);
+  await markScheduleFailure(db,plan,claimed,lease);
+  return plan.state;
  }
 }
