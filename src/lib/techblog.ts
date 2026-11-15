@@ -1,5 +1,6 @@
 import data from '../data/techblog/posts.json';
-import {inferCategory,categoryIndex} from './tech-categories.mjs';
+import {inferCategory} from './tech-categories.mjs';
+import {techIndex,dateLabel as formatDate,yearLabel as formatYear,readingMinutes as estimateReadingMinutes,coverURL as resolveCover} from '../../core/editorial/content-index.mjs';
 export {inferCategory};
 
 export type TechVisual = {
@@ -33,15 +34,11 @@ export type TechPost = {
   coverCaption?: string;
   readingMinutes?: number;
 };
-export const posts = (data as TechPost[]).slice().sort((a,b) => Date.parse(b.date) - Date.parse(a.date));
-export const dateLabel = (date:string) => new Intl.DateTimeFormat('vi-VN', {dateStyle:'long', timeStyle:'medium', timeZone:'Asia/Ho_Chi_Minh', hour12:false}).format(new Date(date));
-export const yearLabel = (date:string) => new Intl.DateTimeFormat('en', {year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}).format(new Date(date));
-export const readingMinutes = (post:TechPost) => post.readingMinutes ?? Math.max(1,Math.ceil([post.title,post.summary,...post.sections.flatMap(s=>[s.heading,...s.paragraphs])].join(' ').trim().split(/\s+/).length/200));
-export const categories = categoryIndex(posts);
-export const archiveYears = [...new Set(posts.map(p=>yearLabel(p.date)))];
-export function coverURL(path:string|undefined,base:string) {
-  if (!path) return undefined;
-  // Cover paths are repository-local; do not copy third-party artwork into the theme.
-  if (!path.startsWith('/') || path.startsWith('//') || path.includes('..')) return undefined;
-  return path.startsWith(base+'/') ? path : base+path;
-}
+const index=techIndex(data as TechPost[]);
+export const posts:TechPost[]=index.posts;
+export const categories=index.categories;
+export const archiveYears=index.archiveYears;
+export const dateLabel=(date:string)=>formatDate(date);
+export const yearLabel=(date:string)=>formatYear(date);
+export const readingMinutes=(post:TechPost)=>estimateReadingMinutes(post);
+export function coverURL(path:string|undefined,base:string){return resolveCover(path,base);}
