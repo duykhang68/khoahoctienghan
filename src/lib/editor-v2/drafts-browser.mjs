@@ -1,5 +1,6 @@
 import {draftKey,vietnamTime,validateCopy,dueRows,listCopies,getCopy,putCopy,deleteCopy,saveCopy,withDraftLock} from './draft-schedule.mjs';
 import {githubClient} from './github.mjs';
+import {rememberPublicReceipt} from '../sheet-blog/progress-browser.mjs';
 import {buildDocument,metadata,slugify} from './model.mjs';
 const by=id=>document.getElementById(id),el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node};
 const status=by('draft-status'),list=by('draft-list');
@@ -57,7 +58,7 @@ async function check(){
  if(!auth.ok){client=null;by('draft-connect').textContent='Kết nối GitHub';note('Phiên Back Office đã hết hạn. Đăng nhập lại trước khi gửi.');return}
  if(document.hidden||!client)return;
  await putCopy({...row,state:'sending',attempted:true});note('Đang gửi bản sao đã xác nhận vào FIFO…');
- try{const result=await client.publish(row.draft,topicIds);await putCopy({...row,state:'submitted',attempted:true,receipt:{sha:result.sha,id:result.id,route:result.route}});note('Đã gửi vào FIFO. Chưa xác minh production.');}
+ try{const result=await client.publish(row.draft,topicIds);rememberPublicReceipt(result,row.draft.title);await putCopy({...row,state:'submitted',attempted:true,receipt:{sha:result.sha,id:result.id,route:result.route}});note('Đã gửi vào FIFO. Chưa xác minh production.');}
  catch(e){await putCopy({...row,state:'retry',attempted:true});note('Chưa xác nhận gửi FIFO. Không tự lặp lại: '+e.message);}
  });
 }
