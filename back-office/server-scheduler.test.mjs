@@ -25,7 +25,12 @@ test('server scheduler requires consent, recent cron heartbeat and same origin',
  assert.equal((await request(spec('Bài thử','2030-01-01T07:02:00'))).status,409);
  assert.equal(calls,0);assert.equal(db.prepare('select count(*) as n from scheduler_jobs').get().n,1);
  assert.equal(await runScheduler(env,topics,{now:due-1,transport}),'idle');
- const list=await request();assert.equal(list.body.ready,true);assert.equal(JSON.stringify(list.body).includes('Nội dung kiểm thử riêng tư'),false);
+ const list=await request(undefined,due-1);assert.equal(list.body.ready,true);assert.equal(list.body.lastTick,due-1);assert.equal(JSON.stringify(list.body).includes('Nội dung kiểm thử riêng tư'),false);
+ // A future or stale heartbeat must still fail closed; assert both boundaries.
+ assert.equal((await request(undefined,due-2)).body.ready,false);
+ assert.equal((await request(undefined,due-1+300000)).body.ready,true);
+ assert.equal((await request(undefined,due-1+300001)).body.ready,false);
+ assert.equal(calls,0);
 });
 test('server cron submits immutable snapshot without browser and waits for trusted Issue before advancing',async()=>{
  const {env,request,db}=fixture(),sent=[];let issue=null;

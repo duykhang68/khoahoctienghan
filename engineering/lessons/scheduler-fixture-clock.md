@@ -1,0 +1,3 @@
+# Candidate — Scheduler fixture clock consistency
+
+PR #152, native CI run 43660908684, job 132649802375. Security and content checks passed, engineering 40/40, Worker 17/18. Test advanced the simulated Cron time to due-1 but then called GET using the fixture default start time. The stored heartbeat was ahead of the request time, so the expected readiness was correctly rejected by the production guard. Align the GET with the simulated Cron time and explicitly assert the future-heartbeat and five-minute expiry boundaries. No scheduler production code or security condition changed. Candidate pending native CI on the corrected HEAD.
