@@ -58,7 +58,7 @@ jobs:
       - run: npm run test:e2e -- --workers=2
       - name: Mark trusted main artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: node -e 'require("fs").writeFileSync("dist/release-sha.json",JSON.stringify({sha:process.env.GITHUB_SHA}))'
+        run: node scripts/write-release-marker.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:

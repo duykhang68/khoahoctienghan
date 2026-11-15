@@ -59,3 +59,5 @@ import './studio-document.test.mjs';
 
 import './editor-v2-queue.test.mjs';
 import './sheet-writeback.test.mjs';
+
+import './release-catalog.test.mjs';
