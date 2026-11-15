@@ -21,7 +21,7 @@ test('Course Management Studio: create edit archive, filter views, dirty drawer 
   await page.getByLabel('Tìm khóa học').fill('tieng han');await expect(page.locator('#cm-results [data-course-id]')).toHaveCount(1);
   await page.getByRole('button',{name:'Sẵn sàng',exact:true}).click();await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.locator('#cm-clear').click();
   await page.getByRole('button',{name:'Lưới',exact:true}).click();await expect(page.locator('.cm-card')).toHaveCount(1);await page.getByRole('button',{name:'Bảng',exact:true}).click();await expect(page.getByRole('table')).toBeVisible();
-  await page.getByLabel('Trình độ',{exact:true}).selectOption('advanced');await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.getByLabel('Trình độ',{exact:true}).selectOption('all');
+  await page.locator('.cm-toolbar').getByLabel('Trình độ',{exact:true}).selectOption('advanced');await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.locator('.cm-toolbar').getByLabel('Trình độ',{exact:true}).selectOption('all');
   await page.getByLabel('Cập nhật từ').fill('2100-01-01');await expect(page.getByText('Không có kết quả phù hợp')).toBeVisible();await page.locator('#cm-clear').click();
   await page.getByLabel('Sắp xếp').selectOption('title');await expect(page.locator('#cm-results [data-course-id]')).toHaveCount(1);
   await page.getByRole('button',{name:'Xem chi tiết Tiếng Hàn sơ cấp'}).click();await expect(page.locator('#cm-inspector')).toContainText('tieng-han-so-cap');
