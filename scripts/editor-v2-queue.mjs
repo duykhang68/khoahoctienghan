@@ -1,7 +1,7 @@
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {parseIssue,queueHead,submissionId,validateSubmission,prepareQueued,marker,shaPattern,topicIds} from './editor-v2-queue-policy.mjs';
+import {parseIssue,queueHead,submissionId,validateSubmission,prepareQueued,marker,shaPattern,topicIds,authorizedSubmissionEvent} from './editor-v2-queue-policy.mjs';
 import {nativePolicyReady,latestRun,ciName} from './engineering-policy.mjs';
 import {ciJobsPassed} from './release-recovery.mjs';
 import {syncSheetReceipt} from './sheet-writeback.mjs';
@@ -29,7 +29,7 @@ async function readDraft(source,id){
 async function enqueue(){
  const event=JSON.parse(readFileSync(env.GITHUB_EVENT_PATH,'utf8')),dispatch=env.GITHUB_EVENT_NAME==='repository_dispatch';
  const ref=dispatch?event.client_payload?.ref:event.ref,source=dispatch?event.client_payload?.sha:event.after,id=submissionId(ref||'');
- assert(env.GITHUB_ACTOR==='duykhang68'&&id&&shaPattern.test(source)&&(dispatch||event.created&&!event.deleted),'Not an owner submission push');
+ assert(authorizedSubmissionEvent(env.GITHUB_ACTOR,env.GITHUB_ACTOR_ID,env.GITHUB_EVENT_NAME,event,env.SCHEDULER_APP_BOT_LOGIN,env.SCHEDULER_APP_BOT_ID)&&id&&shaPattern.test(source),'Not an authorized submission');
  assert(api('git/ref/heads/'+ref.slice('refs/heads/'.length)).object.sha===source,'Submission ref mismatch');
  const prior=all('issues?state=all&per_page=100').map(parseIssue).filter(Boolean).find(s=>s.id===id);
  if(prior){console.log('Already accepted #'+prior.number);return}
