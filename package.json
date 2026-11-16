@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && python3 scripts/pages-seo.py --out dist --site \"${SITE_URL:-https://duykhang68.github.io}${SITE_BASE:-/khoahoctienghan}/\" --filter --exclude engineering-foundation --exclude viet-blog-by-google-sheet --exclude techblog/editorv2 --exclude admin --exclude search",
     "preview": "astro preview",
     "check": "node scripts/check-content.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
