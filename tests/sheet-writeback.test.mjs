@@ -50,31 +50,38 @@ test('changed source, duplicates, foreign IDs and formulas fail closed without o
  }
 });
 
+const legacyBody='Dòng một có đầy đủ nội dung để xác minh nguồn\n\nDòng hai cũng được bảo toàn nguyên bản';
+const legacyDraft={kind:'knowledge',title:'Bài thử',blocks:[
+ {kind:'paragraph',text:'Dòng một có đầy đủ nội dung để xác minh nguồn',marks:[]},
+ {kind:'paragraph',text:'Dòng hai cũng được bảo toàn nguyên bản',marks:[]}
+]};
+async function legacyFixture(options={}){
+ const f=await fixture(options);
+ f.stored[2]=options.changed?'Nội dung nguồn đã bị thay đổi so với bản gửi':legacyBody;
+ return f;
+}
 test('legacy VERIFIED publication reconciles by unique title and entire body, idempotently',async()=>{
- const f=await fixture();
- const draft={kind:'knowledge',title:'Bài thử',blocks:[{kind:'paragraph',text:'Dòng một',marks:[]},{kind:'paragraph',text:'Dòng hai',marks:[]}]};
- assert.equal(legacyDraftText(draft),'Dòng một Dòng hai');
- const writer=sheetWriter('fixture-token',f.fetcher);
- assert.deepEqual(await writer.write({state,draft}),{row:5,commit:merge});
- assert.deepEqual(await writer.write({state,draft}),{row:5,commit:merge});
+ const f=await legacyFixture(),writer=sheetWriter('fixture-token',f.fetcher);
+ assert.equal(legacyDraftText(legacyDraft),legacyBody.replace(/\s+/gu,' '));
+ assert.deepEqual(await writer.write({state,draft:legacyDraft}),{row:5,commit:merge});
+ assert.deepEqual(await writer.write({state,draft:legacyDraft}),{row:5,commit:merge});
  assert.equal(f.calls.filter(x=>x.method==='PUT').length,1);
 });
 test('legacy reconciliation skips mismatched and duplicate sources without writes',async()=>{
- const draft={kind:'knowledge',title:'Bài thử',blocks:[{kind:'paragraph',text:'Dòng một',marks:[]},{kind:'paragraph',text:'Dòng hai',marks:[]}]};
  for(const options of [{changed:true},{duplicate:true}]){
-  const f=await fixture(options);
-  assert.equal(await sheetWriter('fixture-token',f.fetcher).write({state,draft}),null);
+  const f=await legacyFixture(options);
+  assert.equal(await sheetWriter('fixture-token',f.fetcher).write({state,draft:legacyDraft}),null);
   assert.equal(f.calls.filter(x=>x.method==='PUT').length,0);
  }
- const wrong={...draft,blocks:[{kind:'paragraph',text:'Nội dung hoàn toàn khác',marks:[]}]};
- const f=await fixture();
+ const wrong={...legacyDraft,blocks:[{kind:'paragraph',text:'Nội dung hoàn toàn khác và không được phép dùng để ghi ID',marks:[]}]};
+ const f=await legacyFixture();
  assert.equal(await sheetWriter('fixture-token',f.fetcher).write({state,draft:wrong}),null);
  assert.equal(f.calls.filter(x=>x.method==='PUT').length,0);
- const conflict=await fixture({id:'foreign-id'});
- await assert.rejects(sheetWriter('fixture-token',conflict.fetcher).write({state,draft}),/SHEET_ID_CONFLICT/);
+ const conflict=await legacyFixture({id:'foreign-id'});
+ await assert.rejects(sheetWriter('fixture-token',conflict.fetcher).write({state,draft:legacyDraft}),/SHEET_ID_CONFLICT/);
  assert.equal(conflict.calls.filter(x=>x.method==='PUT').length,0);
- assert.equal(legacyDraftText({...draft,blocks:[{kind:'heading',text:'Bài',marks:[]}]}),null);
- assert.equal(await syncSheetReceipt(state,draft,''),null);
+ assert.equal(legacyDraftText({...legacyDraft,blocks:[{kind:'heading',text:'Bài',marks:[]}]}),null);
+ assert.equal(await syncSheetReceipt(state,legacyDraft,''),null);
 });
 const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});
 const credential=JSON.stringify({type:'service_account',client_email:'fixture@example.iam.gserviceaccount.com',private_key:privateKey.export({type:'pkcs8',format:'pem'})});
