@@ -1,4 +1,5 @@
 import {ciName,releaseName,classify,canRetry,migrateSidebar,sensitiveFile} from '../engineering-policy.mjs';
+import {structuredFailureEvidence} from '../../core/engineering/failure-evidence.mjs';
 export function reconcileFailure({event,repo,main,prs,cli,api,branchApi,appToken,changed,trusted,incident}){
 const sensitive=files=>files.some(f=>sensitiveFile(f.filename)||sensitiveFile(f.previous_filename));
 const run=event.workflow_run;
@@ -7,9 +8,10 @@ if(run?.head_repository?.full_name===repo&&[ciName,releaseName].includes(run.nam
  let logs='';try{logs=cli(['run','view',String(run.id),'--repo',repo,'--log-failed'])}catch{}
  let jobs=[];try{jobs=api('actions/runs/'+run.id+'/jobs?per_page=100').jobs}catch{}
  const kind=classify({run,jobs,logs,main});
+ const stageEvidence=structuredFailureEvidence({jobs,runId:run.id});
  if(kind==='SUPERSEDED')console.log('SUPERSEDED: no bug incident for stale deployment');
  else {
-  incident('run-'+run.id,'[Engineering] '+kind+' · '+run.head_sha.slice(0,12),'Evidence: '+run.html_url+'\n\nSHA: '+run.head_sha+'\n\nClassification: '+kind+'\n\nRequired: research, minimal patch, regression and verified SHA. Do not disclose logs or credentials.');
+  incident('run-'+run.id,'[Engineering] '+kind+' · '+run.head_sha.slice(0,12),'Evidence: '+run.html_url+'\n\nSHA: '+run.head_sha+'\n\nClassification: '+kind+'\n\n'+stageEvidence+'\n\nRequired: research, minimal patch, regression and verified SHA. Do not disclose logs or credentials.');
   const p=prs.find(p=>trusted(p)&&p.head.sha===run.head_sha);
   if(kind==='STARLIGHT_SIDEBAR'&&p&&run.name===ciName&&!appToken)console.log('APP_SETUP_REQUIRED: known fixer deferred');
   if(kind==='STARLIGHT_SIDEBAR'&&p&&run.name===ciName&&appToken){
