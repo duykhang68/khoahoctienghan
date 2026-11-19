@@ -67,7 +67,7 @@ export function sheetWriter(token,fetcher=fetch){
   const updated=await request('/values/'+encodeURIComponent(range)+'?valueInputOption=RAW','PUT',{range,majorDimension:'ROWS',values:[[state.merge]]});
   if(updated.updatedCells!==1)fail('SHEET_WRITE_UNCONFIRMED');
   const after=(await cells('A'+row+':E'+row))[0]||[];
-  if(after[0]!==state.merge||await rowFingerprint(after)!==source.fingerprint)fail('SHEET_WRITE_UNCONFIRMED');
+  if(after[0]!==state.merge||(source?await rowFingerprint(after)!==source.fingerprint:canonical(after[2])!==legacy))fail('SHEET_WRITE_UNCONFIRMED');
   return {row,commit:state.merge};
  }};
 }
