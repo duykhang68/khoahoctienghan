@@ -1,7 +1,0 @@
-# R3 — Course Studio Functional Core (candidate)
-
-Depends on R0 #200, R1 #201 and R2 #203. Draft only until integrated current main and required reviews/CI. Core modules cover slug, input validation, IDs, curriculum, lesson/quiz version decisions, mutation plans, media eligibility, readiness, write result, dashboard and preview selectors. Authorization email membership and signed session expiry/origin use explicit input; JWT signature and claim validation remain unchanged in the shell. 
-
-All decisions are data, not I/O callbacks; JSDoc readonly contracts and frozen-input tests characterize deterministic behavior. Existing D1 SQL guarded version/status/membership/approval rules remain in the shell; no schema, endpoint, response, browser UX or auth-policy relaxation. The shared pure media contract stays temporarily at src/lib/editor-v2/media-validation.mjs for browser relative-import compatibility; the existing media.mjs facade preserves exports, and the private asset generator explicitly allowlists only the new pure dependency. This is a transitional pure leaf outside core; R4 can revisit its placement. Browser-side lesson/quiz/curriculum reducers are deliberately deferred until concurrent Course Studio UI PRs are integrated; no editor UI rewrite in this candidate.
-
-Test: node --test back-office/course-core.test.mjs (also imported by existing worker.test.mjs). Keep all existing worker, integration, asset drift and browser CI. No claim of production verification.

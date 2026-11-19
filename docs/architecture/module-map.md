@@ -1,12 +1,11 @@
 # R0 — Bản đồ module và hướng tách
 
+Course Studio P2 đã ngừng hoạt động và bị gỡ khỏi Back Office; sơ đồ này chỉ ghi lại các module còn được duy trì.
+
 Snapshot: 3e5e7a966a5c528cccbb920d48e435ebf93a04bd. Tên đường dẫn mới là đề xuất, chưa tồn tại. Nguồn định danh từ Git tree và audit trọng điểm; không phải dependency graph đầy đủ. Không di chuyển module thuần tốt chỉ để đổi tên.
 
 | Tác vụ / file hiện tại | Core đích dự kiến | Shell / ranh giới |
 | --- | --- | --- |
-| back-office/worker.mjs: courseSlug, validateCourseInput, validateCurriculum, validateLessonBlocks, validateQuizQuestions, eligibleCourseMedia, releaseChecks | core/course/{slug,validation,curriculum,lesson,quiz,media,release}.mjs | back-office/routes/course.mjs; services/course.mjs; repositories/course.mjs |
-| worker: courseMutation, saveCurriculum, saveLesson, saveQuiz, approveRelease | core/course/{mutation,curriculum,lesson,quiz,release}.mjs (quyết định/plan) | bounded body, session, D1 CAS/batch, HTTP mapping |
-| worker: courseOverview, courseWorkspace, courseDashboardBrowser, curriculumBrowser, lessonBrowser, quizBrowser, coursePreviewPage | core/course/{dashboard-selectors,curriculum-reducer,lesson-reducer,quiz-reducer,preview-model}.mjs | views và browser entry riêng trong back-office; DOM và event lifecycle |
 | worker: allow, verifyGoogle, authorized, seal/open, googleKeys | core/auth/{authorization,claims}.mjs | routes/auth.mjs; adapters/google-identity.mjs; signed cookies/JWKS; cache có lifecycle |
 | worker: dashboardSnapshot, librarySnapshot, categorySnapshot, markup/scripts | core/editorial/{library,category}.mjs nếu có biến đổi thuần | back-office/routes/{library,categories,engineering}.mjs; views và network adapter |
 | scripts/sync-back-office-assets.mjs + worker generated markers | không đưa generated vào core | back-office/generated/{editor-assets,sheets-assets}.mjs; adapters/asset-loader.mjs |
@@ -20,7 +19,7 @@ Snapshot: 3e5e7a966a5c528cccbb920d48e435ebf93a04bd. Tên đường dẫn mới l
 | src/lib/techblog.ts, tech-categories.mjs, studio-document.mjs; scripts/check-content.mjs | core/editorial/{content-index,content-validation}.mjs; giữ pure category functions | scripts/adapters/content-filesystem.mjs; Astro data loading |
 
 ## Dependency graph đã quan sát (direct import, rút gọn)
-- worker.mjs -> server-scheduler.mjs, editor-v2/media.mjs; generated assets được nhúng bởi sync script.
+- worker.mjs -> router.mjs, server-scheduler.mjs, adapters/google-identity.mjs; editor/sheets assets được nhúng bởi sync script.
 - server-scheduler.mjs -> editor-v2/model.mjs, draft-schedule.mjs, github.mjs, sheet-blog/progress.mjs.
 - editor-v2/model.mjs -> drawio-source.mjs, media.mjs.
 - editor-v2/browser.mjs -> model, rich-browser, media, github, sheet-blog/progress-browser, series-progress, drawio-browser, blueprints.
