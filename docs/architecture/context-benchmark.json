@@ -14,34 +14,6 @@
   ],
   "tasks": [
     {
-      "id": "curriculum-409",
-      "prompt": "Check curriculum version/409 rules",
-      "baseline": [
-        {
-          "path": "back-office/worker.mjs",
-          "blob": "75f9a5857c27e23af6487201ae4105a244bd649c",
-          "bytes": 348561
-        },
-        {
-          "path": "back-office/worker.test.mjs",
-          "blob": "49b8c9e5a6ea14877a807936716bc755ba39f7fe",
-          "bytes": 42841
-        },
-        {
-          "path": "tests/e2e/curriculum-save.spec.ts",
-          "blob": "b35c7d0cffbd8ab1d7b9aa0b6d7b3c48acda02b8",
-          "bytes": 4557
-        }
-      ],
-      "candidate": [
-        "core/course/curriculum.mjs",
-        "core/course/ids.mjs",
-        "core/course/write-result.mjs",
-        "back-office/course-core.test.mjs"
-      ],
-      "maxBytes": 25000
-    },
-    {
       "id": "editorial-rich-text",
       "prompt": "Change rich text projection",
       "baseline": [

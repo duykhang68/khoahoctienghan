@@ -1,5 +1,7 @@
 # R0 — Context baseline và phương pháp benchmark
 
+> Bản số liệu R0 là ảnh chụp lịch sử. Course Studio P2 đã được gỡ; các tên file course/curriculum bên dưới chỉ phục vụ đối chiếu baseline cũ, không còn là đường dẫn module đang hoạt động. Benchmark hiện hành xem `context-benchmark.json`.
+
 Baseline main: 3e5e7a966a5c528cccbb920d48e435ebf93a04bd; Git tree 05820f57b159407de3ba289376846b3b3e35ac5c, recursive, không truncated. 291 tracked blobs và 1 gitlink editor-original (không đo bên trong submodule). Đơn vị byte UTF-8/blob size (1 KB = 1000 bytes). Snapshot code audit trước đó là 3ff572ab2cd5563634b8de5ab49b74a4071d86ab; worker tăng từ 337866 lên 348561 byte.
 
 ## Baseline đã đo từ Git tree

@@ -1,9 +1,7 @@
 import test from 'node:test';
 import {Script} from 'node:vm';
 import assert from 'node:assert/strict';
-import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot,courseOverview,validateCourseInput,courseSlug,validateCurriculum,validateLessonBlocks,eligibleCourseMedia,courseDriveToken,validateQuizQuestions} from './worker.mjs';
-import {releaseChecks} from './worker.mjs';
-import {coursePreviewPage} from './worker.mjs';
+import worker,{verifyGoogle,dashboardSnapshot,librarySnapshot} from './worker.mjs';
 import {editorBundle} from './generated/editor-assets.mjs';
 import {sheetsBundle} from './generated/sheets-assets.mjs';
 const origin='https://example.test';
@@ -136,16 +134,13 @@ test('private routes reject expired, wrong-origin, malformed and revoked-admin s
  for(const [path,method,status] of [
   ['/admin/assets/editor-v2/entry.mjs','POST',405],
   ['/admin/api/dashboard/','POST',405],
-  ['/admin/courses/manage/?utm_source=smoke','GET',303],
-  ['/admin/courses/manage/?utm_source=smoke','POST',400],
-  ['/admin/courses/','POST',405],
   ['/admin/not-a-route/','GET',404],
   ['/admin/not-a-route/','POST',405]
  ]){
   const response=await worker.fetch(req(path,{method,headers:{Cookie:good}}),env);
   assert.equal(response.status,status,method+' '+path);
   const anonymous=await worker.fetch(req(path,{method}),env);
-  assert.equal(anonymous.status,path.startsWith('/admin/courses/manage/')&&method==='GET'?303:403,method+' '+path);
+  assert.equal(anonymous.status,403,method+' '+path);
  }
 
  for(const [cookie,config] of [[await signed({exp:1}),env],[await signed({origin:'https://other.test'}),env],[await signed({kind:'challenge'}),env],[await signed({sub:''}),env],['__Host-bo_session=invalid.signature',env],[good,{...env,ADMIN_EMAILS:'other@gmail.com'}]]){
@@ -227,236 +222,21 @@ test('scheduler route, module and API never expose unauthenticated data',async()
  assert.equal((await worker.fetch(req('/admin/api/schedules/',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}'}),env)).status,403);
  assert.equal((await worker.fetch(req('/admin/assets/editor-v2/server-schedule-browser.mjs'),env)).status,403);
 });
-
-test('P2.1 course overview never invents data and rejects incomplete counts',async()=>{
- assert.deepEqual(await courseOverview({}),{status:'unconfigured'});
- const db=row=>({prepare(sql){assert.match(sql,/FROM courses/);return {first:async()=>row}}});
- assert.deepEqual(await courseOverview({COURSE_DB:db({total:0,drafts:0,ready:0,archived:0})}),{status:'ready',total:0,drafts:0,ready:0,archived:0});
- assert.deepEqual(await courseOverview({COURSE_DB:db({total:5,drafts:2,ready:2,archived:1})}),{status:'ready',total:5,drafts:2,ready:2,archived:1});
- assert.deepEqual(await courseOverview({COURSE_DB:db({total:5,drafts:2,ready:1,archived:1})}),{status:'unavailable'});
- assert.deepEqual(await courseOverview({COURSE_DB:{prepare(){throw Error('private error')}}}),{status:'unavailable'});
-});
-test('P2.1 course page preserves private session boundary',async()=>{
- assert.equal((await worker.fetch(req('/admin/courses/'),env)).status,303);
- const secret=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const s=Buffer.from(await crypto.subtle.sign('HMAC',secret,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+s};
- const result=await worker.fetch(req('/admin/courses/',{headers}),env);
- assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'no-store');assert.match(await result.text(),/Chưa cấu hình cơ sở dữ liệu khóa học/);
- assert.equal((await worker.fetch(req('/admin/courses/',{headers}),{...env,ADMIN_EMAILS:'other@gmail.com'})).status,303);
- assert.equal((await worker.fetch(req('/admin/courses/',{headers,method:'POST'}),env)).status,405);
- assert.equal((await worker.fetch(req('/admin/courses/?x=1',{headers}),env)).status,400);
-});
-
-test('P2.2 course validation and private write boundary',async()=>{
- assert.deepEqual(validateCourseInput({title:' Tiếng Hàn ',slug:'tieng-han',description:' 한글 ',level:'beginner'}),{title:'Tiếng Hàn',slug:'tieng-han',description:'한글',level:'beginner'});
- for(const input of [{title:'',slug:'a',description:'',level:'all'},{title:'A',slug:'../a',description:'',level:'all'},{title:'A',slug:'a',description:'',level:'unknown'}])assert.throws(()=>validateCourseInput(input),/INVALID_COURSE/);
- assert.equal((await worker.fetch(req('/admin/courses/manage/'),env)).status,303);
- const secret=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const s=Buffer.from(await crypto.subtle.sign('HMAC',secret,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/x-www-form-urlencoded'};
- const body='action=create&title=Hangul&slug=hangul&description=Intro&level=beginner';
- let calls=0;const db={prepare(sql){calls++;assert.match(sql,/INSERT INTO courses/);return {bind(...args){assert.equal(args[1],'hangul');return {run:async()=>({meta:{changes:1}})}}}}};
- const post=(h=headers)=>req('/admin/courses/manage/',{method:'POST',headers:h,body});
- assert.equal((await worker.fetch(post({...headers,Origin:'https://evil.test'}),{...env,COURSE_DB:db})).status,403);
- assert.equal((await worker.fetch(post({...headers,Cookie:''}),{...env,COURSE_DB:db})).status,403);
- assert.equal(calls,0);
- assert.equal((await worker.fetch(post(),env)).status,503);
- assert.equal((await worker.fetch(post(),{...env,COURSE_DB:db})).status,303);
- assert.equal(calls,1);
-});
-
-test('P2.2 Vietnamese course slug normalization is stable and bounded',()=>{
- assert.equal(courseSlug('Khóa học tiếng Hàn – Sơ cấp 1'),'khoa-hoc-tieng-han-so-cap-1');
- assert.equal(courseSlug('Đọc & Viết TOPIK II'),'doc-viet-topik-ii');
- assert.equal(courseSlug('  Tiếng Hàn   101  '),'tieng-han-101');
- assert.equal(courseSlug('한글'),'');
- assert.ok(courseSlug('a '.repeat(100)).length<=100);assert.ok(!courseSlug('a '.repeat(100)).endsWith('-'));
-});
-
-test('P2.3 validates complete unique curriculum IDs and normalized titles',()=>{
- const chapter='11111111-1111-4111-8111-111111111111',lesson='22222222-2222-4222-8222-222222222222';
- assert.deepEqual(validateCurriculum([{id:chapter,title:' 한글 ',lessons:[{id:lesson,title:' Bài 1 '}]}]),[{id:chapter,title:'한글',lessons:[{id:lesson,title:'Bài 1'}]}]);
- assert.throws(()=>validateCurriculum([{id:chapter,title:'A',lessons:[{id:chapter,title:'B'}]}]),/INVALID_CURRICULUM/);
- assert.throws(()=>validateCurriculum([{id:chapter,title:' ',lessons:[]}]),/INVALID_CURRICULUM/);
-});
-test('P2.3 private curriculum route, guarded writes and optimistic version',async()=>{
- const id='11111111-1111-4111-8111-111111111111',ch='22222222-2222-4222-8222-222222222222',path='/admin/courses/'+id+'/curriculum/';
+ 
+test('Course Studio retired; links removed and private routes fail closed',async()=>{
  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/json'};
- let stored=null,mutations=0;const db={prepare(sql){return {bind(...args){return {first:async()=>({id,title:'<script>private</script>',status:'draft',version:stored?.version??null,structure:stored?.structure??null}),run:async()=>{assert.match(sql,/INSERT INTO course_curricula|UPDATE course_curricula/);mutations++;stored={version:mutations,structure:sql.startsWith('INSERT')?args[1]:args[0]};return {meta:{changes:1}};}}}}}};
- const e={...env,COURSE_DB:db};
- assert.equal((await worker.fetch(req(path),e)).status,303);
- const page=await worker.fetch(req(path,{headers}),e);assert.equal(page.status,200);const html=await page.text();assert.match(html,/&lt;script&gt;private/);assert.doesNotThrow(()=>new Script(html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/)[1]));
- const post=(version,chapters,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body:JSON.stringify({version,chapters})}),e);
- const chapters=[{id:ch,title:'Chương 1',lessons:[]}];assert.equal((await post(0,chapters,{...headers,Origin:'https://evil.test'})).status,403);
- assert.equal((await post(0,chapters,{...headers,Cookie:''})).status,403);
- assert.equal((await post(0,chapters)).status,200);assert.equal(mutations,1);
- assert.equal((await post(0,chapters)).status,409);assert.equal((await post(1,[])).status,400);
- assert.equal((await post(1,[{...chapters[0],title:'Chương 2'}])).status,200);assert.equal(mutations,2);
-});
-
-test('P2 course tracking links canonicalize only authorized read requests',async()=>{
- const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+s};
- for(const path of ['/admin/courses/','/admin/courses/manage/']){
-  for(const method of ['GET','HEAD']){
-   const result=await worker.fetch(req(path+'?utm_source=chatgpt.com',{headers,method}),env);
-   assert.equal(result.status,303);assert.equal(result.headers.get('location'),path);assert.equal(result.headers.get('cache-control'),'no-store');
-  }
-  assert.equal((await worker.fetch(req(path+'?utm_source=chatgpt.com'),env)).headers.get('location'),'/auth/login');
-  assert.equal((await worker.fetch(req(path+'?utm_source=chatgpt.com&x=1',{headers}),env)).status,400);
-  assert.equal((await worker.fetch(req(path+'?utm_source='+ 'a'.repeat(257),{headers}),env)).status,400);
+ const payload=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+ const signature=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(payload))).toString('base64url');
+ const headers={Cookie:'__Host-bo_session='+payload+'.'+signature};
+ const dashboard=await worker.fetch(req('/admin/',{headers}),env);
+ assert.equal(dashboard.status,200);const html=await dashboard.text();
+ assert.doesNotMatch(html,/Course Studio|\/admin\/courses\//);assert.match(html,/Content Library/);
+ const routes=['/admin/courses/','/admin/courses/manage/','/admin/courses/11111111-1111-4111-8111-111111111111/curriculum/','/admin/courses/11111111-1111-4111-8111-111111111111/lessons/22222222-2222-4222-8222-222222222222/quiz/'];
+ for(const path of routes){
+  assert.equal((await worker.fetch(req(path),env)).status,403,path+' anonymous');
+  for(const method of ['GET','HEAD'])assert.equal((await worker.fetch(req(path,{method,headers}),env)).status,404,path+' '+method);
+  assert.equal((await worker.fetch(req(path,{method:'POST',headers}),env)).status,405,path+' POST');
  }
- assert.equal((await worker.fetch(req('/admin/courses/manage/?utm_source=chatgpt.com',{method:'POST',headers}),env)).status,400);
 });
-
-test('P2.4 validates private structured content, rejects executable blocks and oversized documents',()=>{
- const id='22222222-2222-4222-8222-222222222222';
- assert.deepEqual(validateLessonBlocks([{id,kind:'paragraph',text:'한글 tiếng Hàn'}]),[{id,kind:'paragraph',text:'한글 tiếng Hàn'}]);
- assert.throws(()=>validateLessonBlocks([{id,kind:'html',text:'<script>'}]));
- assert.throws(()=>validateLessonBlocks([{id,kind:'image',src:'https://evil.test/p.png',width:1,height:1,alt:'ảnh'}]));
- assert.throws(()=>validateLessonBlocks([{id,kind:'paragraph',text:'a'},{id,kind:'divider'}]));
-});
-test('P2.4 lesson route is private; save requires membership, draft, origin and current version',async()=>{
- const id='11111111-1111-4111-8111-111111111111',ch='22222222-2222-4222-8222-222222222222',lesson='33333333-3333-4333-8333-333333333333',block='44444444-4444-4444-8444-444444444444',path='/admin/courses/'+id+'/lessons/'+lesson+'/';
- const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/json'};
- let status='draft',member=true,stored=null,mutations=0;
- const db={prepare(sql){return {bind(...args){return {first:async()=>sql.includes('LEFT JOIN course_curricula')?{id,title:'Course',status,version:1,structure:JSON.stringify([{id:ch,title:'Chương',lessons:member?[{id:lesson,title:'<script>한글</script>'}]:[]}])}:stored,run:async()=>{assert.match(sql,/json_each/);mutations++;stored={version:mutations,document:sql.startsWith('INSERT')?args[2]:args[0]};return {meta:{changes:1}};}}}}}};
- const e={...env,COURSE_DB:db},blocks=[{id:block,kind:'heading',text:'한글'}];
- assert.equal((await worker.fetch(req(path),e)).status,303);
- const result=await worker.fetch(req(path,{headers}),e);assert.equal(result.status,200);assert.match(await result.text(),/&lt;script&gt;한글/);assert.match(result.headers.get('content-security-policy'),/img-src data:/);
- const post=(version,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body:JSON.stringify({version,blocks})}),e);
- assert.equal((await post(0,{...headers,Origin:'https://evil.test'})).status,403);
- assert.equal((await post(0,{...headers,Cookie:''})).status,403);
- member=false;assert.equal((await post(0)).status,404);member=true;
- status='archived';assert.equal((await post(0)).status,409);status='draft';
- assert.equal((await post(0)).status,200);assert.equal((await post(0)).status,409);assert.equal((await post(1)).status,200);assert.equal(mutations,2);
-});
-
-test('P2.5 media rejects foreign folder, shortcuts, unsupported content and download restriction',()=>{
- const folder='folder_1234567',file={id:'file_1234567890',name:'한글.mp4',mimeType:'video/mp4',size:'100',parents:[folder],trashed:false,capabilities:{canDownload:true}};
- assert.equal(eligibleCourseMedia(file,folder),true);
- for(const patch of [{parents:['elsewhere123']},{mimeType:'application/vnd.google-apps.shortcut'},{mimeType:'text/html'},{trashed:true},{capabilities:{canDownload:false}}])assert.equal(eligibleCourseMedia({...file,...patch},folder),false);
-});
-test('P2.5 anonymous media endpoints deny access and missing service account fails closed',async()=>{
- const path='/admin/courses/11111111-1111-4111-8111-111111111111/lessons/22222222-2222-4222-8222-222222222222/media/';
- assert.equal((await worker.fetch(req(path),env)).status,403);
- assert.equal((await worker.fetch(req(path+'stream/file_1234567890/'),env)).status,403);
- await assert.rejects(courseDriveToken({},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
-});
-
-test('P2.5 signs Google JWT using runtime-generated PKCS8 key; no static credential',async()=>{
- const pair=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
- const der=Buffer.from(await crypto.subtle.exportKey('pkcs8',pair.privateKey)).toString('base64');
- const pem=['BEGIN','END'].map(k=>['-----'+k,'PRIVATE KEY-----'].join(' '));
- const account={type:'service_account',client_email:'fixture@example.iam.gserviceaccount.com',private_key:[pem[0],...der.match(/.{1,64}/g),pem[1]].join('\n')};
- const e={COURSE_MEDIA_FOLDER_ID:'folder_1234567',GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify(account)};
- let called=0;
- const token=await courseDriveToken(e,async(url,options)=>{
-  called++;assert.equal(url,'https://oauth2.googleapis.com/token');assert.equal(options.redirect,'error');
-  const jwt=options.body.get('assertion'),[h,p,s]=jwt.split('.');
-  assert.equal(JSON.parse(Buffer.from(h,'base64url').toString()).alg,'RS256');
-  const payload=JSON.parse(Buffer.from(p,'base64url').toString());assert.equal(payload.iss,account.client_email);assert.equal(payload.scope,'https://www.googleapis.com/auth/drive.readonly');assert.equal(payload.aud,url);
-  assert.equal(await crypto.subtle.verify('RSASSA-PKCS1-v1_5',pair.publicKey,Buffer.from(s,'base64url'),new TextEncoder().encode(h+'.'+p)),true);
-  return new Response(JSON.stringify({access_token:'fixture'}),{status:200});
- });
- assert.equal(token,'fixture');assert.equal(called,1);
- await assert.rejects(courseDriveToken({...e,GOOGLE_SERVICE_ACCOUNT_JSON:JSON.stringify({...account,private_key:der})},()=>{throw Error('unexpected network')}),/DRIVE_CONFIG/);
-});
-
-test('P2.6 quiz route is private; save requires membership, draft, origin and current version',async()=>{
- const id='11111111-1111-4111-8111-111111111111',ch='22222222-2222-4222-8222-222222222222',lesson='33333333-3333-4333-8333-333333333333',block='44444444-4444-4444-8444-444444444444',path='/admin/courses/'+id+'/lessons/'+lesson+'/quiz/';
- const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const s=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+s,Origin:origin,'Content-Type':'application/json'};
- let status='draft',member=true,stored=null,mutations=0;
- const db={prepare(sql){return {bind(...args){return {first:async()=>sql.includes('LEFT JOIN course_curricula')?{id,title:'Course',status,version:1,structure:JSON.stringify([{id:ch,title:'Chương',lessons:member?[{id:lesson,title:'<script>한글</script>'}]:[]}])}:stored,run:async()=>{assert.match(sql,/json_each/);mutations++;stored={version:mutations,document:sql.startsWith('INSERT')?args[2]:args[0]};return {meta:{changes:1}};}}}}}};
- const e={...env,COURSE_DB:db},questions=[{id:block,kind:'single',prompt:'한글',options:['A','B'],correct:1,explanation:'Giải thích'}];
- assert.equal((await worker.fetch(req(path),e)).status,403);
- const result=await worker.fetch(req(path,{headers}),e);assert.equal(result.status,200);assert.match(await result.text(),/&lt;script&gt;한글/);assert.match(result.headers.get('content-security-policy'),/script-src 'nonce-/);
- const post=(version,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body:JSON.stringify({version,questions})}),e);
- assert.equal((await post(0,{...headers,Origin:'https://evil.test'})).status,403);
- assert.equal((await post(0,{...headers,Cookie:''})).status,403);
- member=false;assert.equal((await post(0)).status,404);member=true;
- status='archived';assert.equal((await post(0)).status,409);status='draft';
- assert.equal((await post(0)).status,200);assert.equal((await post(0)).status,409);assert.equal((await post(1)).status,200);assert.equal(mutations,2);
-});
-
-test('P2.6 validates answer indices, duplicate choices and question types',()=>{
- const q={id:'44444444-4444-4444-8444-444444444444',kind:'single',prompt:'한글?',options:['A','B'],correct:1,explanation:''};
- assert.deepEqual(validateQuizQuestions([q]),[q]);
- for(const invalid of [{...q,correct:2},{...q,options:['A','A']},{...q,prompt:''},{...q,kind:'html'},{...q,kind:'boolean'}])assert.throws(()=>validateQuizQuestions([invalid]));
- assert.throws(()=>validateQuizQuestions([q,q]));
-});
-
-test('P2.8 readiness requires saved content and immutable media',()=>{
- const row={description_length:10,chapters:1,lessons:2,empty_chapters:0,missing_lessons:0,media_links:0};
- assert.ok(releaseChecks(row).every(x=>x[1]));
- for(const field of ['description_length','chapters','lessons'])assert.ok(!releaseChecks({...row,[field]:0}).every(x=>x[1]));
- for(const field of ['empty_chapters','missing_lessons','media_links'])assert.ok(!releaseChecks({...row,[field]:1}).every(x=>x[1]));
-});
-test('P2.8 approval rejects anonymous writes, cross-origin and stale revisions',async()=>{
- const id='11111111-1111-4111-8111-111111111111',path='/admin/courses/'+id+'/publishing/';
- const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+sig,Origin:origin,'Content-Type':'application/x-www-form-urlencoded'};
- let writes=0;
- const row={id,title:'한글',status:'draft',version:2,revision:5,description_length:10,chapters:1,lessons:2,empty_chapters:0,missing_lessons:0,media_links:0};
- const e={...env,COURSE_DB:{prepare(sql){return {bind(){return {first:async()=>sql.includes('course_release_readiness')?row:null,run:async()=>{writes++;return {meta:{changes:1}};}};}}}}};
- const post=(body,h=headers)=>worker.fetch(req(path,{method:'POST',headers:h,body}),e);
- assert.equal((await worker.fetch(req(path),e)).status,403);
- assert.equal((await post('version=2&revision=5&confirm=yes',{...headers,Origin:'https://evil.test'})).status,403);
- assert.equal((await post('version=2&revision=4&confirm=yes')).status,409);
- assert.equal((await post('version=2&revision=5&confirm=no')).status,400);
- assert.equal(writes,0);
- assert.equal((await post('version=2&revision=5&confirm=yes')).status,303);
- assert.equal(writes,1);
-});
-
-test('P2.7 renders saved lessons safely and preserves navigation order',()=>{
- const id='11111111-1111-4111-8111-111111111111',a={id:'22222222-2222-4222-8222-222222222222',title:'한글'},b={id:'33333333-3333-4333-8333-333333333333',title:'Bài hai'};
- const curr={id,title:'<script>Course</script>',chapters:[{title:'Chương 1',lessons:[a,b]}]};
- const html=coursePreviewPage(curr,a,[{kind:'paragraph',text:'<img onerror="alert(1)">'}]);
- assert.match(html,/Chế độ xem trước riêng tư/);assert.match(html,/aria-current="page"/);assert.match(html,/Bài tiếp theo/);assert.match(html,/&lt;img/);assert.doesNotMatch(html,/<script>|<img onerror/);
- assert.match(coursePreviewPage({...curr,chapters:[]},null,[]),/Chưa có bài học/);
-});
-test('P2.7 preview is owner only, read only, and fails closed',async()=>{
- const id='11111111-1111-4111-8111-111111111111',ch='22222222-2222-4222-8222-222222222222',lesson='33333333-3333-4333-8333-333333333333',path='/admin/courses/'+id+'/preview/';
- const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
- const p=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
- const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(p))).toString('base64url');
- const headers={Cookie:'__Host-bo_session='+p+'.'+sig};
- const db={prepare(sql){return {bind(){return {first:async()=>sql.includes('LEFT JOIN course_curricula')?{id,title:'Course',status:'draft',version:1,structure:JSON.stringify([{id:ch,title:'Chương',lessons:[{id:lesson,title:'한글'}]}])}:null};}}}};
- const e={...env,COURSE_DB:db};
- assert.equal((await worker.fetch(req(path),e)).status,403);
- assert.equal((await worker.fetch(req(path,{headers}),env)).status,503);
- assert.equal((await worker.fetch(req(path,{headers,method:'POST'}),e)).status,405);
- assert.equal((await worker.fetch(req(path+ch+'/',{headers}),e)).status,404);
- const result=await worker.fetch(req(path,{headers}),e);assert.equal(result.status,200);assert.equal(result.headers.get('cache-control'),'no-store');assert.match(await result.text(),/한글/);
- assert.equal(await (await worker.fetch(req(path,{headers,method:'HEAD'}),e)).text(),'');
-});
-
-import {createCourseModel} from './course-management/core.mjs';
-test('Course Management functional core is immutable, filters, sorts and respects action policy',()=>{
- const m=createCourseModel(),rows=Object.freeze([Object.freeze({id:'a',title:'Tiếng Hàn',slug:'tieng-han',description:'한글',level:'beginner',status:'draft',updated_at:100}),Object.freeze({id:'b',title:'Cao cấp',slug:'cao-cap',description:'',level:'all',status:'ready',updated_at:200})]);
- const initial=m.initial(),next=m.transition({...initial,page:3},{query:'tieng han'});
- assert.equal(next.page,1);assert.equal(initial.query,'');assert.deepEqual(m.filter(rows,next).map(r=>r.id),['a']);assert.deepEqual(m.filter(rows,{...initial,level:'all-level'}).map(r=>r.id),['b']);
- assert.deepEqual(m.sort(rows,'recent').map(r=>r.id),['b','a']);assert.deepEqual(rows.map(r=>r.id),['a','b']);assert.deepEqual(m.actions(rows[1]),['preview','publishing']);
- assert.equal(m.statistics({total:3,drafts:1,ready:1,archived:0}),null);assert.ok(m.errors({title:'',slug:'../a',level:'invalid'}).slug);
-});
-
-import './course-core.test.mjs';
 
 import './editorial-core.test.mjs';
