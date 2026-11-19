@@ -1,14 +1,24 @@
 // Owner-session-gated, read-only FIFO snapshot; credentials never leave the Worker.
 import {queueRows,progressFor,exactEvidenceRun,currentEvidencePR} from '../../src/lib/sheet-blog/core/progress.mjs';
+import {mintSchedulerToken,schedulerConfigured} from '../server-scheduler.mjs';
 const repo='duykhang68/khoahoctienghan',root='https://api.github.com/repos/'+repo;
 const freshMs=300000,staleMs=3600000;
 let saved=null,pending=null;
 async function build(env,fetcher,now){
- const token=typeof env?.PUBLICATION_GITHUB_TOKEN==='string'?env.PUBLICATION_GITHUB_TOKEN.trim():'';
+ // Existing server-side GitHub App has repo-scoped Issues read access. Never reveal the installation token to the client.
+ const dedicated=typeof env?.PUBLICATION_GITHUB_TOKEN==='string'?env.PUBLICATION_GITHUB_TOKEN.trim():'';
+ const token=dedicated||(schedulerConfigured(env)?await mintSchedulerToken(env,fetcher):'');
  const get=async path=>{
   const headers={Accept:'application/vnd.github+json','User-Agent':'korean-publication-progress'};
   if(token)headers.Authorization='Bearer '+token;
-  let response;try{response=await fetcher(root+path,{method:'GET',headers,redirect:'manual',signal:AbortSignal.timeout(12000)})}catch{throw Error('GITHUB_UNAVAILABLE')}
+  const options={method:'GET',headers,redirect:'manual',signal:AbortSignal.timeout(12000)};
+  let response;try{response=await fetcher(root+path,options)}catch{throw Error('GITHUB_UNAVAILABLE')}
+  // The scheduler App intentionally has no Actions/PR permission. For these
+  // public read endpoints use a bounded anonymous fallback, not expanded App scopes.
+  if(response.status===403&&token&&(path.startsWith('/actions/')||path.startsWith('/pulls/'))){
+   const anonymous={...headers};delete anonymous.Authorization;
+   try{response=await fetcher(root+path,{...options,headers:anonymous})}catch{throw Error('GITHUB_UNAVAILABLE')}
+  }
   if(response.status===403||response.status===429)throw Error('GITHUB_RATE_LIMITED');
   if(response.status!==200)throw Error('GITHUB_UNAVAILABLE');
   try{return await response.json()}catch{throw Error('GITHUB_UNAVAILABLE')}
