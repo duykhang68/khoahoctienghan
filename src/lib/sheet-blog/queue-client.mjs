@@ -36,3 +36,19 @@ export function queueClient(fetcher=fetch,{strictHead=false}={}){
  }
  return {list,evidence};
 }
+
+// A single same-origin request replaces multiple anonymous GitHub REST calls.
+export function officeQueueClient(fetcher=fetch){
+ let last=null;
+ return {
+  async list(){
+   const response=await fetcher('/admin/api/publication-progress/',{method:'GET',credentials:'same-origin',cache:'no-store',redirect:'error',signal:AbortSignal.timeout(15000)});
+   if(!response.ok)throw Error(response.status===503?'GitHub tạm giới hạn API, chưa có bản chụp dự phòng':'Back Office HTTP '+response.status);
+   const value=await response.json();
+   if(!Array.isArray(value.rows)||!value.evidence||typeof value.evidence!=='object'||typeof value.updatedAt!=='string')throw Error('Bản chụp FIFO không hợp lệ');
+   last=value;return value.rows;
+  },
+  async evidence(item){return last?.evidence?.[item.number]||{};},
+  info(){return last&&{updatedAt:last.updatedAt,stale:!!last.stale,fromCache:!!last.fromCache};}
+ };
+}

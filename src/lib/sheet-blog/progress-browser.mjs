@@ -1,4 +1,5 @@
-import {queueClient,progressFor,stages} from './progress.mjs';
+import {progressFor,stages} from './progress.mjs';
+import {officeQueueClient} from './queue-client.mjs';
 import {isConfirmedProgress,progressGroups} from './core/progress.mjs';
 import {validReceipt,makeReceipt,readReceiptRows,putReceipt} from './core/local-receipts.mjs';
 const github='https://github.com/duykhang68/khoahoctienghan',site='https://duykhang68.github.io/khoahoctienghan/';
@@ -10,7 +11,7 @@ export function rememberPublicReceipt(result,title){
  if(!validReceipt(r))return false;
  try{const old=JSON.parse(localStorage.getItem(receiptKey)||'[]');const rows=readReceiptRows(old);localStorage.setItem(receiptKey,JSON.stringify(putReceipt(rows,r)));return true}catch{return false}
 }
-export function mountQueueProgress(root,{client=queueClient(),showEvidence=false}={}){
+export function mountQueueProgress(root,{client=officeQueueClient(),showEvidence=false}={}){
  if(!root)return {record(){},refresh(){}};
  const $=s=>root.querySelector(s),area=$('[data-progress-cards]'),stamp=$('[data-progress-status]'),button=$('[data-progress-refresh]');
  let rows=[],evidence={},busy=false,ready=false,error='',updated=null,again=false;
@@ -47,7 +48,8 @@ export function mountQueueProgress(root,{client=queueClient(),showEvidence=false
   if(busy){again=true;return}busy=true;button.disabled=true;render();
   try{const next=await client.list(),ev={};const head=next.find(r=>!confirmed(r));let partial=false;
    if(head)try{ev[head.number]=await client.evidence(head)}catch{partial=true}
-   rows=next;evidence=ev;ready=true;updated=new Date();error=partial?'Đã tải Issue; chưa lấy được chi tiết CI/CD':'';
+   const info=client.info?.();rows=next;evidence=ev;ready=true;updated=info?.updatedAt?new Date(info.updatedAt):new Date();
+   error=info?.stale?'GitHub đang giới hạn API · Dùng bản chụp gần nhất':partial?'Đã tải Issue; chưa lấy được chi tiết CI/CD':info?.fromCache?'Bản chụp GitHub được lưu đệm':'';
    for(const r of next)receipts.delete(r.id);persist();
   }catch(e){error='Chưa thể cập nhật GitHub: '+String(e.message||'Lỗi mạng')}
   finally{busy=false;button.disabled=false;render();if(again){again=false;void refresh()}}
