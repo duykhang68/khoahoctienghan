@@ -22,14 +22,11 @@ test('CI evidence rejects unrelated SHA',async()=>{
 test('progress dashboard orders FIFO, updates stages and preserves stale snapshot on errors',async({page,office})=>{
  let phase='WAITING_CI',fail=false;
  await page.route('https://accounts.google.com/gsi/client',route=>route.fulfill({contentType:'application/javascript',body:''}));
- await page.route('https://api.github.com/**',route=>{
-  const u=new URL(route.request().url());expect(route.request().method()).toBe('GET');expect(route.request().headers()['authorization']).toBeUndefined();
-  if(fail)return route.fulfill({status:403,json:{}});
-  if(u.pathname.endsWith('/issues'))return route.fulfill({json:[issue(12,'QUEUED'),issue(11,phase,{head,base,pr:15,merge,verified:merge,route:'ngon-ngu/bai-11/',sheetSync:{status:phase==='VERIFIED'?'SYNCED':'PENDING',attempts:0}},phase==='VERIFIED'),{...issue(10,'QUEUED'),user:{login:'other'}}]});
-  if(u.pathname.endsWith('/ci.yml/runs'))return route.fulfill({json:{workflow_runs:[{id:123,head_sha:head,head_repository:{full_name:repo},head_branch:'content/editor-fifo-11-'+base.slice(0,12),event:'pull_request',status:'in_progress'}]}});
-  if(u.pathname.endsWith('/release.yml/runs'))return route.fulfill({json:{workflow_runs:[{id:124,head_sha:merge,head_repository:{full_name:repo},head_branch:'main',event:'workflow_run',status:'in_progress'}]}});
-  if(u.pathname.endsWith('/actions/runs/124/jobs'))return route.fulfill({json:{jobs:[{name:'deploy',status:'completed',conclusion:'success'}]}});
-  throw Error('Unexpected '+u.pathname);
+ await page.route(office+'/admin/api/publication-progress/',route=>{
+  if(fail)return route.fulfill({status:503,json:{error:'PUBLICATION_PROGRESS_UNAVAILABLE'}});
+  const rows=[issue(12,'QUEUED'),issue(11,phase,{head,base,pr:15,merge,verified:merge,route:'ngon-ngu/bai-11/',sheetSync:{status:phase==='VERIFIED'?'SYNCED':'PENDING',attempts:0}},phase==='VERIFIED'),{...issue(10,'QUEUED'),user:{login:'other'}}].map(parseQueueIssue).filter(Boolean);
+  const evidence=phase==='WAITING_CI'?{11:{ci:{id:123,status:'in_progress'}}}:phase==='MERGED'?{11:{deploy:{status:'completed',conclusion:'success'}}}:{};
+  return route.fulfill({json:{rows,evidence,updatedAt:new Date().toISOString(),stale:false}});
  });
  await page.goto(office+'/admin/sheets/');
  const section=page.locator('[data-queue-progress]'),first=section.locator('[data-issue="11"]'),refresh=section.getByRole('button',{name:'Cập nhật tiến độ'});
