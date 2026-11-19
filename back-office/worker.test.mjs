@@ -16,7 +16,7 @@ test('missing config and anonymous requests fail closed',async()=>{
  assert.equal((await worker.fetch(req('/admin/sheets/'),env)).status,303);
  assert.equal((await worker.fetch(req('/admin/editor/'),env)).status,303);
  assert.equal((await worker.fetch(req('/admin/assets/editor-v2/browser.mjs'),env)).status,403);
- for(const path of ['/admin/assets/sheet-blog/browser.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'])assert.equal((await worker.fetch(req(path),env)).status,403);
+ for(const path of ['/admin/assets/sheet-blog/browser.mjs','/admin/assets/sheet-blog.css','/admin/api/publication-progress/','/admin/article-check/techblog/bai-thu/'])assert.equal((await worker.fetch(req(path),env)).status,403);
  assert.equal((await worker.fetch(req('/admin/engineering/',{headers:{Cookie:'__Host-bo_session=fake.signature'}}),env)).status,303);
  assert.equal((await worker.fetch(new Request('https://preview.example.test/admin/engineering/'),env)).status,403);
  assert.equal((await worker.fetch(req('/api/private'),env)).status,403);
@@ -130,7 +130,7 @@ test('private routes reject expired, wrong-origin, malformed and revoked-admin s
  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  async function signed(overrides={}){const payload=Buffer.from(JSON.stringify({kind:'session',origin,sub:'123',email:'admin@gmail.com',exp:Math.floor(Date.now()/1000)+600,...overrides})).toString('base64url');const sig=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(payload))).toString('base64url');return '__Host-bo_session='+payload+'.'+sig;}
  const pages=['/admin/','/admin/engineering/','/admin/sheets/','/admin/editor/','/admin/library/','/admin/categories/','/admin/drafts/','/admin/pipeline/'];
- const assets=['/admin/api/dashboard/','/admin/api/library/','/admin/api/categories/','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/editor-v2/media.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs','/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'];
+ const assets=['/admin/api/dashboard/','/admin/api/library/','/admin/api/publication-progress/','/admin/api/categories/','/admin/assets/editor-v2/draft-schedule.mjs','/admin/assets/editor-v2/drafts-browser.mjs','/admin/assets/editor-v2/media.mjs','/admin/assets/sheet-blog/pipeline-entry.mjs','/admin/assets/editor-v2/entry.mjs','/admin/assets/editor-v2.css','/admin/assets/sheet-blog/entry.mjs','/admin/assets/sheet-blog.css','/admin/article-check/techblog/bai-thu/'];
  const good=await signed();
  // R2: dispatcher must preserve origin/session and method ordering across route modules.
  for(const [path,method,status] of [
