@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,verify} from 'node:crypto';
 import {sheetSource,rowFingerprint,validateSheetSource} from '../src/lib/sheet-blog/source.mjs';
-import {sheetWriter,syncSheetReceipt,serviceAccountToken} from '../scripts/sheet-writeback.mjs';
+import {sheetWriter,syncSheetReceipt,serviceAccountToken,legacyDraftText} from '../scripts/sheet-writeback.mjs';
 import {validateSubmission} from '../scripts/editor-v2-queue-policy.mjs';
 import {createHash} from 'node:crypto';
 const merge='a'.repeat(40),verified='b'.repeat(40);
@@ -48,6 +48,40 @@ test('changed source, duplicates, foreign IDs and formulas fail closed without o
  for(const options of [{changed:true},{duplicate:true},{id:'old-value'},{id:'=IF(TRUE,"","")'}]){
   const f=await fixture(options);await assert.rejects(sheetWriter('fixture-token',f.fetcher).write({state,draft:f.draft}),/SHEET_(SOURCE_CHANGED|ROW_AMBIGUOUS|ID_CONFLICT)/);assert.equal(f.calls.filter(x=>x.method==='PUT').length,0);
  }
+});
+
+const legacyBody='Dòng một có đầy đủ nội dung để xác minh nguồn\n\nDòng hai cũng được bảo toàn nguyên bản';
+const legacyDraft={kind:'knowledge',title:'Bài thử',blocks:[
+ {kind:'paragraph',text:'Dòng một có đầy đủ nội dung để xác minh nguồn',marks:[]},
+ {kind:'paragraph',text:'Dòng hai cũng được bảo toàn nguyên bản',marks:[]}
+]};
+async function legacyFixture(options={}){
+ const f=await fixture(options);
+ f.stored[2]=options.changed?'Nội dung nguồn đã bị thay đổi so với bản gửi':legacyBody;
+ return f;
+}
+test('legacy VERIFIED publication reconciles by unique title and entire body, idempotently',async()=>{
+ const f=await legacyFixture(),writer=sheetWriter('fixture-token',f.fetcher);
+ assert.equal(legacyDraftText(legacyDraft),legacyBody.replace(/\s+/gu,' '));
+ assert.deepEqual(await writer.write({state,draft:legacyDraft}),{row:5,commit:merge});
+ assert.deepEqual(await writer.write({state,draft:legacyDraft}),{row:5,commit:merge});
+ assert.equal(f.calls.filter(x=>x.method==='PUT').length,1);
+});
+test('legacy reconciliation skips mismatched and duplicate sources without writes',async()=>{
+ for(const options of [{changed:true},{duplicate:true}]){
+  const f=await legacyFixture(options);
+  assert.equal(await sheetWriter('fixture-token',f.fetcher).write({state,draft:legacyDraft}),null);
+  assert.equal(f.calls.filter(x=>x.method==='PUT').length,0);
+ }
+ const wrong={...legacyDraft,blocks:[{kind:'paragraph',text:'Nội dung hoàn toàn khác và không được phép dùng để ghi ID',marks:[]}]};
+ const f=await legacyFixture();
+ assert.equal(await sheetWriter('fixture-token',f.fetcher).write({state,draft:wrong}),null);
+ assert.equal(f.calls.filter(x=>x.method==='PUT').length,0);
+ const conflict=await legacyFixture({id:'foreign-id'});
+ await assert.rejects(sheetWriter('fixture-token',conflict.fetcher).write({state,draft:legacyDraft}),/SHEET_ID_CONFLICT/);
+ assert.equal(conflict.calls.filter(x=>x.method==='PUT').length,0);
+ assert.equal(legacyDraftText({...legacyDraft,blocks:[{kind:'heading',text:'Bài',marks:[]}]}),null);
+ assert.equal(await syncSheetReceipt(state,legacyDraft,''),null);
 });
 const {privateKey,publicKey}=generateKeyPairSync('rsa',{modulusLength:2048});
 const credential=JSON.stringify({type:'service_account',client_email:'fixture@example.iam.gserviceaccount.com',private_key:privateKey.export({type:'pkcs8',format:'pem'})});

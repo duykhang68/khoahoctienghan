@@ -7,5 +7,6 @@ export function authorizedSubmissionEvent(actor,actorId,eventName,event,botLogin
  return eventName==='repository_dispatch'&&/^[a-z0-9-]+\[bot\]$/.test(botLogin)&&/^[1-9][0-9]*$/.test(botId)&&actor===botLogin&&String(actorId)===botId&&event?.sender?.type==='Bot'&&event.sender.login===botLogin&&String(event.sender.id)===botId;
 }
 
-export function receiptCandidates(receipts){return receipts.filter(s=>s.phase==='VERIFIED'&&s.closed&&['PENDING','WAITING_CONFIG'].includes(s.sheetSync?.status)).slice(0,8);}
-export function maySyncReceipt(s){return s.phase==='VERIFIED'&&s.closed&&s.sheetSync&&['PENDING','WAITING_CONFIG'].includes(s.sheetSync.status);}
+// Backfill legacy VERIFIED receipts without a source marker only after a full-text match.
+export function receiptCandidates(receipts){return receipts.filter(s=>s.phase==='VERIFIED'&&s.closed&&(!s.sheetSync||['PENDING','WAITING_CONFIG'].includes(s.sheetSync.status))).slice(0,8);}
+export function maySyncReceipt(s){return s.phase==='VERIFIED'&&s.closed&&(!s.sheetSync||['PENDING','WAITING_CONFIG'].includes(s.sheetSync.status));}

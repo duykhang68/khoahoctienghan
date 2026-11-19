@@ -7,6 +7,15 @@ export class SheetSyncError extends Error{
  constructor(code,retryable=false){super(code);this.code=code;this.retryable=retryable}
 }
 const fail=(code,retryable=false)=>{throw new SheetSyncError(code,retryable)};
+// Older Editor V2 drafts did not preserve Sheet binding. Full-text recovery
+// is allowed only for a unique, unchanged plain-text source row.
+const canonical=value=>String(value??'').normalize('NFKC').replace(/\s+/gu,' ').trim();
+export function legacyDraftText(draft){
+ if(!draft||!['knowledge','tech'].includes(draft.kind)||!Array.isArray(draft.blocks)||!draft.blocks.length)return null;
+ if(draft.blocks.some(block=>block.kind!=='paragraph'||typeof block.text!=='string'||!block.text.trim()||!Array.isArray(block.marks)||block.marks.length))return null;
+ const body=canonical(draft.blocks.map(block=>block.text).join('\n'));
+ return body.length>=32?body:null;
+}
 async function jsonRequest(fetcher,url,options){
  let response;try{response=await fetcher(url,{...options,redirect:'error',signal:AbortSignal.timeout(15000)})}catch{fail('GOOGLE_NETWORK',true)}
  if(!response.ok)fail('GOOGLE_HTTP_'+response.status,response.status===429||response.status>=500);
@@ -30,7 +39,9 @@ export function sheetWriter(token,fetcher=fetch){
  return {async write({state,draft}){
   // A merge alone is insufficient. Only a verified, closed FIFO receipt may write.
   if(!verifiedReceipt(state))fail('PRODUCTION_NOT_VERIFIED');
-  const source=validateSheetSource(draft.sheetSource);
+  const source=draft.sheetSource?validateSheetSource(draft.sheetSource):null;
+  const legacy=source?null:legacyDraftText(draft);
+  if(!source&&!legacy)return null;
   try{checkHeaders((await cells('A1:E1'))[0])}catch(e){if(e instanceof SheetSyncError)throw e;fail('SHEET_HEADERS_CHANGED')}
   // Check tab ID as well as name: a renamed/replaced tab is a different source.
   const meta=await request('?fields=sheets(properties(sheetId,title))');
@@ -38,13 +49,17 @@ export function sheetWriter(token,fetcher=fetch){
   const titles=await cells('B2:B20000'),candidates=[];
   for(let i=0;i<titles.length;i++)if(String(titles[i]?.[0]??'').trim()===draft.title.trim())candidates.push(i+2);
   if(candidates.length>10)fail('SHEET_ROW_AMBIGUOUS');
+  if(legacy&&candidates.length!==1)return null;
   const matches=[];
-  for(const row of candidates){const values=(await cells('A'+row+':E'+row))[0]||[];if(await rowFingerprint(values)===source.fingerprint)matches.push(row)}
-  if(matches.length!==1)fail(matches.length?'SHEET_ROW_AMBIGUOUS':'SHEET_SOURCE_CHANGED');
+  for(const row of candidates){
+   const values=(await cells('A'+row+':E'+row))[0]||[];
+   if(source?await rowFingerprint(values)===source.fingerprint:canonical(values[2])===legacy)matches.push(row);
+  }
+  if(matches.length!==1){if(legacy)return null;fail(matches.length?'SHEET_ROW_AMBIGUOUS':'SHEET_SOURCE_CHANGED')}
   const row=matches[0];
   // Re-read immediately before writing; formulas and existing IDs are preserved.
   const fresh=(await cells('A'+row+':E'+row))[0]||[];
-  if(await rowFingerprint(fresh)!==source.fingerprint)fail('SHEET_SOURCE_CHANGED');
+  if(source?await rowFingerprint(fresh)!==source.fingerprint:canonical(fresh[2])!==legacy)fail('SHEET_SOURCE_CHANGED');
   const current=String(fresh[0]??'');
   if(current===state.merge)return {row,commit:state.merge};
   if(current!=='')fail('SHEET_ID_CONFLICT');
@@ -52,14 +67,17 @@ export function sheetWriter(token,fetcher=fetch){
   const updated=await request('/values/'+encodeURIComponent(range)+'?valueInputOption=RAW','PUT',{range,majorDimension:'ROWS',values:[[state.merge]]});
   if(updated.updatedCells!==1)fail('SHEET_WRITE_UNCONFIRMED');
   const after=(await cells('A'+row+':E'+row))[0]||[];
-  if(after[0]!==state.merge||await rowFingerprint(after)!==source.fingerprint)fail('SHEET_WRITE_UNCONFIRMED');
+  if(after[0]!==state.merge||(source?await rowFingerprint(after)!==source.fingerprint:canonical(after[2])!==legacy))fail('SHEET_WRITE_UNCONFIRMED');
   return {row,commit:state.merge};
  }};
 }
 export async function syncSheetReceipt(state,draft,credentials,fetcher=fetch){
- const decision=sheetReceiptDecision(state,Boolean(draft.sheetSource),Boolean(credentials));
+ const linked=Boolean(draft?.sheetSource);
+ // An independent Editor draft must never be labeled as Sheet-sourced by title alone.
+ if(!linked&&(!legacyDraftText(draft)||!credentials))return null;
+ const decision=sheetReceiptDecision(state,linked||Boolean(legacyDraftText(draft)),Boolean(credentials));
  if(decision.kind==='return')return decision.value;
  const attempts=decision.attempts;
- try{const token=await serviceAccountToken(credentials,fetcher);const result=await sheetWriter(token,fetcher).write({state,draft});return {status:'SYNCED',attempts,...result}}
+ try{const token=await serviceAccountToken(credentials,fetcher);const result=await sheetWriter(token,fetcher).write({state,draft});return result?{status:'SYNCED',attempts,...result}:null}
  catch(e){const known=e instanceof SheetSyncError;return sheetFailureReceipt(known,known&&e.retryable,known?e.code:undefined,attempts)}
 }
