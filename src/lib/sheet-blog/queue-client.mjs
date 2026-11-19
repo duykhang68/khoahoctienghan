@@ -46,7 +46,7 @@ export function officeQueueClient(fetcher=fetch){
    if(!response.ok)throw Error(response.status===503?'GitHub tạm giới hạn API, chưa có bản chụp dự phòng':'Back Office HTTP '+response.status);
    const value=await response.json();
    if(!Array.isArray(value.rows)||!value.evidence||typeof value.evidence!=='object'||typeof value.updatedAt!=='string')throw Error('Bản chụp FIFO không hợp lệ');
-   last=value;return value.rows;
+   last=value;return value.rows.slice().sort((a,b)=>a.number-b.number);
   },
   async evidence(item){return last?.evidence?.[item.number]||{};},
   info(){return last&&{updatedAt:last.updatedAt,stale:!!last.stale,fromCache:!!last.fromCache};}
