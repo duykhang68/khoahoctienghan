@@ -68,3 +68,5 @@ import './sheet-publisher-core.test.mjs';
 
 import './conflict-resolver.test.mjs';
 import './release-catalog.test.mjs';
+
+import './failure-evidence.test.mjs';
