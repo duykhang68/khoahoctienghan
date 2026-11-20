@@ -52,3 +52,19 @@ Status: **candidate investigation record**. Root cause on historical failed SHAs
 - #221 and other conflict issues: corresponding PR may already be merged while the incident remains open. Research exact SHA/revision ancestry or supersession; never blanket ours/theirs.
 
 References: [GitHub Issues](https://github.com/duykhang68/khoahoctienghan/issues?q=is%3Aissue+state%3Aopen), [Playwright locators](https://playwright.dev/docs/locators), [GitHub Actions workflow runs](https://docs.github.com/en/rest/actions/workflow-runs), [Google Sheets values update](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update).
+
+## Structured job-step audit — initial 39 UNKNOWN issues
+
+One-time audit of GitHub Actions **job and step metadata**, not raw logs. Initial snapshot excludes #231, which appeared later as another E2E failure. Categories mean **failed stage only**; they are not proven root causes.
+
+| Stage | Count | Issue numbers |
+|---|---:|---|
+| Browser E2E | 22 | #222, #219, #217, #214, #213, #212, #211, #204, #195, #163, #144, #135, #119, #107, #83, #76, #75, #71, #58, #44, #34, #30 |
+| Engineering regression tests | 14 | #228, #227, #191, #190, #187, #185, #182, #178, #156, #142, #134, #133, #85, #84 |
+| Security check | 2 | #174, #153 |
+| Independent Editor integration tests | 1 | #79 |
+| **Total initial UNKNOWN** | **39** | Each links to the original run via its issue body |
+
+**Snapshot drift:** newer #231 -> run 44641185282, failed `npm run test:e2e -- --workers=2`; not part of the original 67-open-issue snapshot. Do not silently rewrite historical totals.
+
+**Knowledge hygiene:** #75, #76, #79, #83, #84 and #85 already have dedicated source-backed Tech Blog analyses in `src/data/techblog/posts.json`, but the corresponding issue records remain open as UNKNOWN. Review fixed SHA/CI/CD and owner UAT before updating status; do not generate duplicate retrospective content or auto-close.
