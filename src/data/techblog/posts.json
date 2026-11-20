@@ -3912,5 +3912,401 @@
         ]
       }
     ]
+  },
+  {
+    "slug": "ban-do-dieu-tra-67-issue-bug-knowledge-2026-11-20",
+    "title": "67 issue đang mở: điều tra đến đâu, lỗi nào còn UNKNOWN và hệ thống học cách sửa bug như thế nào?",
+    "summary": "Kiểm toán 67 issue đang mở ngày 20/11/2026: 39 UNKNOWN, 15 conflict, 13 hồ sơ có mô tả cụ thể. Đối chiếu log, source theo SHA, CI/CD và rút ra quy tắc điều tra tránh tuyên bố sửa lỗi khi chưa nghiệm thu.",
+    "date": "2026-11-20T06:47:00+07:00",
+    "issues": [
+      3,
+      53,
+      116,
+      154,
+      159,
+      197,
+      199,
+      208,
+      221,
+      222,
+      227,
+      228
+    ],
+    "sections": [
+      {
+        "heading": "01 — Chúng ta đang đếm điều gì?",
+        "paragraphs": [
+          "Ảnh chụp danh sách GitHub Issues đang mở ngày 20/11/2026 (GMT+7) có 67 issue. Trong đó, 39 issue có tiêu đề UNKNOWN, 15 issue mang nhãn xung đột [Conflict], và 13 issue còn lại có tên cụ thể. Đây là phân loại theo tiêu đề của các issue còn mở, không phải số lỗi production còn ảnh hưởng người dùng và cũng không phải đánh giá chất lượng từng bản sửa.",
+          "Các issue UNKNOWN thường chỉ có workflow run và HEAD SHA, trạng thái 'investigating', nhưng không có nguyên nhân gốc. Một incident do máy tự tạo chỉ là tín hiệu cần điều tra; không phải bằng chứng rằng Researcher đã đọc log hoặc hoàn tất sửa chữa.",
+          "Repository đã có 24 tệp Markdown bài học trong engineering/lessons/ (không tính README) theo cây main ở thời điểm khảo sát. Phần lớn tài liệu dùng nhãn candidate hoặc chờ xác minh. Bộ nhớ kinh nghiệm hiện hữu có giá trị, nhưng số tệp không đồng nghĩa với 24 lỗi đã giải quyết hoàn toàn.",
+          "Kiểm tra metadata của từng job bị lỗi trong 39 incident UNKNOWN thuộc ảnh chụp ban đầu cho thấy 22 lần dừng tại Browser E2E, 14 lần dừng tại engineering regression tests, 2 lần tại security check và 1 lần tại Editor integration tests. Đây chỉ là giai đoạn bị chặn, không phải 39 root cause đã xác định. Một issue mới #231 xuất hiện sau ảnh chụp và có bước E2E lỗi, nên không gộp lùi vào số liệu lịch sử."
+        ],
+        "visuals": [
+          {
+            "kind": "bars",
+            "variant": "summary",
+            "title": "67 issue còn mở — phân nhóm theo tiêu đề",
+            "caption": "Snapshot tĩnh; nhóm 'Khác' bao gồm cả hồ sơ hồi cứu và báo lỗi, không đồng nghĩa 13 root cause đã được xác minh.",
+            "unit": "issue",
+            "source": "GitHub Issues duykhang68/khoahoctienghan, truy vấn is:issue state:open ngày 20/11/2026 GMT+7",
+            "items": [
+              {
+                "label": "UNKNOWN",
+                "value": "39",
+                "color": "#B26B3A"
+              },
+              {
+                "label": "Conflict",
+                "value": "15",
+                "color": "#8B5CF6"
+              },
+              {
+                "label": "Hồ sơ khác",
+                "value": "13",
+                "color": "#2F7F80"
+              }
+            ]
+          },
+          {
+            "kind": "table",
+            "title": "Đọc đúng trạng thái",
+            "caption": "Phân biệt tín hiệu và kết luận điều tra.",
+            "columns": [
+              "Dấu hiệu",
+              "Có thể kết luận",
+              "Chưa thể kết luận"
+            ],
+            "rows": [
+              [
+                "UNKNOWN",
+                "Có run/SHA cần đọc",
+                "Đã có nguyên nhân"
+              ],
+              [
+                "CI success",
+                "Bản build/test ở SHA đó qua",
+                "Người dùng đã nghiệm thu"
+              ],
+              [
+                "CD verify success",
+                "Pipeline triển khai/verify qua",
+                "Tích hợp với dữ liệu thật luôn hoạt động"
+              ],
+              [
+                "Issue open",
+                "Hồ sơ chưa đóng",
+                "Bản sửa chưa từng được merge"
+              ]
+            ]
+          },
+          {
+            "kind": "bars",
+            "variant": "summary",
+            "title": "39 UNKNOWN — bước CI thất bại",
+            "caption": "Đọc metadata job/step của các run gắn với 39 issue UNKNOWN tại snapshot ban đầu; không phải phân loại nguyên nhân.",
+            "unit": "issue",
+            "source": "GitHub Actions jobs linked from the 39 UNKNOWN issues in khoahoctienghan, 20/11/2026 GMT+7",
+            "items": [
+              {
+                "label": "Browser E2E",
+                "value": "22",
+                "color": "#B87943"
+              },
+              {
+                "label": "Engineering tests",
+                "value": "14",
+                "color": "#4A78AD"
+              },
+              {
+                "label": "Security check",
+                "value": "2",
+                "color": "#B54A64"
+              },
+              {
+                "label": "Editor integration",
+                "value": "1",
+                "color": "#39878B"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "02 — #227: test không đi qua điều kiện đầu vào",
+        "paragraphs": [
+          "Run 44638994535 trên HEAD 2f35ad4f233b935c1e26a68f363fbac86c791e84 bị chặn tại test:engineering. Hai assertion liên quan đến legacy Google Sheets Writeback: kỳ vọng nội dung được đối chiếu nhưng nhận null; và yêu cầu báo SHEET_ID_CONFLICT nhưng hàm không reject.",
+          "Đối chiếu mã nguồn đúng HEAD cho thấy legacyDraftText yêu cầu nội dung chuẩn hóa dài ít nhất 32 ký tự. Fixture dùng 'Dòng một' và 'Dòng hai' có độ dài ngắn hơn ngưỡng, nên hàm cố ý trả null trước khi kiểm tra ID. Không có bằng chứng từ thất bại này rằng Google Sheets production hỏng. Nguyên nhân đã xác định nằm ở giả định sai của regression fixture.",
+          "Quy tắc học được: negative test phải có precondition rõ ràng. Nếu muốn kiểm tra xung đột ID, trước tiên phải chứng minh dữ liệu fixture thỏa điều kiện để đi tới nhánh ID. Không giảm ngưỡng bảo vệ để làm test xanh."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Luồng thực tế của test lỗi #227 (minh họa theo mã nguồn tại HEAD thất bại).",
+            "items": [
+              {
+                "label": "Dữ liệu fixture",
+                "detail": "Hai đoạn văn bản rất ngắn"
+              },
+              {
+                "label": "legacyDraftText",
+                "detail": "Chuẩn hóa và kiểm tra ngưỡng 32 ký tự"
+              },
+              {
+                "label": "Trả null",
+                "detail": "Không đủ precondition để đối chiếu Sheet"
+              },
+              {
+                "label": "Assertion thất bại",
+                "detail": "Không tới nhánh kiểm tra SHEET_ID_CONFLICT"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "03 — #228: dereference null sau bước ghi",
+        "paragraphs": [
+          "Run 44639168760 trên HEAD 3b13a3932e7c7d8889016b71f9f300ce67ecad92 hỏng ở scripts/sheet-writeback.mjs:70. Job log ghi nhận TypeError 'Cannot read properties of null (reading fingerprint)' trong phép kiểm tra sau khi cập nhật legacy receipt.",
+          "Ở nhánh nội dung cũ, source được đặt null và legacy chứa văn bản đã chuẩn hóa. Tuy nhiên post-write verification vẫn truy cập source.fingerprint. Lỗi đến từ sự thiếu đối xứng giữa đường xử lý source có fingerprint và đường legacy không có fingerprint; log không cho phép quy kết là lỗi của Google API.",
+          "Bài học sâu hơn: với biến có hai trạng thái hợp lệ, cần rà soát mọi lần sử dụng nó, từ tìm dòng, xác nhận trước ghi, ghi dữ liệu, đọc lại đến retry. Guard đặt ở đầu hàm chưa đủ nếu còn dereference phía sau một thao tác I/O."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Đối chiếu hai nhánh writeback, theo logic bản sửa tại PR #226.",
+            "columns": [
+              "Bước",
+              "Dữ liệu mới có sheetSource",
+              "Legacy thiếu sheetSource"
+            ],
+            "rows": [
+              [
+                "Khớp nguồn",
+                "Fingerprint B:E",
+                "Toàn bộ văn bản canonical"
+              ],
+              [
+                "Đọc lại trước ghi",
+                "Fingerprint",
+                "Văn bản canonical"
+              ],
+              [
+                "Không ghi đè",
+                "ID có sẵn bị từ chối",
+                "ID có sẵn bị từ chối"
+              ],
+              [
+                "Đọc lại sau ghi",
+                "Fingerprint",
+                "Văn bản canonical"
+              ],
+              [
+                "Kết quả",
+                "Chỉ SYNCED khi xác nhận",
+                "Chỉ SYNCED khi xác nhận"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "04 — Bản vá đã đi tới đâu?",
+        "paragraphs": [
+          "PR #226 đã sửa fixture quá ngắn và guard null ở đoạn đối chiếu sau ghi, rồi squash merge thành 31033f88bf6d751888ed03fa834243efc0640196. Main CI 44639695075 thành công trên đúng SHA. CD 44639953956 hoàn thành prepare, deploy và verify trên cùng SHA.",
+          "Đây là bằng chứng tốt cho bản vá và pipeline phát hành, không phải xác nhận độc lập rằng từng ô Content ID của Google Sheet đã được ghi đúng trong phiên người dùng thực. Hai hồ sơ #227 và #228 cần ghi nhận ranh giới này, giữ trạng thái mở cho tới khi có kiểm chứng dữ liệu cuối cùng hoặc quyết định đóng với lý do rõ ràng."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Chuỗi bằng chứng của PR #226, các bước về dữ liệu Google Sheet thật vẫn là gate riêng.",
+            "items": [
+              {
+                "label": "PR #226",
+                "detail": "Sửa code và regression fixture"
+              },
+              {
+                "label": "Squash merge",
+                "detail": "31033f88bf6d…",
+                "icon": "merge"
+              },
+              {
+                "label": "Main CI",
+                "detail": "Run 44639695075 — success",
+                "icon": "check"
+              },
+              {
+                "label": "CD verify",
+                "detail": "Run 44639953956 — success",
+                "icon": "cloud"
+              },
+              {
+                "label": "Owner UAT",
+                "detail": "Chưa xác minh độc lập Sheet live",
+                "icon": "shield"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "05 — Đã biết nguyên nhân nhưng chưa đồng nghĩa hoàn tất",
+        "paragraphs": [
+          "Issue #116 đã xác định Cloudflare Worker không hỗ trợ redirect: error khi tải Google JWKS. PR #117 đã merge, bản Worker và đường tải key được kiểm chứng, nhưng đăng nhập Google bằng tài khoản thật còn chờ owner UAT.",
+          "Issue #3 có bằng chứng rules của github-pages không cho branch main triển khai tại thời điểm thất bại. Cần xác nhận cấu hình môi trường hiện hành và một lần triển khai chính xác sau khi điều chỉnh; không nên retry mù khi lỗi là governance.",
+          "Các issue #197, #199 và #208 ghi nhận điều tra Playwright khá sâu: native drag chưa phát sinh trước khi hover/scroll, role/label locator không khớp, redirect 303 trong test fixture. Những PR liên quan (#194, #198, #206) nay đã merged; incident còn mở cần được đối chiếu trạng thái nghiệm thu hoặc chính sách loại bỏ Course Studio, thay vì mặc định vẫn chưa merge vì nội dung issue cũ."
+        ],
+        "visuals": [
+          {
+            "kind": "table",
+            "caption": "Những nguyên nhân có tài liệu, với ranh giới bằng chứng khác nhau tại 20/11/2026.",
+            "columns": [
+              "Issue",
+              "Bằng chứng hiện có",
+              "Gate chưa chứng minh"
+            ],
+            "rows": [
+              [
+                "#116",
+                "Nguyên nhân runtime JWKS, Worker đã deploy",
+                "Owner Google login thật"
+              ],
+              [
+                "#3",
+                "Rules môi trường chặn main",
+                "Cấu hình hiện hành + deploy lại"
+              ],
+              [
+                "#197",
+                "Lỗi mô phỏng native drag của test",
+                "Đánh giá có còn thuộc hệ thống sau Course removal"
+              ],
+              [
+                "#199",
+                "Locator và redirect fixture",
+                "Đánh giá chức năng sau Course removal"
+              ],
+              [
+                "#208",
+                "Locator tên bộ lọc Trình độ",
+                "Đánh giá chức năng sau Course removal"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "06 — Các hồ sơ chưa thể kết luận",
+        "paragraphs": [
+          "Issue #222: log E2E có navigation tới example.test bị gián đoạn bởi chrome-error://chromewebdata/. Đây là một chữ ký rõ hơn UNKNOWN, nhưng chưa đủ để phân biệt fixture, timing, đường điều hướng hoặc ảnh hưởng sản phẩm. Cần trace/browser reproduction trên đúng SHA và so sánh với nhánh mới.",
+          "Issue #154: Content Library trả thông báo chung khi tải published snapshot; issue ghi nhận khả năng chuỗi upstream GitHub tree/raw trả lỗi, nhưng chưa có trace khẳng định request nào thất bại. Issue #159: dashboard hiển thị thiếu số bài và có fan-out tới GitHub endpoints; upstream failure thực tế chưa tái hiện độc lập. Đều cần chẩn đoán có mã lỗi an toàn, tránh dùng số liệu giả làm fallback.",
+          "Issue #53: Main CI thành công nhưng CD không kích hoạt như kỳ vọng ở một lần merge. Manual dispatch khôi phục production cho SHA mới, song nguyên nhân dịch vụ của missing trigger và khả năng tự recovery bền vững còn cần chứng minh. Đây là khác biệt giữa 'khôi phục được một lần' và 'đã giải quyết nguyên nhân gốc'.",
+          "Nhóm 15 issue conflict cần kiểm tra lại vòng đời PR. Ví dụ #221 còn mở dù PR #202 hiện đã merge. Resolver phải so sánh merge-base, HEAD, main và bằng chứng test trước khi ghi superseded/verified; không giải quyết bằng cách chọn toàn bộ ours hoặc theirs.",
+          "Các issue #75, #76, #79, #83 và #84–85 đã có bài phân tích kỹ thuật riêng trong Tech Blog nhưng hồ sơ GitHub vẫn hiển thị UNKNOWN và open. Đây là vấn đề đồng bộ trạng thái: phải tra cứu bằng chứng CI/deploy và quyền nghiệm thu trước khi chuyển trạng thái, không tự coi bài blog là bằng chứng sửa xong."
+        ]
+      },
+      {
+        "heading": "07 — Không sửa nhầm tính năng sắp loại bỏ",
+        "paragraphs": [
+          "Tại thời điểm kiểm toán, PR #229 là Draft PR đề xuất loại bỏ toàn bộ Course Studio và mã chuyên biệt. Vì vậy các hồ sơ Course Management, Curriculum Builder, Media Studio và Course Publishing cần được phân loại theo ảnh hưởng còn tồn tại sau PR này, không nên tiếp tục tạo bản vá lớn trên tính năng dự kiến bị xóa.",
+          "Một issue có thể chuyển thành 'không còn áp dụng' khi mã được loại bỏ và các đường dẫn/CI/Back Office còn lại đã được kiểm thử, nhưng chỉ đóng với lý do và commit chứng minh. Không giả vờ rằng bug cũ đã được fix bằng code nếu thực tế chức năng đã bị gỡ bỏ."
+        ]
+      },
+      {
+        "heading": "08 — Vòng lặp học từ bug có kiểm chứng",
+        "paragraphs": [
+          "Để hệ thống thực sự tích lũy tri thức, mỗi thất bại cần một chữ ký nhỏ, an toàn và tái sử dụng được: run, job, failed step, SHA, đường dẫn liên quan, nguyên nhân đã tái hiện, fix, regression, CI exact SHA, deploy exact SHA và owner UAT nếu cần. Issue chứa UNKNOWN phải được xem như hàng đợi nghiên cứu, không tự nâng cấp thành root cause.",
+          "Hồ sơ kỹ thuật ghi ở engineering/lessons/incident-investigation-20261120.md. Bài viết tổng quan này cung cấp trạng thái khảo sát, không thay thế các bài hồi cứu bugfix-issue-N sẽ chỉ công bố riêng sau khi từng incident đủ điều kiện xác minh và không cản trở Editor V2 FIFO."
+        ],
+        "visuals": [
+          {
+            "kind": "flow",
+            "caption": "Quy trình đề xuất theo hướng event-driven, có gate; không tự phát CI retry vô hạn.",
+            "items": [
+              {
+                "label": "Detect",
+                "detail": "Run / job / failed step / exact SHA",
+                "icon": "file"
+              },
+              {
+                "label": "Deduplicate",
+                "detail": "Signature và nguồn gây lỗi",
+                "icon": "pull"
+              },
+              {
+                "label": "Research",
+                "detail": "Mã đúng HEAD, trace, giả thuyết và tái hiện",
+                "icon": "shield"
+              },
+              {
+                "label": "Minimal fix",
+                "detail": "Giữ security gates + thêm regression"
+              },
+              {
+                "label": "Native CI",
+                "detail": "Pass chính xác HEAD/main",
+                "icon": "check"
+              },
+              {
+                "label": "Release & UAT",
+                "detail": "Verify SHA và nghiệm thu thực tế",
+                "icon": "cloud"
+              },
+              {
+                "label": "Lesson & article",
+                "detail": "Chỉ nâng cấp verified; không viết như đã fix nếu chưa"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "09 — Kết luận: UNKNOWN là lời nhắc nghiên cứu, không phải thất bại của tri thức",
+        "paragraphs": [
+          "Bằng chứng hôm nay cho thấy ít nhất hai issue UNKNOWN mới (#227, #228) có thể được đưa từ tín hiệu mơ hồ thành phân tích code theo SHA với nguyên nhân cụ thể. Những issue khác vẫn phải được gọi đúng tên là chưa xác định; nhiều issue trong Course Studio cần xét lại do kế hoạch xóa chức năng.",
+          "Một hệ thống tự chữa lành đáng tin cậy không chỉ biết retry và tạo issue: nó phải biết lúc nào không nên sửa, không nên đóng, và không nên tuyên bố production thành công nếu chưa quan sát đúng phần cần nghiệm thu."
+        ],
+        "visuals": [
+          {
+            "kind": "swatches",
+            "caption": "Ngôn ngữ trạng thái khuyến nghị cho Incident Knowledge Base; đây là quy ước đề xuất, không phải nhãn GitHub đã triển khai.",
+            "items": [
+              {
+                "label": "UNKNOWN",
+                "color": "#A86F38",
+                "detail": "Thiếu nguyên nhân"
+              },
+              {
+                "label": "SOURCE_PROVEN",
+                "color": "#4369A8",
+                "detail": "Đã xác định bằng chứng mã nguồn"
+              },
+              {
+                "label": "CI_VERIFIED",
+                "color": "#4B7A4E",
+                "detail": "Test đúng SHA qua"
+              },
+              {
+                "label": "UAT_PENDING",
+                "color": "#8F63B1",
+                "detail": "Chưa nghiệm thu thực tế"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Nguồn kiểm chứng",
+        "paragraphs": [
+          "Danh sách issue đang mở: https://github.com/duykhang68/khoahoctienghan/issues?q=is%3Aissue+state%3Aopen",
+          "Issue #227: https://github.com/duykhang68/khoahoctienghan/issues/227 — CI run: https://github.com/duykhang68/khoahoctienghan/actions/runs/44638994535",
+          "Issue #228: https://github.com/duykhang68/khoahoctienghan/issues/228 — CI run: https://github.com/duykhang68/khoahoctienghan/actions/runs/44639168760",
+          "PR #226: https://github.com/duykhang68/khoahoctienghan/pull/226 ; main CI: https://github.com/duykhang68/khoahoctienghan/actions/runs/44639695075 ; CD: https://github.com/duykhang68/khoahoctienghan/actions/runs/44639953956",
+          "Issue chưa chắc nguyên nhân: https://github.com/duykhang68/khoahoctienghan/issues/222 ; https://github.com/duykhang68/khoahoctienghan/issues/154 ; https://github.com/duykhang68/khoahoctienghan/issues/159 ; https://github.com/duykhang68/khoahoctienghan/issues/53 ; https://github.com/duykhang68/khoahoctienghan/issues/221",
+          "Issue có nghiên cứu chi tiết: https://github.com/duykhang68/khoahoctienghan/issues/116 ; https://github.com/duykhang68/khoahoctienghan/issues/3 ; https://github.com/duykhang68/khoahoctienghan/issues/197 ; https://github.com/duykhang68/khoahoctienghan/issues/199 ; https://github.com/duykhang68/khoahoctienghan/issues/208",
+          "Course Studio removal PR #229: https://github.com/duykhang68/khoahoctienghan/pull/229",
+          "Tài liệu Google Sheets API: https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update"
+        ]
+      }
+    ]
   }
 ]
