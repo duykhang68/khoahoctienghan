@@ -3938,7 +3938,8 @@
         "paragraphs": [
           "Ảnh chụp danh sách GitHub Issues đang mở ngày 20/11/2026 (GMT+7) có 67 issue. Trong đó, 39 issue có tiêu đề UNKNOWN, 15 issue mang nhãn xung đột [Conflict], và 13 issue còn lại có tên cụ thể. Đây là phân loại theo tiêu đề của các issue còn mở, không phải số lỗi production còn ảnh hưởng người dùng và cũng không phải đánh giá chất lượng từng bản sửa.",
           "Các issue UNKNOWN thường chỉ có workflow run và HEAD SHA, trạng thái 'investigating', nhưng không có nguyên nhân gốc. Một incident do máy tự tạo chỉ là tín hiệu cần điều tra; không phải bằng chứng rằng Researcher đã đọc log hoặc hoàn tất sửa chữa.",
-          "Repository đã có 24 tệp Markdown bài học trong engineering/lessons/ (không tính README) theo cây main ở thời điểm khảo sát. Phần lớn tài liệu dùng nhãn candidate hoặc chờ xác minh. Bộ nhớ kinh nghiệm hiện hữu có giá trị, nhưng số tệp không đồng nghĩa với 24 lỗi đã giải quyết hoàn toàn."
+          "Repository đã có 24 tệp Markdown bài học trong engineering/lessons/ (không tính README) theo cây main ở thời điểm khảo sát. Phần lớn tài liệu dùng nhãn candidate hoặc chờ xác minh. Bộ nhớ kinh nghiệm hiện hữu có giá trị, nhưng số tệp không đồng nghĩa với 24 lỗi đã giải quyết hoàn toàn.",
+          "Kiểm tra metadata của từng job bị lỗi trong 39 incident UNKNOWN thuộc ảnh chụp ban đầu cho thấy 22 lần dừng tại Browser E2E, 14 lần dừng tại engineering regression tests, 2 lần tại security check và 1 lần tại Editor integration tests. Đây chỉ là giai đoạn bị chặn, không phải 39 root cause đã xác định. Một issue mới #231 xuất hiện sau ảnh chụp và có bước E2E lỗi, nên không gộp lùi vào số liệu lịch sử."
         ],
         "visuals": [
           {
@@ -3996,6 +3997,36 @@
                 "Hồ sơ chưa đóng",
                 "Bản sửa chưa từng được merge"
               ]
+            ]
+          },
+          {
+            "kind": "bars",
+            "variant": "summary",
+            "title": "39 UNKNOWN — bước CI thất bại",
+            "caption": "Đọc metadata job/step của các run gắn với 39 issue UNKNOWN tại snapshot ban đầu; không phải phân loại nguyên nhân.",
+            "unit": "issue",
+            "source": "GitHub Actions jobs linked from the 39 UNKNOWN issues in khoahoctienghan, 20/11/2026 GMT+7",
+            "items": [
+              {
+                "label": "Browser E2E",
+                "value": "22",
+                "color": "#B87943"
+              },
+              {
+                "label": "Engineering tests",
+                "value": "14",
+                "color": "#4A78AD"
+              },
+              {
+                "label": "Security check",
+                "value": "2",
+                "color": "#B54A64"
+              },
+              {
+                "label": "Editor integration",
+                "value": "1",
+                "color": "#39878B"
+              }
             ]
           }
         ]
@@ -4169,7 +4200,8 @@
           "Issue #222: log E2E có navigation tới example.test bị gián đoạn bởi chrome-error://chromewebdata/. Đây là một chữ ký rõ hơn UNKNOWN, nhưng chưa đủ để phân biệt fixture, timing, đường điều hướng hoặc ảnh hưởng sản phẩm. Cần trace/browser reproduction trên đúng SHA và so sánh với nhánh mới.",
           "Issue #154: Content Library trả thông báo chung khi tải published snapshot; issue ghi nhận khả năng chuỗi upstream GitHub tree/raw trả lỗi, nhưng chưa có trace khẳng định request nào thất bại. Issue #159: dashboard hiển thị thiếu số bài và có fan-out tới GitHub endpoints; upstream failure thực tế chưa tái hiện độc lập. Đều cần chẩn đoán có mã lỗi an toàn, tránh dùng số liệu giả làm fallback.",
           "Issue #53: Main CI thành công nhưng CD không kích hoạt như kỳ vọng ở một lần merge. Manual dispatch khôi phục production cho SHA mới, song nguyên nhân dịch vụ của missing trigger và khả năng tự recovery bền vững còn cần chứng minh. Đây là khác biệt giữa 'khôi phục được một lần' và 'đã giải quyết nguyên nhân gốc'.",
-          "Nhóm 15 issue conflict cần kiểm tra lại vòng đời PR. Ví dụ #221 còn mở dù PR #202 hiện đã merge. Resolver phải so sánh merge-base, HEAD, main và bằng chứng test trước khi ghi superseded/verified; không giải quyết bằng cách chọn toàn bộ ours hoặc theirs."
+          "Nhóm 15 issue conflict cần kiểm tra lại vòng đời PR. Ví dụ #221 còn mở dù PR #202 hiện đã merge. Resolver phải so sánh merge-base, HEAD, main và bằng chứng test trước khi ghi superseded/verified; không giải quyết bằng cách chọn toàn bộ ours hoặc theirs.",
+          "Các issue #75, #76, #79, #83 và #84–85 đã có bài phân tích kỹ thuật riêng trong Tech Blog nhưng hồ sơ GitHub vẫn hiển thị UNKNOWN và open. Đây là vấn đề đồng bộ trạng thái: phải tra cứu bằng chứng CI/deploy và quyền nghiệm thu trước khi chuyển trạng thái, không tự coi bài blog là bằng chứng sửa xong."
         ]
       },
       {
